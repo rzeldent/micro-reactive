@@ -4,15 +4,15 @@ template <typename T>
 class Defer : public IObservable<T>
 {
 private:
-    IObservable<T> (*_factory)();
+std::function<IObservable<T>*> _factory;
 
- public:
-    Defer<T> (IObservable<T> (*factory)());
-    void Subscribe(IObserver<T> &observer) override;
+public:
+    Defer<T>(std::function<IObservable<T>*> factory);
+    void Subscribe(IObserver<T> &observer);
 };
 
 template <typename T>
-Defer<T>::Defer(IObservable<T> (*factory)())
+Defer<T>::Defer(std::function<IObservable<T>*> factory)
     : _factory(factory)
 {
 }
@@ -20,6 +20,6 @@ Defer<T>::Defer(IObservable<T> (*factory)())
 template <typename T>
 void Defer<T>::Subscribe(IObserver<T> &observer)
 {
-    auto *observable = _factory();  
+    auto observable = _factory();
     observable->Subscribe(observer);
 }

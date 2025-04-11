@@ -4,15 +4,15 @@ template <typename T>
 class Create : public IObservable<T>
 {
 private:
-    T (*_on)();
+    std::function<T> _on;
 
-    public:
-    Create(T (*on)());
-    void Subscribe(IObserver<T> &observer) override;
+public:
+    Create(std::function<T> on);
+    void Subscribe(IObserver<T> &observer);
 };
 
 template <typename T>
-Create<T>::Create(T (*on)())
+Create<T>::Create(std::function<T> on)
     : _on(on)
 {
 }
