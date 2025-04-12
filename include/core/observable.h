@@ -22,20 +22,26 @@ public:
         _childObservers.push_back(observer);
         return observer;
     }
+
     void UnSubscribe(IObserver<T> *observer)
     {
         _childObservers.remove(observer);
     }
+
     void NotifyOnNext(const T &value)
     {
-        for (auto observer : _childObservers)
-            observer->OnNext(value);
+        if (!_isComplete)
+            for (auto observer : _childObservers)
+                observer->OnNext(value);
     }
+
     void NotifyOnComplete()
     {
+        _isComplete = true;
         for (auto observer : _childObservers)
             observer->OnComplete();
     }
+
     void NotifyOnError(const std::exception &e)
     {
         for (auto observer : _childObservers)

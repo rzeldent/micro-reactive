@@ -13,11 +13,13 @@ public:
         : _time(time), _clock(clock)
     {
     }
+
     void Reset() override
     {
         _last = T();
         _isComplete = false;
     }
+
     void Update()
     {
         if (this->_isComplete)
@@ -37,3 +39,9 @@ public:
         }
     }
 };
+
+template <typename T>
+IObservable<T> *TimerObservable(T time, std::function<T()> clock)
+{
+    return new Timer<T>(time, clock);
+}

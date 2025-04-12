@@ -4,17 +4,22 @@ template <typename T>
 class Scope : public IObservable<T>
 {
 private:
-    std::vector<T> (*_resourceFactory)();
-    IObservable<T> (*_observableFactory)(std::vector<T>);
+    std::function<std::vector<T>()> _resourceFactory;
+    std::function<IObservable<T> *(std::vector<T>)> _observableFactory;
 
 public:
-    Scope(std::vector<T> (*resourceFactory)(), IObservable<T> (*observableFactory)(std::vector<T>))
+    Scope(std::function<std::vector<T>()> resourceFactory, std::function<IObservable<T> *(std::vector<T>)> observableFactory)
         : _resourceFactory(resourceFactory), _observableFactory(observableFactory)
     {
     }
+
     IObserver<T> *Subscribe(IObserver<T> *observer)
     {
         auto observable = _observableFactory(_resourceFactory());
         return observable->Subscribe(observer);
+    }
+
+    void UnSubscribe(IObserver<T> *observer)
+    {
     }
 };

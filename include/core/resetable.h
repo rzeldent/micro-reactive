@@ -11,12 +11,4 @@ protected:
 template <typename T>
 class Resetable : public IResetable<T>
 {
-protected:
-    bool _isComplete = false;
-
-public:
-    void Reset()
-    {
-        _isComplete = false;
-    }
 };

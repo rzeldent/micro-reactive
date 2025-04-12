@@ -1,7 +1,7 @@
 // Returns an observable that emits a sequential integer every specified time interval
 
 template <typename T = unsigned long>
-class Interval : public Observable<T>, public Resetable<T>
+class Interval : public Observable<T>, public IResetable<T>
 {
 private:
     T _interval;
@@ -14,12 +14,13 @@ public:
         : _interval(interval), _clock(clock)
     {
     }
+
     void Reset() override
     {
-        Resetable<T>::Reset();
         _last = _clock();
         _value = T();
     }
+
     void Update()
     {
         auto current = _clock();
@@ -31,3 +32,9 @@ public:
         }
     }
 };
+
+template <typename T>
+IObservable<T> *IntervalObservable(T interval, std::function<T()> clock)
+{
+    return new Interval<T>(interval, clock);
+}

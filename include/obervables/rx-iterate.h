@@ -12,6 +12,7 @@ public:
         : _values(values)
     {
     }
+
     IObserver<T> *Subscribe(IObserver<T> *observer) override
     {
         Observable<T>::Subscribe(observer);
@@ -21,10 +22,12 @@ public:
         observer->OnComplete();
         return observer;
     }
+
     void UnSubscribe(IObserver<T> *observer) override
     {
         Observable<T>::UnSubscribe(observer);
     }
+
     void Reset() override
     {
         for (auto value : _values)
@@ -33,3 +36,9 @@ public:
         this->NotifyOnComplete();
     }
 };
+
+template <typename T>
+IObservable<T> *IterateObservable(std::vector<T> values)
+{
+    return new Iterate<T>(values);
+}

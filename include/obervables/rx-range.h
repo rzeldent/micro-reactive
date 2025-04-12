@@ -9,34 +9,35 @@ private:
     T _step;
     T _value;
 
-    void Fire(IObserver<T> *observer)
-    {
-        for (auto value = _first; value <= _last; value += _step)
-            observer->OnNext(value);
-    }
-
 public:
     Range(T first, T last, T step)
         : _first(first), _last(last), _step(step)
     {
     }
+
     IObserver<T> *Subscribe(IObserver<T> *observer) override
     {
         Observable<T>::Subscribe(observer);
-        Fire(observer);
+        for (auto value = _first; value <= _last; value += _step)
+            observer->OnNext(value);
+
         observer->OnComplete();
         return observer;
     }
-    void UnSubscribe(IObserver<T> *observer) override
-    {
-        Observable<T>::UnSubscribe(observer);
-    }
+
     void Reset() override
     {
         for (auto observer : this->_childObservers)
         {
-            Fire(observer);
+            for (auto value = _first; value <= _last; value += _step)
+                observer->OnNext(value);
             observer->OnComplete();
         }
     }
 };
+
+template <typename T>
+IObservable<T> *RangeObservable(T first, T last, T step)
+{
+    return new Range<T>(first, last, step);
+}
