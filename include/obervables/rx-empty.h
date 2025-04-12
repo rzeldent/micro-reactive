@@ -4,11 +4,9 @@ template <typename T>
 class Empty : public IObservable<T>
 {
 public:
-    void Subscribe(IObserver<T> &observer);
+    IObserver<T> Subscribe(IObserver<T> *observer)
+    {
+        observer->OnComplete();
+        return observer;
+    }
 };
-
-template <typename T>
-void Empty<T>::Subscribe(IObserver<T> &observer)
-{
-    observer.OnComplete();
-}

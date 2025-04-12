@@ -6,7 +6,7 @@ protected:
 };
 
 template <typename Tsrc, typename Tdest>
-class Operator : public  Observable<Tdest> , IOperator<Tsrc, Tdest>
+class Operator : public Observable<Tdest>, IOperator<Tsrc, Tdest>
 {
 protected:
 };

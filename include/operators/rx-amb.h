@@ -1,65 +1,70 @@
 // For each item from only the first of the given observables deliver from the new observable that is returned
 
 template <typename Tsrc, typename Tdest = Tsrc>
-class Amb : public IOperator<Tsrc, Tdest>, IResetable<Tdest>
+class Amb : public Operator<Tsrc, Tdest>, Resetable<Tdest>
 {
+    class AmbObserver : public IObserver<Tsrc>
+    {
+    private:
+        Amb<Tsrc, Tdest> *_parent;
+
+    public:
+        AmbObserver(Amb<Tsrc, Tdest> *parent)
+            : _parent(parent)
+        {
+        }
+        void OnNext(const Tsrc &value)
+        {
+            _parent->Fire(this, value);
+        }
+        void OnComplete()
+        {
+            _parent->NotifyOnComplete();
+        }
+        void OnError(const std::exception &e)
+        {
+            _parent->NotifyOnError(e);
+        }
+    };
+
 private:
-    IObservable<Tsrc> *_parentObservable1;
-    IObservable<Tsrc> *_parentObservable2;
-    bool _disableParentObservable1 = false;
-    bool _disableParentObservable2 = false;
-    std::list<IObserver<Tdest> *> _childObservers;
+    AmbObserver _observer1, _observer2;
+    IObservable<Tsrc> *_parentObservable1, *_parentObservable2;
+    IObserver<Tsrc> *_activeObserver = nullptr;
+
+    void Fire(IObserver<Tsrc> *observer, const Tsrc &value)
+    {
+        if (_activeObserver == nullptr)
+            _activeObserver = observer;
+
+        if (observer == _activeObserver)
+            this->NotifyOnNext(value);
+    }
 
 public:
-    Amb(IObservable<Tsrc> *parentObservable1, IObservable<Tsrc> *parentObservable2);
-    void Subscribe(IObserver<Tdest> *observer) override;
-    void UnSubscribe(IObserver<Tdest> *observer) override;
-    // void OnNext(const Tsrc &value) override;
-    // void OnComplete() override;
-    // void OnError(const std::exception &e) override;
-    // void Reset() override;
-    bool _isComplete = false;
+    Amb(IObservable<Tsrc> *observable1, IObservable<Tsrc> *observable2)
+        : _parentObservable1(observable1), _parentObservable2(observable2), 
+          _observer1(this), _observer2(this)
+    {
+    }
+    IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
+    {
+        Observable<Tdest>::Subscribe(observer);
+        if (this->_childObservers.size() == 1)
+        {
+            _parentObservable1->Subscribe(&_observer1);
+            _parentObservable2->Subscribe(&_observer2);
+        }
+
+        return observer;
+    }
+    void UnSubscribe(IObserver<Tdest> *observer) override
+    {
+        Observable<Tdest>::UnSubscribe(observer);
+        if (this->_childObservers.empty())
+        {
+            _parentObservable1->UnSubscribe(&_observer1);
+            _parentObservable2->UnSubscribe(&_observer2);
+        }
+    }
 };
-
-template <typename Tsrc, typename Tdest>
-Amb<Tsrc, Tdest>::Amb(IObservable<Tsrc> *parentObservable1, IObservable<Tsrc> *parentObservable2)
-    : _parentObservable1(parentObservable1), _parentObservable2(parentObservable2)
-{
-}
-
-template <typename Tsrc, typename Tdest>
-void Amb<Tsrc, Tdest>::Subscribe(IObserver<Tdest> *observer)
-{
-    _childObservers.push_back(observer);
-    if (!_isComplete && _childObservers.size() == 1)
-    {
-        _parentObservable1->Subscribe([this](const Tsrc &value)
-                                      {
-            if (!_disableParentObservable1 && !_isComplete)
-            {
-                    _disableParentObservable2 = true;
-                    for (auto observer : _childObservers)
-                        observer->onNext(value);
-            } });
-
-        _parentObservable2->Subscribe([this](const Tsrc &value)
-                                      {
-            if (!_disableParentObservable2 && !_isComplete)
-            {
-                _disableParentObservable1 = true;
-                for (auto observer : _childObservers)
-                    observer->onNext(value);
-            } });
-    }
-}
-
-template <typename Tsrc, typename Tdest>
-void Amb<Tsrc, Tdest>::UnSubscribe(IObserver<Tdest> *observer)
-{
-    _childObservers.remove(observer);
-    if (_childObservers.empty())
-    {
-        _parentObservable1->UnSubscribe(this);
-        _parentObservable2->UnSubscribe(this);
-    }
-}

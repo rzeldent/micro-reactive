@@ -9,52 +9,34 @@ private:
     T _step;
     T _value;
 
+    void Fire(IObserver<T> *observer)
+    {
+        for (auto value = _first; value <= _last; value += _step)
+            observer->OnNext(value);
+    }
+
 public:
-    Range(T first, T last, T step);
-    IObserver<T> *Subscribe(IObserver<T> *observer) override;
-    void UnSubscribe(IObserver<T> *observer) override;
-    void Reset() override;
-};
-
-template <typename T>
-Range<T>::Range(T first, T last, T step)
-    : _first(first), _last(last), _step(step)
-{
-}
-
-template <typename T>
-IObserver<T> *Range<T>::Subscribe(IObserver<T> *observer)
-{
-    Observable<T>::Subscribe(observer);
-    _value = _first;
-    while (_value <= _last)
+    Range(T first, T last, T step)
+        : _first(first), _last(last), _step(step)
     {
-        observer->OnNext(_value);
-        _value += _step;
     }
-
-    observer->OnComplete();
-    return observer;
-}
-
-template <typename T>
-void Range<T>::UnSubscribe(IObserver<T> *observer)
-{
-    Observable<T>::UnSubscribe(observer);
-}
-
-template <typename T>
-void Range<T>::Reset()
-{
-    for (auto observer : this->_childObservers)
+    IObserver<T> *Subscribe(IObserver<T> *observer) override
     {
-        _value = _first;
-        while (_value <= _last)
-        {
-            observer->OnNext(_value);
-            _value += _step;
-        }
-
+        Observable<T>::Subscribe(observer);
+        Fire(observer);
         observer->OnComplete();
+        return observer;
     }
-}
+    void UnSubscribe(IObserver<T> *observer) override
+    {
+        Observable<T>::UnSubscribe(observer);
+    }
+    void Reset() override
+    {
+        for (auto observer : this->_childObservers)
+        {
+            Fire(observer);
+            observer->OnComplete();
+        }
+    }
+};

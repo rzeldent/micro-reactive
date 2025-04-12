@@ -15,11 +15,8 @@ protected:
     bool _isComplete = false;
 
 public:
-    void Reset();
+    void Reset()
+    {
+        _isComplete = false;
+    }
 };
-
-template <typename T>
-void Resetable<T>::Reset()
-{
-    _isComplete = false;
-}

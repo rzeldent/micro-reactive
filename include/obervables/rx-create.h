@@ -7,18 +7,13 @@ private:
     std::function<T> _on;
 
 public:
-    Create(std::function<T> on);
-    void Subscribe(IObserver<T> &observer);
+    Create(std::function<T> on)
+        : _on(on)
+    {
+    }
+    IObserver<T> *Subscribe(IObserver<T> *observer)
+    {
+        observer->OnNext(_on());
+        return observer;
+    }
 };
-
-template <typename T>
-Create<T>::Create(std::function<T> on)
-    : _on(on)
-{
-}
-
-template <typename T>
-void Create<T>::Subscribe(IObserver<T> &observer)
-{
-    observer.OnNext(_on());
-}

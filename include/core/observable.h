@@ -17,43 +17,28 @@ protected:
     bool _isComplete = false;
 
 public:
-    IObserver<T> *Subscribe(IObserver<T> *observer);
-    void UnSubscribe(IObserver<T> *observer);
-    void NotifyOnNext(const T &value);
-    void NotifyOnComplete();
-    void NotifyOnError(const std::exception &e);
+    IObserver<T> *Subscribe(IObserver<T> *observer)
+    {
+        _childObservers.push_back(observer);
+        return observer;
+    }
+    void UnSubscribe(IObserver<T> *observer)
+    {
+        _childObservers.remove(observer);
+    }
+    void NotifyOnNext(const T &value)
+    {
+        for (auto observer : _childObservers)
+            observer->OnNext(value);
+    }
+    void NotifyOnComplete()
+    {
+        for (auto observer : _childObservers)
+            observer->OnComplete();
+    }
+    void NotifyOnError(const std::exception &e)
+    {
+        for (auto observer : _childObservers)
+            observer->OnError(e);
+    }
 };
-
-template <typename T>
-IObserver<T> *Observable<T>::Subscribe(IObserver<T> *observer)
-{
-    _childObservers.push_back(observer);
-    return observer;
-}
-
-template <typename T>
-void Observable<T>::UnSubscribe(IObserver<T> *observer)
-{
-    _childObservers.remove(observer);
-}
-
-template <typename T>
-void Observable<T>::NotifyOnNext(const T &value)
-{
-    for (auto observer : _childObservers)
-        observer->OnNext(value);
-}
-
-template <typename T>
-void Observable<T>::NotifyOnComplete()
-{
-    for (auto observer : _childObservers)
-        observer->OnComplete();
-}
-
-template <typename T>
-void Observable<T>::NotifyOnError(const std::exception &e)
-{
-    for (auto observer : _childObservers)
-        observer->OnError(e);
-}

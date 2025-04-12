@@ -1,51 +1,35 @@
 //  Returns an observable that sends each value in the collection
 
 template <typename T>
-class Iterate : public IObservable<T>, public IResetable<T>
+class Iterate : public Observable<T>, public IResetable<T>
 {
 private:
-    std::list<IObserver<T> *> _childObservers;
     std::vector<T> _values;
     size_t _index = 0;
 
 public:
-    Iterate(std::vector<T> values);
-    void Subscribe(IObserver<T> &observer) override;
-    void UnSubscribe(IObserver<T> &observer) override;
-    void Reset() override;
-};
-
-template <typename T>
-Iterate<T>::Iterate(std::vector<T> values)
-    : _values(values)
-{
-}
-
-template <typename T>
-void Iterate<T>::Subscribe(IObserver<T> &observer)
-{
-    _childObservers.push_back(&observer);
-
-    for (auto value : _values)
-        observer.OnNext(value);
-
-    observer.OnComplete();
-}
-
-template <typename T>
-void Iterate<T>::UnSubscribe(IObserver<T> &observer)
-{
-    _childObservers.remove(&observer);
-}
-
-template <typename T>
-void Iterate<T>::Reset()
-{
-    for (auto observer : _childObservers)
+    Iterate(std::vector<T> values)
+        : _values(values)
     {
+    }
+    IObserver<T> *Subscribe(IObserver<T> *observer) override
+    {
+        Observable<T>::Subscribe(observer);
         for (auto value : _values)
-            observer.OnNext(value);
+            this->OnNext(value);
 
         observer->OnComplete();
+        return observer;
     }
-}
+    void UnSubscribe(IObserver<T> *observer) override
+    {
+        Observable<T>::UnSubscribe(observer);
+    }
+    void Reset() override
+    {
+        for (auto value : _values)
+            this->NotifyOnNext(value);
+
+        this->NotifyOnComplete();
+    }
+};
