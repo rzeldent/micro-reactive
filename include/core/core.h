@@ -3,3 +3,4 @@
 #include "observable.h"
 #include "subject.h"
 #include "rx-observer.h"
+#include "rx-observable.h"

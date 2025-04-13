@@ -1,30 +1,34 @@
 // Returns an observable that calls the specified observable factory to create an observable for each new observer that subscribes
 
 template <typename T>
-class Defer : public IObservable<T>
+class Defer : public Observable<T>
 {
-private:
-    std::function<IObservable<T>&()> _factory;
-
 public:
-    Defer<T>(std::function<IObservable<T> &()> factory)
-        : _factory(factory)
+    typedef std::function<IObservable<T>&()> factory;
+
+    Defer<T>(factory create)
+        : _create(create)
     {
     }
 
-    void Subscribe(IObserver<T>& observer)
+    void Subscribe(IObserver<T> *observer)
     {
-        auto observable = _factory();
-        return observable->Subscribe(observer);
+        _observable = _create();
+        _observable->Subscribe(observer);
     }
 
-    void UnSubscribe(IObserver<T>& observer)
+    void UnSubscribe(IObserver<T> *observer)
     {
+        _observable->UnSubscribe(observer);
     }
+
+private:
+    factory _create;
+    IObservable<T> *_observable;
 };
 
 template <typename T>
-IObservable<T> DeferObservable(std::function<IObservable<T>&()> factory)
+Defer<T> DeferObservable(typename Defer<T>::factory create)
 {
-    return new Defer<T>(factory);
+    return *(new Defer<T>(create));
 }

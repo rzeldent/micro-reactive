@@ -16,12 +16,12 @@ public:
     {
     }
 
-    void Subscribe(IObserver<T> &observer)
+    void Subscribe(IObserver<T> *observer)
     {
         _childObservers.push_back(observer);
     }
 
-    void UnSubscribe(IObserver<T> &observer)
+    void UnSubscribe(IObserver<T> *observer)
     {
         _childObservers.remove(observer);
     }

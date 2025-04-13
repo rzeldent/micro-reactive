@@ -2,17 +2,17 @@ template <typename T>
 class Observer : public IObserver<T>
 {
 public:
-    void OnNext(const T &value) 
+    void OnNext(const T &value)
     {
         // Default implementation does nothing
     }
 
-    void OnCompleted() 
+    void OnCompleted()
     {
         // Default implementation does nothing
     }
 
-    void OnError(const std::exception &e) 
+    void OnError(const std::exception &e)
     {
         // Default implementation does nothing
     }

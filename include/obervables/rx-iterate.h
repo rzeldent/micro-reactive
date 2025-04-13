@@ -14,7 +14,7 @@ public:
     {
     }
 
-    void Subscribe(IObserver<T> &observer) override
+    void Subscribe(IObserver<T> *observer) override
     {
         _childObservers.push_back(observer);
         for (auto value : _values)
@@ -23,7 +23,7 @@ public:
         observer->OnCompleted();
     }
 
-    void UnSubscribe(IObserver<T> &observer) override
+    void UnSubscribe(IObserver<T> *observer) override
     {
         _childObservers.remove(observer);
     }
