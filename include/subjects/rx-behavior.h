@@ -12,7 +12,7 @@ public:
     void Subscribe(IObserver<T> &observer) override;
     void UnSubscribe(IObserver<T> &observer) override;
     void OnNext(const T value) override;
-    void OnComplete() override;
+    void OnCompleted() override;
     void OnError(const std::exception &e) override;
 };
 
@@ -44,10 +44,10 @@ void BehaviorSubject<T>::OnNext(const T value)
 }
 
 template <typename T>
-void BehaviorSubject<T>::OnComplete()
+void BehaviorSubject<T>::OnCompleted()
 {
     for (auto observer : _childObservers)
-        observer->OnComplete();
+        observer->OnCompleted();
 }
 
 template <typename T>

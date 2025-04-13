@@ -11,7 +11,7 @@ public:
     void Subscribe(IObserver<T> &observer) override;
     void UnSubscribe(IObserver<T> &observer) override;
     void OnNext(const T value) override;
-    void OnComplete() override;
+    void OnCompleted() override;
     void OnError(const std::exception &e) override;
 };
 
@@ -37,10 +37,10 @@ void SynchronizedSubject<T>::OnNext(const T value)
 }
 
 template <typename T>
-void SynchronizedSubject<T>::OnComplete()
+void SynchronizedSubject<T>::OnCompleted()
 {
     std::lock_guard<std::mutex> lock(_mutex);
-    _subject.OnComplete();
+    _subject.OnCompleted();
 }
 
 template <typename T>

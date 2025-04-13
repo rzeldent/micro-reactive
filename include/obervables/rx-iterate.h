@@ -1,9 +1,10 @@
 //  Returns an observable that sends each value in the collection
 
 template <typename T>
-class Iterate : public Observable<T>, public IResetable<T>
+class Iterate : public IObservable<T>, public IResetable<T>
 {
 private:
+    std::list<IObserver<T> *> _childObservers;
     std::vector<T> _values;
     size_t _index = 0;
 
@@ -13,32 +14,33 @@ public:
     {
     }
 
-    IObserver<T> *Subscribe(IObserver<T> *observer) override
+    void Subscribe(IObserver<T> &observer) override
     {
-        Observable<T>::Subscribe(observer);
+        _childObservers.push_back(observer);
         for (auto value : _values)
             this->OnNext(value);
 
-        observer->OnComplete();
-        return observer;
+        observer->OnCompleted();
     }
 
-    void UnSubscribe(IObserver<T> *observer) override
+    void UnSubscribe(IObserver<T> &observer) override
     {
-        Observable<T>::UnSubscribe(observer);
+        _childObservers.remove(observer);
     }
 
     void Reset() override
     {
         for (auto value : _values)
-            this->NotifyOnNext(value);
-
-        this->NotifyOnComplete();
+            for (auto observer : _childObservers)
+            {
+                observer->OnNext(value);
+                observer->OnCompleted();
+            }
     }
 };
 
 template <typename T>
-IObservable<T> *IterateObservable(std::vector<T> values)
+IObservable<T> IterateObservable(std::vector<T> values)
 {
-    return new Iterate<T>(values);
+    return IObservable<T>(new Iterate<T>(values));
 }

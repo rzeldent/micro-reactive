@@ -1,9 +1,10 @@
 // Returns an Observable that emits true if any item emitted by the source Observable satisfies a specified condition, otherwise false. Emits false if the source Observable terminates without emitting any item
 
 template <typename Tsrc, typename Tdest = bool>
-class Any : public IObserver<Tsrc>, Observable<Tdest>
+class Any : public IObserver<Tsrc>, IObservable<Tdest>
 {
 private:
+    std::list<IObserver<Tdest> *> _childObservers;
     IObservable<Tsrc> *_observable;
     std::function<bool(const Tsrc &)> _predicate;
     bool _emitted = false;
@@ -18,25 +19,33 @@ public:
     void OnNext(const Tsrc &value) override
     {
         if (!_emitted && _predicate(value))
-            this->NotifyOnNext(value);
+        {
+            _emitted = true;
+            for (auto observer : _childObservers)
+                observer->OnNext(value);
+        }
     }
 
-    void OnComplete()
+    void OnCompleted()
     {
-        if (!_emitted)
-            this->NotifyOnNext(false);
+        for (auto observer : _childObservers)
+        {
+            if (!_emitted)
+                observer->OnNext(false);
 
-        this->NotifyOnComplete();
+            observer->OnCompleted();
+        }
     }
 
     void OnError(const std::exception &e) override
     {
-        this->NotifyOnError(e);
+        for (auto observer : _childObservers)
+            observer->OnError(e);
     }
 
     IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::Subscribe(observer);
+        _childObservers.push_back(observer);
         if (this->_childObservers.size() == 1)
             _observable->Subscribe(this);
 
@@ -45,7 +54,7 @@ public:
 
     void UnSubscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::UnSubscribe(observer);
+        _childObservers.remove(observer);
         if (this->_childObservers.empty())
             _observable->UnSubscribe(this);
     }

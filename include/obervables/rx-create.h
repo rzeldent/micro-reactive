@@ -4,27 +4,27 @@ template <typename T>
 class Create : public IObservable<T>
 {
 private:
-    std::function<T()> _on;
+    std::function<void(IObserver<T> &)> _onCreate;
 
 public:
-    Create(std::function<T()> on)
-        : _on(on)
+    Create(std::function<void(IObserver<T> &)> onCreate)
+        : _onCreate(onCreate)
     {
     }
 
-    IObserver<T> *Subscribe(IObserver<T> *observer)
+    void Subscribe(IObserver<T> &observer) override
     {
-        observer->OnNext(_on());
-        return observer;
+        _onCreate(observer);
     }
 
-    void UnSubscribe(IObserver<T> *observer)
+    void UnSubscribe(IObserver<T> &observer) override
     {
+        // Unsubscribe logic can be implemented here if needed
     }
 };
 
-template <typename T>
-IObservable<T> *CreateObservable(std::function<T()> on)
-{
-    return new Create<T>(on);
-}
+// template <typename T>
+// Create<T> CreateObservable(std::function<Observer<T>()> onCreate)
+// {
+//     return *(new Create<T>(onCreate));
+// }

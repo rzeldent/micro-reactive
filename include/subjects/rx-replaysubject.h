@@ -1,5 +1,3 @@
-#pragma once
-
 // Emits new items to its subscribers but also replays a specified subset of its previously emitted items to any new subscribers
 
 template <typename T>
@@ -15,7 +13,7 @@ public:
     void Subscribe(IObserver<T> &observer) override;
     void UnSubscribe(IObserver<T> &observer) override;
     void OnNext(T value) override;
-    void OnComplete() override;
+    void OnCompleted() override;
     void OnError(const std::exception &e) override;
 };
 
@@ -51,10 +49,10 @@ void ReplaySubject<T>::OnNext(T value)
 }
 
 template <typename T>
-void ReplaySubject<T>::OnComplete()
+void ReplaySubject<T>::OnCompleted()
 {
     for (auto observer : _childObservers)
-        observer->OnComplete();
+        observer->OnCompleted();
 }
 
 template <typename T>

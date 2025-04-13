@@ -2,9 +2,10 @@
 // If the skip parameter is set, return an observable that emits buffers every skip items containing at most count items from the source observable.
 
 template <typename Tsrc, typename Tdest = std::vector<Tsrc>>
-class BufferCount : public IObserver<Tsrc>, Observable<Tdest>
+class BufferCount : public IObserver<Tsrc>, IObservable<Tdest>
 {
 private:
+    std::list<IObserver<Tdest> *> _childObservers;
     IObservable<Tsrc> *_observable;
     Tdest _buffer;
     size_t _count;
@@ -20,30 +21,35 @@ public:
         _buffer.push_back(value);
         if (_buffer.size() == _count)
         {
-            this->NotifyOnNext(_buffer);
+            for (auto observer : _childObservers)
+                observer->OnNext(_buffer);
+
             _buffer.clear();
         }
     }
 
-    void OnComplete() override
+    void OnCompleted() override
     {
         if (_buffer.size() > 0)
         {
-            this->NotifyOnNext(_buffer);
+            for (auto observer : _childObservers)
+                observer->OnNext(_buffer);
+
             _buffer.clear();
         }
 
-        this->NotifyOnComplete();
+        this->NotifyOnCompleted();
     }
 
     void OnError(const std::exception &e) override
     {
-        this->NotifyOnError(e);
+        for (auto observer : _childObservers)
+            observer->OnError(e);
     }
 
     IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::Subscribe(observer);
+        _childObservers.push_back(observer);
         if (this->_childObservers.size() == 1)
             _observable->Subscribe(this);
 
@@ -52,7 +58,7 @@ public:
 
     void UnSubscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::UnSubscribe(observer);
+        _childObservers.remove(observer);
         if (this->_childObservers.empty())
             _observable->UnSubscribe(this);
     }

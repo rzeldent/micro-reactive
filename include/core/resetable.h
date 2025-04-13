@@ -7,8 +7,3 @@ public:
 protected:
     virtual ~IResetable() = default;
 };
-
-template <typename T>
-class Resetable : public IResetable<T>
-{
-};

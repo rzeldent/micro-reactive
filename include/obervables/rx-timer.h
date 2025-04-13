@@ -1,7 +1,7 @@
 // Returns an observable that emits an integer at the specified time point
 
 template <typename T = unsigned long>
-class Timer : public Observable<T>, public Resetable<T>
+class Timer : public Observable<T>, public IResetable<T>
 {
 private:
     T _time;
@@ -34,14 +34,14 @@ public:
             {
                 _isComplete = true;
                 this->NotifyOnNext(T());
-                this->NotifyOnComplete();
+                this->NotifyOnCompleted();
             }
         }
     }
 };
 
 template <typename T>
-IObservable<T> *TimerObservable(T time, std::function<T()> clock)
+IObservable<T>& TimerObservable(T time, std::function<T()> clock)
 {
-    return new Timer<T>(time, clock);
+    return std::shared_ptr<IObservable>(new Timer<T>>(time, clock));
 }

@@ -1,7 +1,7 @@
 // when an item is emitted by either of two Observables, combine the latest item emitted by each Observable via a specified function and emit items based on the results of this function
 
 template <typename Tsrc1, typename Tsrc2, typename Tdest = std::tuple<Tsrc1, Tsrc2>>
-class CombineLatest : public Observable<Tdest>
+class CombineLatest : public IObservable<Tdest>
 {
     template <typename T>
     class CombineLatestObserver : public IObserver<T>
@@ -21,9 +21,9 @@ class CombineLatest : public Observable<Tdest>
             _fire(value);
         }
 
-        void OnComplete()
+        void OnCompleted()
         {
-            _parent->NotifyOnComplete();
+            _parent->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e)
@@ -33,6 +33,7 @@ class CombineLatest : public Observable<Tdest>
     };
 
 private:
+    std::list<IObserver<Tdest> *> _childObservers;
     CombineLatestObserver<Tsrc1> _observer1;
     CombineLatestObserver<Tsrc2> _observer2;
 
@@ -70,7 +71,7 @@ public:
 
     IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::Subscribe(observer);
+        _childObservers.push_back(observer);
         if (this->_childObservers.size() == 1)
         {
             _observable1->Subscribe(&_observer1);
@@ -82,7 +83,7 @@ public:
 
     void UnSubscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::UnSubscribe(observer);
+        _childObservers.remove(observer);
         if (this->_childObservers.empty())
         {
             _observable1->UnSubscribe(&_observer1);

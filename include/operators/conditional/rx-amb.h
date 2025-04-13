@@ -1,7 +1,7 @@
 // For each item from only the first of the given observables deliver from the new observable that is returned, on the specified scheduler
 
 template <typename Tsrc, typename Tdest = Tsrc>
-class Amb : public Observable<Tdest>
+class Amb : public IObserver<Tsrc>, IObservable<Tdest>
 {
     class AmbObserver : public IObserver<Tsrc>
     {
@@ -17,16 +17,16 @@ class Amb : public Observable<Tdest>
         void OnNext(const Tsrc &value)
         {
             // If there is no active observer this will be the active observer
-            if (_parent->_activeObserver == nullptr || _parent->_activeObserver  == this)
+            if (_parent->_activeObserver == nullptr || _parent->_activeObserver == this)
             {
                 _parent->_activeObserver = this;
                 _parent->NotifyOnNext(value);
             }
         }
 
-        void OnComplete()
+        void OnCompleted()
         {
-            _parent->NotifyOnComplete();
+            _parent->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e)
@@ -36,6 +36,7 @@ class Amb : public Observable<Tdest>
     };
 
 private:
+    std::list<IObserver<Tdest> *> _childObservers;
     std::vector<AmbObserver> _observers;
     std::vector<IObservable<Tsrc> *> _observables;
     AmbObserver *_activeObserver = nullptr;
@@ -45,12 +46,12 @@ public:
     Amb(Observables... observables)
         : _observables{observables...}
     {
-        _observers = std::vector<AmbObserver>(sizeof...(observables), AmbObserver(this));       
+        _observers = std::vector<AmbObserver>(sizeof...(observables), AmbObserver(this));
     }
 
     IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::Subscribe(observer);
+        _childObservers.push_back(observer);
         if (this->_childObservers.size() == 1)
         {
             for (size_t i = 0; i < _observables.size(); ++i)
@@ -59,10 +60,10 @@ public:
 
         return observer;
     }
-   
+
     void UnSubscribe(IObserver<Tdest> *observer) override
     {
-        Observable<Tdest>::UnSubscribe(observer);
+        _childObservers.remove(observer);
         if (this->_childObservers.empty())
         {
             for (size_t i = 0; i < _observables.size(); ++i)

@@ -1,9 +1,10 @@
 //  Returns an observable that sends values in the range [first, last] by adding step to the previous value
 
 template <typename T>
-class Range : public Observable<T>, public IResetable<T>
+class Range : public IObservable<T>, public IResetable<T>
 {
 private:
+    std::list<IObserver<T>> _childObservers;
     T _first;
     T _last;
     T _step;
@@ -15,14 +16,18 @@ public:
     {
     }
 
-    IObserver<T> *Subscribe(IObserver<T> *observer) override
+    void Subscribe(IObserver<T> &observer) override
     {
-        Observable<T>::Subscribe(observer);
+        _childObservers.push_back(observer);
         for (auto value = _first; value <= _last; value += _step)
             observer->OnNext(value);
 
-        observer->OnComplete();
-        return observer;
+        observer->OnCompleted();
+    }
+
+    void UnSubscribe(IObserver<T> &observer) override
+    {
+        _childObservers.remove(observer);
     }
 
     void Reset() override
@@ -31,13 +36,14 @@ public:
         {
             for (auto value = _first; value <= _last; value += _step)
                 observer->OnNext(value);
-            observer->OnComplete();
+
+            observer->OnCompleted();
         }
     }
 };
 
 template <typename T>
-IObservable<T> *RangeObservable(T first, T last, T step)
+IObservable<T> RangeObservable(T first, T last, T step)
 {
-    return new Range<T>(first, last, step);
+    return IObservable<T>(new Range<T>(first, last, step));
 }
