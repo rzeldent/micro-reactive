@@ -12,12 +12,12 @@ void setup()
 void rxCreate()
 {
     // Create an observable that emits a single value and completes
-    auto observable = rx::Create<int>(std::function<void(rx::IObserver<int>&)>(
+    auto observable = rx::Create<int>(
         [](rx::IObserver<int> &observer) {
             // Emit a value and complete the observable
             observer.OnNext(1);
             observer.OnCompleted();
-        }));
+        });
 
     class TestObserver : public rx::IObserver<int>
     {
@@ -38,7 +38,7 @@ void rxCreate()
         }
     };
 
-    auto observer = *(new TestObserver());
+    TestObserver observer;
     observable.Subscribe(observer);
 }
 
