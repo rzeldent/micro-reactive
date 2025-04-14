@@ -7,6 +7,7 @@
 #include <functional>
 #include <tuple>
 #include <iterator>
+#include <memory>
 
 namespace rx
 {

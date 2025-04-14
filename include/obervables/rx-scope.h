@@ -3,12 +3,12 @@
 template <typename T>
 class Scope : public IObservable<T>
 {
-private:
-    std::function<std::vector<T>()> _resourceFactory;
-    std::function<IObservable<T>&(std::vector<T>)> _observableFactory;
-
 public:
-    Scope(std::function<std::vector<T>()> resourceFactory, std::function<IObservable<T>&(std::vector<T>)> observableFactory)
+typedef std::function<std::vector<T>()> resourceFactory;
+typedef std::function<std::shared_ptr<IObservable<T>>(std::vector<T>)> observableFactory;
+
+
+    Scope(resourceFactory resourceFactory, observableFactory observableFactory)
         : _resourceFactory(resourceFactory), _observableFactory(observableFactory)
     {
     }
@@ -22,10 +22,13 @@ public:
     void UnSubscribe(IObserver<T>& observer)
     {
     }
+    private:
+    std::function<std::vector<T>()> _resourceFactory;
+    std::function<IObservable<T>&(std::vector<T>)> _observableFactory;
 };
 
 template <typename T>
-IObservable<T> ScopeObservable(std::function<std::vector<T>()> resourceFactory, std::function<IObservable<T>&(std::vector<T>)> observableFactory)
+Scope<T> ScopeObservable(typename Scope<T>::resourceFactory resourceFactory, typename Scope<T>::observableFactory observableFactory)
 {
-    return IObservable<T>(new Scope<T>(resourceFactory, observableFactory));
+    return *(new Scope<T>(resourceFactory, observableFactory));
 }

@@ -14,14 +14,15 @@ void rxCreate()
     bool invoked = false;
     // Create an observable that emits a single value and completes
     auto observable = rx::CreateObservable<int>(
-        [&](rx::IObserver<int> *observer) {
+        [&](rx::IObserver<int>* observer)
+        {
             // Emit a value and complete the observable
             invoked = true;
             observer->OnNext(1);
             observer->OnCompleted();
         });
 
-    class TestObserver : public rx::IObserver<int>
+        class TestObserver : public rx::IObserver<int>
     {
     public:
         void OnNext(const int &value)
@@ -38,10 +39,12 @@ void rxCreate()
         {
             TEST_ASSERT_TRUE(false);
         }
+
+        ~TestObserver() = default;
     };
 
-    TestObserver observer;
-    observable.Subscribe(&observer);
+    auto observer = std::make_shared<TestObserver>();
+    observable->Subscribe(observer.get());
     TEST_ASSERT_TRUE(invoked);
 }
 
@@ -49,10 +52,12 @@ void RxDefer()
 {
     bool invoked = false;
     auto observable = rx::DeferObservable<int>(
-        [&]() {
+        [&]()
+        {
             // Create an observable that emits a single value and completes
             return rx::CreateObservable<int>(
-                [&](rx::IObserver<int> *observer) {
+                [&](rx::IObserver<int>* observer)
+                {
                     // Emit a value and complete the observable
                     invoked = true;
                     observer->OnNext(1);
@@ -63,24 +68,26 @@ void RxDefer()
     class TestObserver : public rx::IObserver<int>
     {
     public:
-        void OnNext(const int &value)
+        void OnNext(const int &value) override
         {
             TEST_ASSERT_EQUAL(1, value);
         }
 
-        void OnCompleted()
+        void OnCompleted() override
         {
             TEST_ASSERT_TRUE(true);
         }
 
-        void OnError(const std::exception &e)
+        void OnError(const std::exception &e) override
         {
             TEST_ASSERT_TRUE(false);
         }
+
+        ~TestObserver() = default;
     };
 
-    TestObserver observer;
-    observable.Subscribe(&observer);
+    auto observer = std::make_shared<TestObserver>();
+    observable->Subscribe(observer.get());
     TEST_ASSERT_TRUE(invoked);
 }
 
@@ -89,6 +96,6 @@ void loop()
     UNITY_BEGIN();
     RUN_TEST(rxCreate);
     RUN_TEST(RxDefer);
- 
+
     UNITY_END();
 }

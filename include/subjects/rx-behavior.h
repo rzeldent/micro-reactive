@@ -4,13 +4,13 @@ template <typename T>
 class BehaviorSubject : public IObservable<T>, public IObserver<T>
 {
 private:
-    std::list<IObserver<T> *> _childObservers;
+    std::list<IObserver<T>*> _childObservers;
     T _value;
 
 public:
     BehaviorSubject(T value);
-    void Subscribe(IObserver<T> *observer) override;
-    void UnSubscribe(IObserver<T> *observer) override;
+    void Subscribe(IObserver<T>*observer) override;
+    void UnSubscribe(IObserver<T>*observer) override;
     void OnNext(const T value) override;
     void OnCompleted() override;
     void OnError(const std::exception &e) override;
@@ -23,14 +23,14 @@ BehaviorSubject<T>::BehaviorSubject(T value)
 }
 
 template <typename T>
-void BehaviorSubject<T>::Subscribe(IObserver<T> *observer)
+void BehaviorSubject<T>::Subscribe(IObserver<T>*observer)
 {
     _childObservers.push_back(&observer);
     observer.OnNext(_value);
 }
 
 template <typename T>
-void BehaviorSubject<T>::UnSubscribe(IObserver<T> *observer)
+void BehaviorSubject<T>::UnSubscribe(IObserver<T>*observer)
 {
     _childObservers.remove(&observer);
 }

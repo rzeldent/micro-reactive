@@ -15,7 +15,7 @@ public:
 };
 
 template <typename T>
-IObservable<T> EmptyObservable()
+Empty<T> EmptyObservable()
 {
-    return new Empty<T>();
+    return *(new Empty<T>());
 }

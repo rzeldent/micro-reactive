@@ -1,9 +1,10 @@
 // Returns an observable that emits an integer at the specified time point
 
 template <typename T = unsigned long>
-class Timer : public Observable<T>, public IResetable<T>
+class Timer : public Observable<T>
 {
 private:
+    std::list<IObserver<T> *> _childObservers;
     T _time;
     std::function<T()> _clock;
     T _last = T();
@@ -14,15 +15,9 @@ public:
     {
     }
 
-    void Reset() override
-    {
-        _last = T();
-        _isComplete = false;
-    }
-
     void Update()
     {
-        if (this->_isComplete)
+        if (_childObservers.empty())
             return;
 
         auto current = _clock();
@@ -32,16 +27,20 @@ public:
         {
             if (current - _last >= _time)
             {
-                _isComplete = true;
-                this->NotifyOnNext(T());
-                this->NotifyOnCompleted();
+                for (auto observer : _childObservers)
+                {
+                    observer->OnNext(T());
+                    observer->OnCompleted();
+                }
+
+                _childObservers.clear();
             }
         }
     }
 };
 
 template <typename T>
-IObservable<T>& TimerObservable(T time, std::function<T()> clock)
+Timer<T> TimerObservable(T time, std::function<T()> clock)
 {
-    return std::shared_ptr<IObservable>(new Timer<T>>(time, clock));
+    return *(new Timer < T >> (time, clock));
 }

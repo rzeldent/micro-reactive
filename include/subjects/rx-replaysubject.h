@@ -4,14 +4,14 @@ template <typename T>
 class ReplaySubject : public IObservable<T>, public IObserver<T>
 {
 private:
-    std::list<IObserver<T> *> _childObservers;
+    std::list<IObserver<T>*> _childObservers;
     size_t _size;
     std::list<T> _values;
 
 public:
     ReplaySubject(size_t size);
-    void Subscribe(IObserver<T> *observer) override;
-    void UnSubscribe(IObserver<T> *observer) override;
+    void Subscribe(IObserver<T>*observer) override;
+    void UnSubscribe(IObserver<T>*observer) override;
     void OnNext(T value) override;
     void OnCompleted() override;
     void OnError(const std::exception &e) override;
@@ -24,7 +24,7 @@ ReplaySubject<T>::ReplaySubject(size_t size)
 }
 
 template <typename T>
-void ReplaySubject<T>::Subscribe(IObserver<T> *observer)
+void ReplaySubject<T>::Subscribe(IObserver<T>*observer)
 {
     _childObservers.push_back(&observer);
     for (auto value : _values)
@@ -32,7 +32,7 @@ void ReplaySubject<T>::Subscribe(IObserver<T> *observer)
 }
 
 template <typename T>
-void ReplaySubject<T>::UnSubscribe(IObserver<T> *observer)
+void ReplaySubject<T>::UnSubscribe(IObserver<T>*observer)
 {
     _childObservers.remove(&observer);
 }

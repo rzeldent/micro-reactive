@@ -4,9 +4,9 @@ template <typename T>
 class IObservable
 {
 public:
-    virtual void Subscribe(IObserver<T> *observer) = 0;
-    virtual void UnSubscribe(IObserver<T> *observer) = 0;
+    virtual void Subscribe(IObserver<T>* observer) = 0;
+    virtual void UnSubscribe(IObserver<T>* observer) = 0;
 
-protected:
+//protected:
     virtual ~IObservable() = default;
 };
