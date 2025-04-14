@@ -11,6 +11,8 @@ public:
     void UnSubscribe(IObserver<T>*observer)
     {
     }
+
+    ~Never() = default;
 };
 
 template <typename T>

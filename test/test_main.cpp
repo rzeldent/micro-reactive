@@ -9,12 +9,12 @@ void setup()
     sleep(10);
 }
 
-void rxCreate()
+void Create()
 {
     bool invoked = false;
     // Create an observable that emits a single value and completes
     auto observable = rx::CreateObservable<int>(
-        [&](rx::IObserver<int>* observer)
+        [&](rx::IObserver<int> *observer)
         {
             // Emit a value and complete the observable
             invoked = true;
@@ -22,7 +22,7 @@ void rxCreate()
             observer->OnCompleted();
         });
 
-        class TestObserver : public rx::IObserver<int>
+    class TestObserver : public rx::IObserver<int>
     {
     public:
         void OnNext(const int &value)
@@ -48,7 +48,7 @@ void rxCreate()
     TEST_ASSERT_TRUE(invoked);
 }
 
-void RxDefer()
+void Defer()
 {
     bool invoked = false;
     auto observable = rx::DeferObservable<int>(
@@ -56,7 +56,7 @@ void RxDefer()
         {
             // Create an observable that emits a single value and completes
             return rx::CreateObservable<int>(
-                [&](rx::IObserver<int>* observer)
+                [&](rx::IObserver<int> *observer)
                 {
                     // Emit a value and complete the observable
                     invoked = true;
@@ -94,8 +94,8 @@ void RxDefer()
 void loop()
 {
     UNITY_BEGIN();
-    RUN_TEST(rxCreate);
-    RUN_TEST(RxDefer);
+    RUN_TEST(Create);
+    RUN_TEST(Defer);
 
     UNITY_END();
 }

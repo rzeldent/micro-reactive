@@ -26,6 +26,8 @@ public:
     void UnSubscribe(IObserver<T>*observer) override
     {
     }
+
+    ~Range() = default;
 };
 
 template <typename T>

@@ -21,6 +21,8 @@ public:
     {
     }
 
+    ~Iterate() = default;
+
 private:
     std::vector<T> _values;
     size_t _index = 0;

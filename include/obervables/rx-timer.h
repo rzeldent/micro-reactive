@@ -37,6 +37,14 @@ public:
             }
         }
     }
+
+    ~Timer()
+    {
+        for (auto observer : _childObservers)
+            observer->OnCompleted();
+
+        _childObservers.clear();
+    }   
 };
 
 template <typename T>

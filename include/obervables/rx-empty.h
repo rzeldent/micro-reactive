@@ -12,6 +12,8 @@ public:
     void UnSubscribe(IObserver<T>& observer)
     {
     }
+
+    ~Empty() = default;
 };
 
 template <typename T>
