@@ -1,10 +1,8 @@
 #include <unity.h>
 #include <micro-reactive.h>
 
-void Empty()
+void Test_Empty()
 {
-    auto observable = rx::EmptyObservable<int>();
-
     class TestObserver : public rx::IObserver<int>
     {
     public:
@@ -32,9 +30,11 @@ void Empty()
         ~TestObserver() = default;
     };
 
-    auto observer = std::make_shared<TestObserver>();
-    observable->Subscribe(observer.get());
-    TEST_ASSERT_FALSE(observer->_onNext);
-    TEST_ASSERT_TRUE(observer->_onCompleted);
-    TEST_ASSERT_FALSE(observer->_onError);
+    TestObserver observer;
+    auto observable = rx::EmptyObservable<int>();
+    observable->Subscribe(&observer);
+    TEST_ASSERT_FALSE(observer._onNext);
+    TEST_ASSERT_TRUE(observer._onCompleted);
+    TEST_ASSERT_FALSE(observer._onError);
+    delete observable;
 }

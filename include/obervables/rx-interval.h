@@ -39,8 +39,12 @@ public:
 
     ~Interval()
     {
-        xTimerStop(_timer, 0);
-        xTimerDelete(_timer, 0);
+        if (_timer != nullptr)
+        {
+            xTimerStop(_timer, 0);
+            xTimerDelete(_timer, 0);
+        }
+
         for (auto observer : _childObservers)
             observer->OnCompleted();
 

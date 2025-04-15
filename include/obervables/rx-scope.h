@@ -5,7 +5,7 @@ class Scope : public IObservable<T>
 {
 public:
     typedef std::function<std::vector<T>()> resourceFactory;
-    typedef std::function<std::shared_ptr<IObservable<T>>(std::vector<T>)> observableFactory;
+    typedef std::function<IObservable<T>*(std::vector<T>)> observableFactory;
 
     Scope(resourceFactory resourceFactory, observableFactory observableFactory)
         : _resourceFactory(resourceFactory), _observableFactory(observableFactory)

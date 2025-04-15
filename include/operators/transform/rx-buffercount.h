@@ -63,9 +63,3 @@ public:
             _observable->UnSubscribe(this);
     }
 };
-
-template <typename Tsrc, typename Tdest>
-Tdest bufferCount(IObservable<Tsrc> *observable, size_t count)
-{
-    return new BufferCount<Tsrc, Tdest>(observable, count);
-}

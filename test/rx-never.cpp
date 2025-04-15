@@ -1,10 +1,8 @@
 #include <unity.h>
 #include <micro-reactive.h>
 
-void Never()
+void Test_Never()
 {
-    auto observable = rx::NeverObservable<int>();
-
     class TestObserver : public rx::IObserver<int>
     {
     public:
@@ -32,9 +30,11 @@ void Never()
         ~TestObserver() = default;
     };
 
-    auto observer = std::make_shared<TestObserver>();
-    observable->Subscribe(observer.get());
-    TEST_ASSERT_FALSE(observer->_onNext);
-    TEST_ASSERT_FALSE(observer->_onCompleted);
-    TEST_ASSERT_FALSE(observer->_onError);
+    TestObserver observer;
+    auto observable = rx::NeverObservable<int>();
+    observable->Subscribe(&observer);
+    TEST_ASSERT_FALSE(observer._onNext);
+    TEST_ASSERT_FALSE(observer._onCompleted);
+    TEST_ASSERT_FALSE(observer._onError);
+    delete observable;
 }

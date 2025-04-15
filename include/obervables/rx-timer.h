@@ -33,12 +33,22 @@ public:
     void UnSubscribe(IObserver<T> *observer)
     {
         _childObservers.remove(observer);
+        if (_childObservers.empty() && _timer != nullptr)
+        {
+            xTimerStop(_timer, 0);
+            xTimerDelete(_timer, 0);
+            _timer = nullptr;
+        }
     }
 
     ~Timer()
     {
-        xTimerStop(_timer, 0);
-        xTimerDelete(_timer, 0);
+        if (_timer != nullptr)
+        {
+            xTimerStop(_timer, 0);
+            xTimerDelete(_timer, 0);
+        }
+
         for (auto observer : _childObservers)
             observer->OnCompleted();
 

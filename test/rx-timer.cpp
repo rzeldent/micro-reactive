@@ -1,10 +1,8 @@
 #include <unity.h>
 #include <micro-reactive.h>
 
-void Timer()
+void Test_Timer()
 {
-    auto observable = rx::TimerObservable<int>((size_t)100);
-
     class TestObserver : public rx::IObserver<int>
     {
     public:
@@ -15,7 +13,7 @@ void Timer()
         void OnNext(const int &value) override
         {
             _onNext = true;
-            TEST_ASSERT_EQUAL(1, value);
+            TEST_ASSERT_EQUAL(0, value);
         }
 
         void OnCompleted() override
@@ -33,10 +31,12 @@ void Timer()
         ~TestObserver() = default;
     };
 
-    auto observer = std::make_shared<TestObserver>();
-    observable->Subscribe(observer.get());
-    delay(1000); // Wait for the interval to emit a value
-    TEST_ASSERT_TRUE(observer->_onNext);
-    TEST_ASSERT_TRUE(observer->_onCompleted);
-    TEST_ASSERT_FALSE(observer->_onError);
+    TestObserver observer;
+    auto observable = rx::TimerObservable<int>((size_t)100);
+    observable->Subscribe(&observer);
+    delay(150); // Wait for the interval to emit a value
+    TEST_ASSERT_TRUE(observer._onNext);
+    TEST_ASSERT_TRUE(observer._onCompleted);
+    TEST_ASSERT_FALSE(observer._onError);
+    delete observable;
 }

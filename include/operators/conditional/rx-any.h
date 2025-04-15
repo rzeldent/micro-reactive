@@ -59,9 +59,3 @@ public:
             _observable->UnSubscribe(this);
     }
 };
-
-template <typename Tsrc, typename Tdest>
-Tdest any(IObservable<Tsrc> *observable, std::function<bool(const Tsrc &)> predicate)
-{
-    return new Any<Tsrc, Tdest>(observable, predicate);
-}

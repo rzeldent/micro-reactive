@@ -1,10 +1,8 @@
 #include <unity.h>
 #include <micro-reactive.h>
 
-void Range()
+void Test_Range()
 {
-    auto observable = rx::RangeObservable<int>(0, 10, 1);
-
     class TestObserver : public rx::IObserver<int>
     {
     public:
@@ -33,10 +31,12 @@ void Range()
         ~TestObserver() = default;
     };
 
-    auto observer = std::make_shared<TestObserver>();
-    observable->Subscribe(observer.get());
-    TEST_ASSERT_TRUE(observer->_next == 11);
-    TEST_ASSERT_TRUE(observer->_onNext);
-    TEST_ASSERT_TRUE(observer->_onCompleted);
-    TEST_ASSERT_FALSE(observer->_onError);
+    TestObserver observer;
+    auto observable = rx::RangeObservable<int>(0, 10, 1);
+    observable->Subscribe(&observer);
+    TEST_ASSERT_TRUE(observer._next == 11);
+    TEST_ASSERT_TRUE(observer._onNext);
+    TEST_ASSERT_TRUE(observer._onCompleted);
+    TEST_ASSERT_FALSE(observer._onError);
+    delete observable;
 }

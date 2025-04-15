@@ -71,9 +71,3 @@ public:
         }
     }
 };
-
-template <typename Tsrc, typename Tdest = Tsrc, typename... Observables>
-Amb<Tsrc, Tdest> *amb(Observables... observables)
-{
-    return new Amb<Tsrc, Tdest>(observables...);
-}
