@@ -1,38 +1,46 @@
 // Returns an observable that emits a sequential integer every specified time interval
 
+#include <Arduino.h>
 template <typename T = unsigned long>
 class Interval : public IObservable<T>
 {
 public:
-    Interval(T interval, std::function<T()> clock)
-        : _interval(interval), _clock(clock)
+    Interval(size_t interval)
     {
+        // Convert milliseconds to ticks
+        _ticks = pdMS_TO_TICKS(interval);
     }
 
-    void Subscribe(IObserver<T>* observer)
+    void Subscribe(IObserver<T> *observer)
     {
         _childObservers.push_back(observer);
+        if (_childObservers.size() == 1)
+        {
+            _timer = xTimerCreate("rx-interval", _ticks, pdTRUE, this, [](TimerHandle_t xTimer)
+                                  {
+                auto p = static_cast<Interval *>(pvTimerGetTimerID(xTimer));
+                auto value = p->_value++;
+                for (auto observer : p->_childObservers)
+                    observer->OnNext(value); });
+            xTimerStart(_timer, 0);
+        }
     }
 
-    void UnSubscribe(IObserver<T>* observer)
+    void UnSubscribe(IObserver<T> *observer)
     {
         _childObservers.remove(observer);
-    }
-
-    void Update()
-    {
-        auto current = _clock();
-        if (current - _last >= _interval)
+        if (_childObservers.empty())
         {
-            _last = current;
-            _value++;
-            for (auto observer : _childObservers)
-                observer->OnNext(_value);
+            xTimerStop(_timer, 0);
+            xTimerDelete(_timer, 0);
+            _timer = nullptr;
         }
     }
 
     ~Interval()
     {
+        xTimerStop(_timer, 0);
+        xTimerDelete(_timer, 0);
         for (auto observer : _childObservers)
             observer->OnCompleted();
 
@@ -40,15 +48,14 @@ public:
     }
 
 private:
-    std::list<IObserver<T>*> _childObservers;
-    T _interval;
-    std::function<T()> _clock;
-    T _last = T();
+    std::list<IObserver<T> *> _childObservers;
+    TickType_t _ticks;
+    xTimerHandle _timer = nullptr;
     T _value = T();
 };
 
 template <typename T>
-Interval<T> IntervalObservable(T interval, std::function<T()> clock)
+Interval<T> *IntervalObservable(size_t interval)
 {
-    return *(new Interval<T>(interval, clock));
+    return new Interval<T>(interval);
 }

@@ -12,7 +12,7 @@ public:
     void Subscribe(IObserver<T>* observer) override
     {
         for (auto value : _values)
-            this->OnNext(value);
+            observer->OnNext(value);
 
         observer->OnCompleted();
     }
@@ -25,11 +25,10 @@ public:
 
 private:
     std::vector<T> _values;
-    size_t _index = 0;
 };
 
 template <typename T>
-Iterate<T> IterateObservable(std::vector<T> values)
+Iterate<T>* IterateObservable(std::vector<T> values)
 {
-    return *(new Iterate<T>(values));
+    return new Iterate<T>(values);
 }

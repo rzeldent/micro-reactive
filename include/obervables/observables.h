@@ -7,3 +7,4 @@
 #include "rx-never.h"
 #include "rx-range.h"
 #include "rx-scope.h"
+#include "rx-timer.h"

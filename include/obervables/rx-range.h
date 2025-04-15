@@ -15,7 +15,7 @@ public:
     {
     }
 
-    void Subscribe(IObserver<T>*observer) override
+    void Subscribe(IObserver<T> *observer) override
     {
         for (auto value = _first; value <= _last; value += _step)
             observer->OnNext(value);
@@ -23,7 +23,7 @@ public:
         observer->OnCompleted();
     }
 
-    void UnSubscribe(IObserver<T>*observer) override
+    void UnSubscribe(IObserver<T> *observer) override
     {
     }
 
@@ -31,7 +31,7 @@ public:
 };
 
 template <typename T>
-Range<T> RangeObservable(T first, T last, T step)
+Range<T> *RangeObservable(T first, T last, T step)
 {
-    return *(new Range<T>(first, last, step));
+    return new Range<T>(first, last, step);
 }

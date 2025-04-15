@@ -12,14 +12,14 @@ public:
     {
     }
 
-    void Subscribe(IObserver<T> &observer)
+    void Subscribe(IObserver<T> *observer)
     {
         auto observable = _observableFactory(_resourceFactory());
         _childObservers.push_back(&observer);
         observable.Subscribe(observer);
     }
 
-    void UnSubscribe(IObserver<T> &observer)
+    void UnSubscribe(IObserver<T> *observer)
     {
     }
 
@@ -38,7 +38,7 @@ private:
 };
 
 template <typename T>
-Scope<T> ScopeObservable(typename Scope<T>::resourceFactory resourceFactory, typename Scope<T>::observableFactory observableFactory)
+Scope<T>* ScopeObservable(typename Scope<T>::resourceFactory resourceFactory, typename Scope<T>::observableFactory observableFactory)
 {
-    return *(new Scope<T>(resourceFactory, observableFactory));
+    return new Scope<T>(resourceFactory, observableFactory);
 }

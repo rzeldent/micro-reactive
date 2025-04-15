@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Arduino.h>
+
 #include <list>
 #include <tuple>
 #include <vector>

@@ -1,54 +1,59 @@
 // Returns an observable that emits an integer at the specified time point
 
+#include <Arduino.h>
 template <typename T = unsigned long>
-class Timer : public Observable<T>
+class Timer : public IObservable<T>
 {
-private:
-    std::list<IObserver<T> *> _childObservers;
-    T _time;
-    std::function<T()> _clock;
-    T _last = T();
-
 public:
-    Timer(T time, std::function<T()> clock)
-        : _time(time), _clock(clock)
+    Timer(size_t delay)
     {
+        // Convert milliseconds to ticks
+        _ticks = pdMS_TO_TICKS(delay);
     }
 
-    void Update()
+    void Subscribe(IObserver<T> *observer)
     {
-        if (_childObservers.empty())
-            return;
-
-        auto current = _clock();
-        if (_last == T())
-            _last = current;
-        else
+        _childObservers.push_back(observer);
+        if (_childObservers.size() == 1)
         {
-            if (current - _last >= _time)
-            {
-                for (auto observer : _childObservers)
+            _timer = xTimerCreate("rx-timer", _ticks, pdFALSE, this, [](TimerHandle_t xTimer)
+                                  {
+                auto p = static_cast<Timer *>(pvTimerGetTimerID(xTimer));
+                auto value = p->_value++;
+                for (auto observer : p->_childObservers)
                 {
-                    observer->OnNext(T());
+                    observer->OnNext(value);
                     observer->OnCompleted();
-                }
+                } });
 
-                _childObservers.clear();
-            }
+            xTimerStart(_timer, 0);
         }
+    }
+
+    void UnSubscribe(IObserver<T> *observer)
+    {
+        _childObservers.remove(observer);
     }
 
     ~Timer()
     {
+        xTimerStop(_timer, 0);
+        xTimerDelete(_timer, 0);
         for (auto observer : _childObservers)
             observer->OnCompleted();
 
         _childObservers.clear();
-    }   
+    }
+
+private:
+    std::list<IObserver<T> *> _childObservers;
+    TickType_t _ticks;
+    xTimerHandle _timer = nullptr;
+    T _value = T();
 };
 
 template <typename T>
-Timer<T> TimerObservable(T time, std::function<T()> clock)
+Timer<T> *TimerObservable(size_t delay)
 {
-    return *(new Timer < T >> (time, clock));
+    return new Timer<T>(delay);
 }

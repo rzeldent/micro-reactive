@@ -4,12 +4,12 @@ template <typename T>
 class Empty : public IObservable<T>
 {
 public:
-    void Subscribe(IObserver<T>& observer)
+    void Subscribe(IObserver<T>* observer)
     {
-        observer.OnCompleted();
+        observer->OnCompleted();
     }
 
-    void UnSubscribe(IObserver<T>& observer)
+    void UnSubscribe(IObserver<T>* observer)
     {
     }
 
@@ -17,7 +17,7 @@ public:
 };
 
 template <typename T>
-Empty<T> EmptyObservable()
+Empty<T>* EmptyObservable()
 {
-    return *(new Empty<T>());
+    return new Empty<T>();
 }

@@ -4,11 +4,11 @@ template <typename T>
 class Never : public IObservable<T>
 {
 public:
-    void Subscribe(IObserver<T>*observer)
+    void Subscribe(IObserver<T> *observer)
     {
     }
 
-    void UnSubscribe(IObserver<T>*observer)
+    void UnSubscribe(IObserver<T> *observer)
     {
     }
 
@@ -16,7 +16,7 @@ public:
 };
 
 template <typename T>
-Never<T> NeverObservable()
+Never<T> *NeverObservable()
 {
-    return *(new Never<T>());
+    return new Never<T>();
 }
