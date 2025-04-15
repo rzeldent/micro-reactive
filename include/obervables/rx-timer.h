@@ -26,7 +26,7 @@ public:
                     observer->OnCompleted();
                 } });
 
-            xTimerStart(_timer, 0);
+            xTimerStart(_timer, _ticks);
         }
     }
 
