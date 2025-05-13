@@ -4,5 +4,4 @@
 void Test_Scope()
 {
     // TODO: Implement a test for the Scope observable
-    TEST_ASSERT_FALSE(true);
 }

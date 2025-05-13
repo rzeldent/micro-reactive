@@ -4,7 +4,7 @@ template <typename T>
 class Defer : public IObservable<T>
 {
 public:
-    typedef std::function<IObservable<T> *()> factory;
+    typedef std::function<IObservable<T>*()> factory;
 
     Defer<T>(factory factory)
         : _factory(factory)
@@ -14,7 +14,7 @@ public:
     void Subscribe(IObserver<T> *observer)
     {
         _childObservers.push_back(observer);
-        if (_observable != nullptr)
+        if (_observable == nullptr)
             _observable = _factory();
 
         _observable->Subscribe(observer);
@@ -36,16 +36,16 @@ public:
 
     ~Defer()
     {
-        if (_observable != nullptr)
+        for (auto observer : _childObservers)
         {
             _observable->UnSubscribe(nullptr);
-            delete _observable;
+            observer->OnCompleted();
         }
 
-        for (auto observer : _childObservers)
-            observer->OnCompleted();
-
         _childObservers.clear();
+
+        if (_observable != nullptr)
+            delete _observable;
     }
 
 private:

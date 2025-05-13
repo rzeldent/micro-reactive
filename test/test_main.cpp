@@ -2,13 +2,6 @@
 
 #include <micro-reactive.h>
 
-void setup()
-{
-    // Wait for the serial port to initialize
-    delay(2000);
-    // Initialize serial communication at 115200 baud rate
-//    Serial.begin(460800);
-}
 
 // Observables
 extern void Test_Create();
@@ -21,8 +14,13 @@ extern void Test_Range();
 extern void Test_Scope();
 extern void Test_Timer();
 
-void loop()
+void setup()
 {
+    // Wait for the serial port to initialize
+    delay(2000);
+    // Initialize serial communication at 115200 baud rate
+    Serial.begin(115200);
+
     UNITY_BEGIN();
     RUN_TEST(Test_Create);
     RUN_TEST(Test_Defer);
@@ -34,4 +32,9 @@ void loop()
     RUN_TEST(Test_Scope);
     RUN_TEST(Test_Timer);
     UNITY_END();
+
+}
+
+void loop()
+{
 }

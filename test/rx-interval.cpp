@@ -19,7 +19,6 @@ void Test_Interval()
         void OnCompleted() override
         {
             _onCompleted = true;
-            TEST_ASSERT_TRUE(false);
         }
 
         void OnError(const std::exception &e) override

@@ -9,7 +9,6 @@
 #include <functional>
 #include <tuple>
 #include <iterator>
-
 namespace rx
 {
 // core
