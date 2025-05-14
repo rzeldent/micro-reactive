@@ -12,14 +12,14 @@ public:
     {
     }
 
-    void Subscribe(IObserver<T> *observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         auto observable = _observableFactory(_resourceFactory());
         _childObservers.push_back(&observer);
         observable.Subscribe(observer);
     }
 
-    void UnSubscribe(IObserver<T> *observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
     }
 
@@ -38,7 +38,7 @@ private:
 };
 
 template <typename T>
-ScopeObservable<T>* Scope(typename ScopeObservable<T>::resourceFactory resourceFactory, typename ScopeObservable<T>::observableFactory observableFactory)
+std::shared_ptr<IObservable<T>> Scope(typename ScopeObservable<T>::resourceFactory resourceFactory, typename ScopeObservable<T>::observableFactory observableFactory)
 {
-    return new ScopeObservable<T>(resourceFactory, observableFactory);
+    return std::shared_ptr<IObservable<T>>(new ScopeObservable<T>(resourceFactory, observableFactory));
 }

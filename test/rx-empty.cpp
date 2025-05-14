@@ -3,38 +3,31 @@
 
 void Test_Empty()
 {
-    class TestObserver : public rx::IObserver<int>
+    class EmptyTestObserver : public rx::IObserver<int>
     {
     public:
-        bool _onNext = false;
         bool _onCompleted = false;
-        bool _onError = false;
+        
         void OnNext(const int &value) override
         {
-            _onNext = true;
-            TEST_ASSERT_TRUE(false);
+            TEST_FAIL_MESSAGE("OnNext was called");
         }
 
         void OnCompleted() override
         {
             _onCompleted = true;
-            TEST_ASSERT_TRUE(true);
         }
 
         void OnError(const std::exception &e) override
         {
-            _onError = true;
-            TEST_ASSERT_TRUE(false);
+            TEST_FAIL_MESSAGE("OnError was called");
         }
 
-        ~TestObserver() = default;
+        ~EmptyTestObserver() = default;
     };
 
-    TestObserver observer;
+    auto observer = std::make_shared<EmptyTestObserver>();
     auto observable = rx::Empty<int>();
-    observable->Subscribe(&observer);
-    TEST_ASSERT_FALSE(observer._onNext);
-    TEST_ASSERT_TRUE(observer._onCompleted);
-    TEST_ASSERT_FALSE(observer._onError);
-    delete observable;
+    observable->Subscribe(observer);
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onCompleted, "OnCompleted was not called");
 }

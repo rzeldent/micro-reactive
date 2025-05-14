@@ -15,7 +15,7 @@ public:
     {
     }
 
-    void Subscribe(IObserver<T> *observer) override
+    void Subscribe(std::shared_ptr< IObserver<T>> observer)
     {
         for (auto value = _first; value <= _last; value += _step)
             observer->OnNext(value);
@@ -23,7 +23,7 @@ public:
         observer->OnCompleted();
     }
 
-    void UnSubscribe(IObserver<T> *observer) override
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
     }
 
@@ -31,7 +31,7 @@ public:
 };
 
 template <typename T>
-RangeObservable<T> *Range(T first, T last, T step)
+std::shared_ptr<IObservable<T>> Range(T first, T last, T step)
 {
-    return new RangeObservable<T>(first, last, step);
+    return std::shared_ptr<IObservable<T>>(new RangeObservable<T>(first, last, step));
 }

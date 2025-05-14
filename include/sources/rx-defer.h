@@ -4,14 +4,14 @@ template <typename T>
 class DeferObservable : public IObservable<T>
 {
 public:
-    typedef std::function<IObservable<T>*()> factory;
+    typedef std::function<std::shared_ptr<IObservable<T>>()> factory;
 
     DeferObservable<T>(factory factory)
         : _factory(factory)
     {
     }
 
-    void Subscribe(IObserver<T> *observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         _childObservers.push_back(observer);
         if (_observable == nullptr)
@@ -20,16 +20,15 @@ public:
         _observable->Subscribe(observer);
     }
 
-    void UnSubscribe(IObserver<T> *observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
         _childObservers.remove(observer);
         if (_childObservers.empty())
         {
-            if (_observable != nullptr)
+            if (_observable)
             {
                 _observable->UnSubscribe(observer);
-                delete _observable;
-                _observable = nullptr;
+                _observable.reset();
             }
         }
     }
@@ -44,18 +43,18 @@ public:
 
         _childObservers.clear();
 
-        if (_observable != nullptr)
-            delete _observable;
+        if (_observable)
+            _observable.reset();
     }
 
 private:
-    std::list<IObserver<T> *> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
     factory _factory;
-    IObservable<T> *_observable = nullptr;
+    std::shared_ptr<IObservable<T>> _observable = nullptr;
 };
 
 template <typename T>
-DeferObservable<T> *Defer(typename DeferObservable<T>::factory create)
+std::shared_ptr<IObservable<T>> Defer(typename DeferObservable<T>::factory create)
 {
-    return new DeferObservable<T>(create);
+    return std::shared_ptr<IObservable<T>>(new DeferObservable<T>(create));
 }

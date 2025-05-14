@@ -3,40 +3,36 @@
 
 void Test_Range()
 {
-    class TestObserver : public rx::IObserver<int>
+    class RangeTestObserver : public rx::IObserver<int>
     {
     public:
         int _next = 0;
         bool _onNext = false;
         bool _onCompleted = false;
-        bool _onError = false;
+        
         void OnNext(const int &value) override
         {
             _onNext = true;
-            TEST_ASSERT_EQUAL(_next++, value);
+            TEST_ASSERT_EQUAL_MESSAGE(_next++, value, "Value emitted is not in the expected range");
         }
 
         void OnCompleted() override
         {
             _onCompleted = true;
-            TEST_ASSERT_TRUE(true);
         }
 
         void OnError(const std::exception &e) override
         {
-            _onError = true;
-            TEST_ASSERT_TRUE(false);
+            TEST_FAIL_MESSAGE("OnError was called");        
         }
 
-        ~TestObserver() = default;
+        ~RangeTestObserver() = default;
     };
 
-    TestObserver observer;
+    auto observer = std::make_shared<RangeTestObserver>();
     auto observable = rx::Range<int>(0, 10, 1);
-    observable->Subscribe(&observer);
-    TEST_ASSERT_TRUE(observer._next == 11);
-    TEST_ASSERT_TRUE(observer._onNext);
-    TEST_ASSERT_TRUE(observer._onCompleted);
-    TEST_ASSERT_FALSE(observer._onError);
-    delete observable;
+    observable->Subscribe(observer);
+    TEST_ASSERT_TRUE_MESSAGE(observer->_next == 11, "Not all values were emitted");
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onNext, "OnNext was not called");
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onCompleted, "OnCompleted was not called");
 }

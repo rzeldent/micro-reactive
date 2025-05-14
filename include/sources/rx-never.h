@@ -4,11 +4,11 @@ template <typename T>
 class NeverObservable : public IObservable<T>
 {
 public:
-    void Subscribe(IObserver<T> *observer)
+    void Subscribe(std::shared_ptr< IObserver<T> >observer)
     {
     }
 
-    void UnSubscribe(IObserver<T> *observer)
+    void UnSubscribe(std::shared_ptr< IObserver<T> >observer)
     {
     }
 
@@ -16,7 +16,7 @@ public:
 };
 
 template <typename T>
-NeverObservable<T> *Never()
+std::shared_ptr<IObservable<T>> Never()
 {
-    return new NeverObservable<T>();
+    return std::shared_ptr<IObservable<T>>(new NeverObservable<T>());
 }

@@ -11,7 +11,7 @@ public:
         _ticks = pdMS_TO_TICKS(interval);
     }
 
-    void Subscribe(IObserver<T> *observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         _childObservers.push_back(observer);
         if (_childObservers.size() == 1)
@@ -26,7 +26,7 @@ public:
         }
     }
 
-    void UnSubscribe(IObserver<T> *observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
         _childObservers.remove(observer);
         if (_childObservers.empty())
@@ -52,14 +52,14 @@ public:
     }
 
 private:
-    std::list<IObserver<T> *> _childObservers;
+    std::list<std::shared_ptr< IObserver<T> >> _childObservers;
     TickType_t _ticks;
     xTimerHandle _timer = nullptr;
     T _value = T();
 };
 
 template <typename T>
-IntervalObservable<T> *Interval(size_t interval)
+std::shared_ptr<IObservable<T>> Interval(size_t interval)
 {
-    return new IntervalObservable<T>(interval);
+    return std::shared_ptr<IObservable<T>>(new IntervalObservable<T>(interval));
 }

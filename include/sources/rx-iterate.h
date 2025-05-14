@@ -9,7 +9,7 @@ public:
     {
     }
 
-    void Subscribe(IObserver<T>* observer) override
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         for (auto value : _values)
             observer->OnNext(value);
@@ -17,7 +17,7 @@ public:
         observer->OnCompleted();
     }
 
-    void UnSubscribe(IObserver<T>* observer) override
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
     }
 
@@ -28,7 +28,7 @@ private:
 };
 
 template <typename T>
-IterateObservable<T>* Iterate(std::vector<T> values)
+std::shared_ptr<IObservable<T>> Iterate(std::vector<T> values)
 {
-    return new IterateObservable<T>(values);
+    return std::shared_ptr<IObservable<T>>(new IterateObservable<T>(values));
 }

@@ -4,39 +4,34 @@
 void Test_Iterate()
 {
     // Create an observable that emits a single value and completes
-    class TestObserver : public rx::IObserver<int>
+    class IterateTestObserver : public rx::IObserver<int>
     {
     public:
         bool _onNext = false;
         bool _onCompleted = false;
-        bool _onError = false;
 
         void OnNext(const int &value)
         {
             _onNext = true;
-            TEST_ASSERT_EQUAL(1, value);
+            TEST_ASSERT_EQUAL_MESSAGE(1, value, "Value emitted is not 1");
         }
 
         void OnCompleted()
         {
             _onCompleted = true;
-            TEST_ASSERT_TRUE(true);
         }
 
         void OnError(const std::exception &e)
         {
-            _onError = true;
-            TEST_ASSERT_TRUE(false);
+            TEST_FAIL_MESSAGE("OnError was called");
         }
 
-        ~TestObserver() = default;
+        ~IterateTestObserver() = default;
     };
 
-    TestObserver observer;
+    auto observer = std::make_shared<IterateTestObserver>();
     auto observable = rx::Iterate<int>(std::vector<int>{1});
-    observable->Subscribe(&observer);
-    TEST_ASSERT_TRUE(observer._onNext);
-    TEST_ASSERT_TRUE(observer._onCompleted);
-    TEST_ASSERT_FALSE(observer._onError);
-    delete observable;
+    observable->Subscribe(observer);
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onNext, "OnNext was not called");
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onCompleted, "OnCompleted was not called");
 }

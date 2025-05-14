@@ -3,38 +3,35 @@
 
 void Test_Create()
 {
-    class TestObserver : public rx::IObserver<int>
+    class CreateTestObserver : public rx::IObserver<int>
     {
     public:
         bool _onNext = false;
         bool _onCompleted = false;
-        bool _onError = false;
 
         void OnNext(const int &value)
         {
             _onNext = true;
-            TEST_ASSERT_EQUAL(1, value);
+            TEST_ASSERT_EQUAL_MESSAGE(1, value, "Value emitted is not 1");
         }
 
         void OnCompleted()
         {
             _onCompleted = true;
-            TEST_ASSERT_TRUE(true);
         }
 
         void OnError(const std::exception &e)
         {
-            _onError = true;
-            TEST_ASSERT_TRUE(false);
+            TEST_FAIL_MESSAGE("OnError was called");
         }
 
-        ~TestObserver() = default;
+        ~CreateTestObserver() = default;
     };
 
     bool invoked = false;
     // Create an observable that emits a single value and completes
     auto observable = rx::Create<int>(
-        [&](rx::IObserver<int> *observer)
+        [&](std::shared_ptr<rx::IObserver<int>> observer)
         {
             // Emit a value and complete the observable
             invoked = true;
@@ -42,11 +39,9 @@ void Test_Create()
             observer->OnCompleted();
         });
 
-    TestObserver observer;
-    observable->Subscribe(&observer);
-    TEST_ASSERT_TRUE(invoked);
-    TEST_ASSERT_TRUE(observer._onNext);
-    TEST_ASSERT_TRUE(observer._onCompleted);
-    TEST_ASSERT_FALSE(observer._onError);
-    delete observable;
+    auto observer = std::make_shared<CreateTestObserver>();
+    observable->Subscribe(observer);
+    TEST_ASSERT_TRUE_MESSAGE(invoked, "Create observable was not invoked");
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onNext, "OnNext was not called");
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onCompleted, "OnCompleted was not called");
 }

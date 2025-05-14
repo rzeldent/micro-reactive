@@ -4,8 +4,8 @@ template <typename T>
 class IObservable
 {
 public:
-    virtual void Subscribe(IObserver<T> *observer) = 0;
-    virtual void UnSubscribe(IObserver<T> *observer) = 0;
+    virtual void Subscribe(std::shared_ptr<IObserver<T>> observer) = 0;
+    virtual void UnSubscribe(std::shared_ptr<IObserver<T>> observer) = 0;
 
  protected:
     //virtual ~IObservable() = default;

@@ -3,40 +3,35 @@
 
 void Test_Timer()
 {
-    class TestObserver : public rx::IObserver<int>
+    class TimerTestObserver : public rx::IObserver<int>
     {
     public:
         bool _onNext = false;
         bool _onCompleted = false;
-        bool _onError = false;
 
         void OnNext(const int &value) override
         {
             _onNext = true;
-            TEST_ASSERT_EQUAL(0, value);
+            TEST_ASSERT_EQUAL_MESSAGE(0, value, "Value emitted is not 0");
         }
 
         void OnCompleted() override
         {
             _onCompleted = true;
-            TEST_ASSERT_TRUE(true);
         }
 
         void OnError(const std::exception &e) override
         {
-            _onError = true;
-            TEST_ASSERT_TRUE(false);
+            TEST_FAIL_MESSAGE("OnError was called");
         }
 
-        ~TestObserver() = default;
+        ~TimerTestObserver() = default;
     };
 
-    TestObserver observer;
+    auto observer = std::make_shared<TimerTestObserver>();
     auto observable = rx::Timer<int>((size_t)100);
-    observable->Subscribe(&observer);
+    observable->Subscribe(observer);
     delay(150); // Wait for the interval to emit a value
-    TEST_ASSERT_TRUE(observer._onNext);
-    TEST_ASSERT_TRUE(observer._onCompleted);
-    TEST_ASSERT_FALSE(observer._onError);
-    delete observable;
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onNext, "OnNext was not called");
+    TEST_ASSERT_TRUE_MESSAGE(observer->_onCompleted, "OnCompleted was not called");
 }

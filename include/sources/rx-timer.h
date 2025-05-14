@@ -11,26 +11,27 @@ public:
         _ticks = pdMS_TO_TICKS(delay);
     }
 
-    void Subscribe(IObserver<T> *observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         _childObservers.push_back(observer);
         if (_childObservers.size() == 1)
         {
             _timer = xTimerCreate("rx-timer", _ticks, pdFALSE, this, [](TimerHandle_t xTimer)
-                                  {
+            {
                 auto p = static_cast<TimerObservable*>(pvTimerGetTimerID(xTimer));
                 auto value = p->_value++;
                 for (auto observer : p->_childObservers)
                 {
                     observer->OnNext(value);
                     observer->OnCompleted();
-                } });
+                }
+            });
 
             xTimerStart(_timer, _ticks);
         }
     }
 
-    void UnSubscribe(IObserver<T> *observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
         _childObservers.remove(observer);
         if (_childObservers.empty() && _timer != nullptr)
@@ -56,14 +57,14 @@ public:
     }
 
 private:
-    std::list<IObserver<T> *> _childObservers;
+    std::list<std::shared_ptr< IObserver<T> >> _childObservers;
     TickType_t _ticks;
     xTimerHandle _timer = nullptr;
     T _value = T();
 };
 
 template <typename T>
-TimerObservable<T> *Timer(size_t delay)
+std::shared_ptr<IObservable<T>> Timer(size_t delay)
 {
-    return new TimerObservable<T>(delay);
+    return std::shared_ptr<IObservable<T>>(new TimerObservable<T>(delay));
 }

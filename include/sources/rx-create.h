@@ -4,19 +4,19 @@ template <typename T>
 class CreateObservable : public IObservable<T>
 {
 public:
-    typedef std::function<void(IObserver<T> *)> factory;
+    typedef std::function<void(std::shared_ptr<IObserver<T>>)> factory;
 
     CreateObservable(factory create)
         : _create(create)
     {
     }
 
-    void Subscribe(IObserver<T> *observer) override
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         _create(observer);
     }
 
-    void UnSubscribe(IObserver<T> *observer) override
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
     }
 
@@ -27,7 +27,7 @@ private:
 };
 
 template <typename T>
-CreateObservable<T> *Create(typename CreateObservable<T>::factory create)
+std::shared_ptr<IObservable<T>> Create(typename CreateObservable<T>::factory create)
 {
-    return new CreateObservable<T>(create);
+    return std::shared_ptr<IObservable<T>>(new CreateObservable<T>(create));
 }

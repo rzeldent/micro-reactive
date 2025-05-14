@@ -4,12 +4,12 @@ template <typename T>
 class EmptyObservable : public IObservable<T>
 {
 public:
-    void Subscribe(IObserver<T>* observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         observer->OnCompleted();
     }
 
-    void UnSubscribe(IObserver<T>* observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
     {
     }
 
@@ -17,7 +17,7 @@ public:
 };
 
 template <typename T>
-EmptyObservable<T>* Empty()
+std::shared_ptr<IObservable<T>> Empty()
 {
-    return new EmptyObservable<T>();
+    return std::shared_ptr<IObservable<T>>(new EmptyObservable<T>());
 }
