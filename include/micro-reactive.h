@@ -14,7 +14,7 @@ namespace rx
 // core
 #include "core/core.h"
 // sources
-#include "obervables/observables.h"
+#include "sources/sources.h"
 // sources
 #include "observers/observers.h"
 // subjects

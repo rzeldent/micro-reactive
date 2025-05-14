@@ -1,13 +1,13 @@
 // Returns an observable that makes an observable by the specified observable factory using the resource provided by the specified resource factory for each new observer that subscribes
 
 template <typename T>
-class Scope : public IObservable<T>
+class ScopeObservable : public IObservable<T>
 {
 public:
     typedef std::function<std::vector<T>()> resourceFactory;
     typedef std::function<IObservable<T>*(std::vector<T>)> observableFactory;
 
-    Scope(resourceFactory resourceFactory, observableFactory observableFactory)
+    ScopeObservable(resourceFactory resourceFactory, observableFactory observableFactory)
         : _resourceFactory(resourceFactory), _observableFactory(observableFactory)
     {
     }
@@ -23,7 +23,7 @@ public:
     {
     }
 
-    ~Scope()
+    ~ScopeObservable()
     {
         for (auto observer : _childObservers)
             observer->OnCompleted();
@@ -38,7 +38,7 @@ private:
 };
 
 template <typename T>
-Scope<T>* ScopeObservable(typename Scope<T>::resourceFactory resourceFactory, typename Scope<T>::observableFactory observableFactory)
+ScopeObservable<T>* Scope(typename ScopeObservable<T>::resourceFactory resourceFactory, typename ScopeObservable<T>::observableFactory observableFactory)
 {
-    return new Scope<T>(resourceFactory, observableFactory);
+    return new ScopeObservable<T>(resourceFactory, observableFactory);
 }

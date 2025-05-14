@@ -31,7 +31,7 @@ void Test_Interval()
     };
 
     TestObserver observer;
-    auto observable = rx::IntervalObservable<int>((size_t)100);
+    auto observable = rx::Interval<int>((size_t)100);
     observable->Subscribe(&observer);
     delay(150); // Wait for the interval to emit a value
     TEST_ASSERT_TRUE(observer._onNext);

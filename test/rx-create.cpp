@@ -33,7 +33,7 @@ void Test_Create()
 
     bool invoked = false;
     // Create an observable that emits a single value and completes
-    auto observable = rx::CreateObservable<int>(
+    auto observable = rx::Create<int>(
         [&](rx::IObserver<int> *observer)
         {
             // Emit a value and complete the observable

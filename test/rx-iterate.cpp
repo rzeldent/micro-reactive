@@ -33,7 +33,7 @@ void Test_Iterate()
     };
 
     TestObserver observer;
-    auto observable = rx::IterateObservable<int>(std::vector<int>{1});
+    auto observable = rx::Iterate<int>(std::vector<int>{1});
     observable->Subscribe(&observer);
     TEST_ASSERT_TRUE(observer._onNext);
     TEST_ASSERT_TRUE(observer._onCompleted);

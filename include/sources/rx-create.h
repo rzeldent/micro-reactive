@@ -1,12 +1,12 @@
 // Returns an observable that executes the specified function when a subscriber subscribes to it
 
 template <typename T>
-class Create : public IObservable<T>
+class CreateObservable : public IObservable<T>
 {
 public:
     typedef std::function<void(IObserver<T> *)> factory;
 
-    Create(factory create)
+    CreateObservable(factory create)
         : _create(create)
     {
     }
@@ -20,14 +20,14 @@ public:
     {
     }
 
-    ~Create() = default;
+    ~CreateObservable() = default;
 
 private:
     factory _create;
 };
 
 template <typename T>
-Create<T> *CreateObservable(typename Create<T>::factory create)
+CreateObservable<T> *Create(typename CreateObservable<T>::factory create)
 {
-    return new Create<T>(create);
+    return new CreateObservable<T>(create);
 }

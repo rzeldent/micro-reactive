@@ -1,12 +1,12 @@
 // Returns an observable that calls the specified observable factory to create an observable for each new observer that subscribes
 
 template <typename T>
-class Defer : public IObservable<T>
+class DeferObservable : public IObservable<T>
 {
 public:
     typedef std::function<IObservable<T>*()> factory;
 
-    Defer<T>(factory factory)
+    DeferObservable<T>(factory factory)
         : _factory(factory)
     {
     }
@@ -34,7 +34,7 @@ public:
         }
     }
 
-    ~Defer()
+    ~DeferObservable()
     {
         for (auto observer : _childObservers)
         {
@@ -55,7 +55,7 @@ private:
 };
 
 template <typename T>
-Defer<T> *DeferObservable(typename Defer<T>::factory create)
+DeferObservable<T> *Defer(typename DeferObservable<T>::factory create)
 {
-    return new Defer<T>(create);
+    return new DeferObservable<T>(create);
 }

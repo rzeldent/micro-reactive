@@ -1,7 +1,7 @@
 //  Returns an observable that sends values in the range [first, last] by adding step to the previous value
 
 template <typename T>
-class Range : public IObservable<T>
+class RangeObservable : public IObservable<T>
 {
 private:
     T _first;
@@ -10,7 +10,7 @@ private:
     T _value;
 
 public:
-    Range(T first, T last, T step)
+    RangeObservable(T first, T last, T step)
         : _first(first), _last(last), _step(step)
     {
     }
@@ -27,11 +27,11 @@ public:
     {
     }
 
-    ~Range() = default;
+    ~RangeObservable() = default;
 };
 
 template <typename T>
-Range<T> *RangeObservable(T first, T last, T step)
+RangeObservable<T> *Range(T first, T last, T step)
 {
-    return new Range<T>(first, last, step);
+    return new RangeObservable<T>(first, last, step);
 }

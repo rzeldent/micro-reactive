@@ -31,7 +31,7 @@ void Test_Empty()
     };
 
     TestObserver observer;
-    auto observable = rx::EmptyObservable<int>();
+    auto observable = rx::Empty<int>();
     observable->Subscribe(&observer);
     TEST_ASSERT_FALSE(observer._onNext);
     TEST_ASSERT_TRUE(observer._onCompleted);

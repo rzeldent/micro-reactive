@@ -31,7 +31,7 @@ void Test_Never()
     };
 
     TestObserver observer;
-    auto observable = rx::NeverObservable<int>();
+    auto observable = rx::Never<int>();
     observable->Subscribe(&observer);
     TEST_ASSERT_FALSE(observer._onNext);
     TEST_ASSERT_FALSE(observer._onCompleted);

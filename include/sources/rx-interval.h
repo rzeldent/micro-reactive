@@ -2,10 +2,10 @@
 
 #include <Arduino.h>
 template <typename T = unsigned long>
-class Interval : public IObservable<T>
+class IntervalObservable : public IObservable<T>
 {
 public:
-    Interval(size_t interval)
+    IntervalObservable(size_t interval)
     {
         // Convert milliseconds to ticks
         _ticks = pdMS_TO_TICKS(interval);
@@ -18,7 +18,7 @@ public:
         {
             _timer = xTimerCreate("rx-interval", _ticks, pdTRUE, this, [](TimerHandle_t xTimer)
                                   {
-                auto p = static_cast<Interval *>(pvTimerGetTimerID(xTimer));
+                auto p = static_cast<IntervalObservable *>(pvTimerGetTimerID(xTimer));
                 auto value = p->_value++;
                 for (auto observer : p->_childObservers)
                     observer->OnNext(value); });
@@ -37,7 +37,7 @@ public:
         }
     }
 
-    ~Interval()
+    ~IntervalObservable()
     {
         if (_timer != nullptr)
         {
@@ -59,7 +59,7 @@ private:
 };
 
 template <typename T>
-Interval<T> *IntervalObservable(size_t interval)
+IntervalObservable<T> *Interval(size_t interval)
 {
-    return new Interval<T>(interval);
+    return new IntervalObservable<T>(interval);
 }

@@ -32,7 +32,7 @@ void Test_Range()
     };
 
     TestObserver observer;
-    auto observable = rx::RangeObservable<int>(0, 10, 1);
+    auto observable = rx::Range<int>(0, 10, 1);
     observable->Subscribe(&observer);
     TEST_ASSERT_TRUE(observer._next == 11);
     TEST_ASSERT_TRUE(observer._onNext);

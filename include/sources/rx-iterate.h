@@ -1,10 +1,10 @@
 //  Returns an observable that sends each value in the collection
 
 template <typename T>
-class Iterate : public IObservable<T>
+class IterateObservable : public IObservable<T>
 {
 public:
-    Iterate(std::vector<T> values)
+    IterateObservable(std::vector<T> values)
         : _values(values)
     {
     }
@@ -21,14 +21,14 @@ public:
     {
     }
 
-    ~Iterate() = default;
+    ~IterateObservable() = default;
 
 private:
     std::vector<T> _values;
 };
 
 template <typename T>
-Iterate<T>* IterateObservable(std::vector<T> values)
+IterateObservable<T>* Iterate(std::vector<T> values)
 {
-    return new Iterate<T>(values);
+    return new IterateObservable<T>(values);
 }

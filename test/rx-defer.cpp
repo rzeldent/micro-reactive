@@ -33,11 +33,11 @@ void Test_Defer()
 
     bool invoked = false;
     TestObserver observer;
-    auto observable = rx::DeferObservable<int>(
+    auto observable = rx::Defer<int>(
         [&]()
         {
             // Create an observable that emits a single value and completes
-            return rx::CreateObservable<int>(
+            return rx::Create<int>(
                 [&](rx::IObserver<int> *observer)
                 {
                     // Emit a value and complete the observable

@@ -2,10 +2,10 @@
 
 #include <Arduino.h>
 template <typename T = unsigned long>
-class Timer : public IObservable<T>
+class TimerObservable : public IObservable<T>
 {
 public:
-    Timer(size_t delay)
+    TimerObservable(size_t delay)
     {
         // Convert milliseconds to ticks
         _ticks = pdMS_TO_TICKS(delay);
@@ -18,7 +18,7 @@ public:
         {
             _timer = xTimerCreate("rx-timer", _ticks, pdFALSE, this, [](TimerHandle_t xTimer)
                                   {
-                auto p = static_cast<Timer *>(pvTimerGetTimerID(xTimer));
+                auto p = static_cast<TimerObservable*>(pvTimerGetTimerID(xTimer));
                 auto value = p->_value++;
                 for (auto observer : p->_childObservers)
                 {
@@ -41,7 +41,7 @@ public:
         }
     }
 
-    ~Timer()
+    ~TimerObservable()
     {
         if (_timer != nullptr)
         {
@@ -63,7 +63,7 @@ private:
 };
 
 template <typename T>
-Timer<T> *TimerObservable(size_t delay)
+TimerObservable<T> *Timer(size_t delay)
 {
-    return new Timer<T>(delay);
+    return new TimerObservable<T>(delay);
 }

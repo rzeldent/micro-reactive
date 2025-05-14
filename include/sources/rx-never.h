@@ -1,7 +1,7 @@
 // Returns an observable that never sends any items or notifications to observer
 
 template <typename T>
-class Never : public IObservable<T>
+class NeverObservable : public IObservable<T>
 {
 public:
     void Subscribe(IObserver<T> *observer)
@@ -12,11 +12,11 @@ public:
     {
     }
 
-    ~Never() = default;
+    ~NeverObservable() = default;
 };
 
 template <typename T>
-Never<T> *NeverObservable()
+NeverObservable<T> *Never()
 {
-    return new Never<T>();
+    return new NeverObservable<T>();
 }

@@ -1,7 +1,7 @@
 //  Returns an observable that sends no items to observer and immediately completes
 
 template <typename T>
-class Empty : public IObservable<T>
+class EmptyObservable : public IObservable<T>
 {
 public:
     void Subscribe(IObserver<T>* observer)
@@ -13,11 +13,11 @@ public:
     {
     }
 
-    ~Empty() = default;
+    ~EmptyObservable() = default;
 };
 
 template <typename T>
-Empty<T>* EmptyObservable()
+EmptyObservable<T>* Empty()
 {
-    return new Empty<T>();
+    return new EmptyObservable<T>();
 }
