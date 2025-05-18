@@ -14,6 +14,11 @@ extern void Test_Range();
 extern void Test_Scope();
 extern void Test_Timer();
 
+// Operators
+
+// Conditions
+extern void Test_All();
+
 void setup()
 {
     // Wait for the serial port to initialize
@@ -22,6 +27,7 @@ void setup()
     Serial.begin(115200);
 
     UNITY_BEGIN();
+    // Sources
     RUN_TEST(Test_Create);
     RUN_TEST(Test_Defer);
     RUN_TEST(Test_Empty);
@@ -31,6 +37,10 @@ void setup()
     RUN_TEST(Test_Range);
     RUN_TEST(Test_Scope);
     RUN_TEST(Test_Timer);
+    // Operators
+
+    // Conditions
+    RUN_TEST(Test_All);
     UNITY_END();
 
 }

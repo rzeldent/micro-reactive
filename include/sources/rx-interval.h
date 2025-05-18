@@ -52,14 +52,14 @@ public:
     }
 
 private:
-    std::list<std::shared_ptr< IObserver<T> >> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
     TickType_t _ticks;
     xTimerHandle _timer = nullptr;
     T _value = T();
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Interval(size_t interval)
+std::shared_ptr<IntervalObservable<T>> Interval(size_t interval)
 {
-    return std::shared_ptr<IObservable<T>>(new IntervalObservable<T>(interval));
+    return std::make_shared<IntervalObservable<T>>(interval);
 }

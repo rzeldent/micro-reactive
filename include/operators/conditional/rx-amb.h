@@ -1,69 +1,69 @@
 // For each item from only the first of the given observables deliver from the new observable that is returned, on the specified scheduler
 
 template <typename Tsrc, typename Tdest = Tsrc>
-class Amb : public IObserver<Tsrc>, IObservable<Tdest>
+class Amb : public Operator<Tdest>
 {
     class AmbObserver : public IObserver<Tsrc>
     {
     private:
-        Amb<Tsrc, Tdest> *_parent;
+        Operator<Tdest> *_operator;
+        IObservable<Tsrc> *&_activeObserver;
 
     public:
-        AmbObserver(Amb<Tsrc, Tdest> *parent)
-            : _parent(parent)
+        AmbObserver(Operator<Tdest> *op, IObservable<Tsrc> *&_activeObserver)
+            : _operator(op)
         {
         }
 
         void OnNext(const Tsrc &value)
         {
             // If there is no active observer this will be the active observer
-            if (_parent->_activeObserver == nullptr || _parent->_activeObserver == this)
+            if (_activeObserver == nullptr || _activeObserver == this)
             {
-                _parent->_activeObserver = this;
-                _parent->NotifyOnNext(value);
+                _activeObserver = this;
+                _operator->NotifyOnNext(value);
             }
         }
 
         void OnCompleted()
         {
-            _parent->NotifyOnCompleted();
+            if (_activeObserver == this)
+                _operator->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e)
         {
-            _parent->NotifyOnError(e);
+            if (_activeObserver == this)
+                _operator->NotifyOnError(e);
         }
     };
 
 private:
-    std::list<IObserver<Tdest> *> _childObservers;
     std::vector<AmbObserver> _observers;
-    std::vector<IObservable<Tsrc> *> _observables;
-    AmbObserver *_activeObserver = nullptr;
+    std::vector<std::shared_ptr<IObservable<Tsrc>>> _observables;
+    IObservable<Tsrc> *_activeObserver = nullptr;
 
 public:
     template <typename... Observables>
     Amb(Observables... observables)
         : _observables{observables...}
     {
-        _observers = std::vector<AmbObserver>(sizeof...(observables), AmbObserver(this));
+        _observers = std::vector<std::shared_ptr<AmbObserver>>(sizeof...(observables), _activeObserver);
     }
 
-    IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
+    void Subscribe(std::shared_ptr<IObserver<Tdest>> observer)
     {
-        _childObservers.push_back(observer);
+        Operator<Tdest>::Subscribe(observer);
         if (this->_childObservers.size() == 1)
         {
             for (size_t i = 0; i < _observables.size(); ++i)
                 _observables[i]->Subscribe(&_observers[i]);
         }
-
-        return observer;
     }
 
-    void UnSubscribe(IObserver<Tdest> *observer) override
+    void UnSubscribe(std::shared_ptr<IObserver<Tdest>> observer)
     {
-        _childObservers.remove(observer);
+        Operator<Tdest>::UnSubscribe(observer);
         if (this->_childObservers.empty())
         {
             for (size_t i = 0; i < _observables.size(); ++i)

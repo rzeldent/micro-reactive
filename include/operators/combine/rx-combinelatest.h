@@ -33,7 +33,7 @@ class CombineLatest : public IObservable<Tdest>
     };
 
 private:
-    std::list<IObserver<Tdest> *> _childObservers;
+    std::list<std::shared_ptr<IObserver<Tdest>>> _childObservers;
     CombineLatestObserver<Tsrc1> _observer1;
     CombineLatestObserver<Tsrc2> _observer2;
 

@@ -1,5 +1,6 @@
 #include "observer.h"
 #include "observable.h"
+#include "operator.h"
 #include "subject.h"
 #include "rx-observer.h"
 #include "rx-observable.h"

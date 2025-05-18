@@ -28,7 +28,7 @@ private:
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Iterate(std::vector<T> values)
+std::shared_ptr<IterateObservable<T>> Iterate(std::vector<T> values)
 {
-    return std::shared_ptr<IObservable<T>>(new IterateObservable<T>(values));
+    return std::make_shared<IterateObservable<T>>(values);
 }

@@ -8,5 +8,5 @@ public:
     virtual void UnSubscribe(std::shared_ptr<IObserver<T>> observer) = 0;
 
  protected:
-    //virtual ~IObservable() = default;
+    virtual ~IObservable() = default;
 };

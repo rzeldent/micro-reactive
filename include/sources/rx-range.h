@@ -4,10 +4,7 @@ template <typename T>
 class RangeObservable : public IObservable<T>
 {
 private:
-    T _first;
-    T _last;
-    T _step;
-    T _value;
+    T _first, _last, _step;
 
 public:
     RangeObservable(T first, T last, T step)
@@ -15,7 +12,7 @@ public:
     {
     }
 
-    void Subscribe(std::shared_ptr< IObserver<T>> observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer)
     {
         for (auto value = _first; value <= _last; value += _step)
             observer->OnNext(value);
@@ -31,7 +28,7 @@ public:
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Range(T first, T last, T step)
+std::shared_ptr<RangeObservable<T>> Range(T first, T last, T step)
 {
-    return std::shared_ptr<IObservable<T>>(new RangeObservable<T>(first, last, step));
+    return std::make_shared<RangeObservable<T>>(first, last, step);
 }

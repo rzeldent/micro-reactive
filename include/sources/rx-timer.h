@@ -17,15 +17,14 @@ public:
         if (_childObservers.size() == 1)
         {
             _timer = xTimerCreate("rx-timer", _ticks, pdFALSE, this, [](TimerHandle_t xTimer)
-            {
+                                  {
                 auto p = static_cast<TimerObservable*>(pvTimerGetTimerID(xTimer));
                 auto value = p->_value++;
                 for (auto observer : p->_childObservers)
                 {
                     observer->OnNext(value);
                     observer->OnCompleted();
-                }
-            });
+                } });
 
             xTimerStart(_timer, _ticks);
         }
@@ -57,14 +56,14 @@ public:
     }
 
 private:
-    std::list<std::shared_ptr< IObserver<T> >> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
     TickType_t _ticks;
     xTimerHandle _timer = nullptr;
     T _value = T();
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Timer(size_t delay)
+std::shared_ptr<TimerObservable<T>> Timer(size_t delay)
 {
-    return std::shared_ptr<IObservable<T>>(new TimerObservable<T>(delay));
+    return std::make_shared<TimerObservable<T>>(delay);
 }

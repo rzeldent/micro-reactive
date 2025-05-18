@@ -1,56 +1,69 @@
 // Returns an Observable that emits true if every item emitted by the source Observable satisfies a specified condition, otherwise false. Emits true if the source Observable terminates without emitting any item
 
 template <typename Tsrc, typename Tdest = bool>
-class All : public IObserver<Tsrc>, IObservable<Tdest>
+class AllOperator : public Operator<Tdest>
 {
-private:
-    std::list<IObserver<Tdest> *> _childObservers;
-    IObservable<Tsrc> *_observable;
-    std::function<bool(const Tsrc &)> _predicate;
-    bool _emitted = false;
+    class AllObserver : public IObserver<Tsrc>
+    {
+    private:
+        Operator<Tdest> *_operator;
+        std::function<Tdest(const Tsrc &)> _predicate;
+        bool _emitted;
+
+    public:
+        AllObserver(Operator<Tdest> *op, std::function<Tdest(const Tsrc &)> predicate)
+            : _operator(op), _predicate(predicate)
+        {
+        }
+
+        void OnNext(const Tsrc &value)
+        {
+            _operator->NotifyOnNext(_predicate(value));
+            _emitted = true;
+        }
+
+        void OnCompleted()
+        {
+            if (!_emitted)
+            {
+                _operator->NotifyOnNext(true);
+                _operator->NotifyOnCompleted();
+            }
+        }
+
+        void OnError(const std::exception &e)
+        {
+            _operator->NotifyOnError(e);
+        }
+    };
+
+    std::shared_ptr<IObservable<Tsrc>> _observable;
+    std::shared_ptr<AllObserver> _observer;
 
 public:
-    All(IObservable<Tsrc> *observable, std::function<bool(const Tsrc &)> predicate)
-        : _observable(observable), _predicate(predicate)
+    AllOperator(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> predicate)
+        : _observable(observable)
     {
+        _observer = std::make_shared<AllObserver>(this, predicate);
     }
 
-    void OnNext(const Tsrc &value) override
+    void Subscribe(std::shared_ptr<IObserver<Tdest>> observer)
     {
-        auto result = _predicate(value);
-        for (auto observer : _childObservers)
-            observer->OnNext(result);
-    }
-
-    void OnCompleted()
-    {
-        if (!_emitted)
-            for (auto observer : _childObservers)
-            {
-                observer->OnNext(true);
-                observer->OnCompleted();
-            }
-    }
-
-    void OnError(const std::exception &e) override
-    {
-        for (auto observer : _childObservers)
-            observer->OnError(e);
-    }
-
-    IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
-    {
-        _childObservers.push_back(observer);
+        Operator<Tdest>::Subscribe(observer);
         if (this->_childObservers.size() == 1)
-            _observable->Subscribe(this);
-
-        return observer;
+            _observable->Subscribe(_observer);
     }
 
-    void UnSubscribe(IObserver<Tdest> *observer) override
+    void UnSubscribe(std::shared_ptr<IObserver<Tdest>> observer)
     {
-        _childObservers.remove(observer);
+        Operator<Tdest>::UnSubscribe(observer);
         if (this->_childObservers.empty())
-            _observable->UnSubscribe(this);
+            _observable->UnSubscribe(_observer);
     }
 };
+
+template <typename Tsrc, typename Tdest = bool>
+std::shared_ptr<AllOperator<Tsrc, Tdest>> All(std::function<Tdest(const Tsrc &)> predicate)
+{
+    return std::make_shared<AllOperator<Tsrc, Tdest>>(predicate);
+}

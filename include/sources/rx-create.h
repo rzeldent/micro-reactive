@@ -27,7 +27,7 @@ private:
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Create(typename CreateObservable<T>::factory create)
+std::shared_ptr<CreateObservable<T>> Create(typename CreateObservable<T>::factory create)
 {
-    return std::shared_ptr<IObservable<T>>(new CreateObservable<T>(create));
+    return std::make_shared<CreateObservable<T>>(create);
 }

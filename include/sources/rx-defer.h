@@ -54,7 +54,7 @@ private:
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Defer(typename DeferObservable<T>::factory create)
+std::shared_ptr<DeferObservable<T>> Defer(typename DeferObservable<T>::factory create)
 {
-    return std::shared_ptr<IObservable<T>>(new DeferObservable<T>(create));
+    return std::make_shared<DeferObservable<T>>(create);
 }

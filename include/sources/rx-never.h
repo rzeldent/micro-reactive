@@ -16,7 +16,7 @@ public:
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Never()
+std::shared_ptr<NeverObservable<T>> Never()
 {
-    return std::shared_ptr<IObservable<T>>(new NeverObservable<T>());
+    return std::make_shared<NeverObservable<T>>();
 }

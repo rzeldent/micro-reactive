@@ -5,7 +5,7 @@ class ScopeObservable : public IObservable<T>
 {
 public:
     typedef std::function<std::vector<T>()> resourceFactory;
-    typedef std::function<IObservable<T>*(std::vector<T>)> observableFactory;
+    typedef std::function<std::shared_ptr<IObservable<T>>(std::vector<T>)> observableFactory;
 
     ScopeObservable(resourceFactory resourceFactory, observableFactory observableFactory)
         : _resourceFactory(resourceFactory), _observableFactory(observableFactory)
@@ -32,13 +32,13 @@ public:
     }
 
 private:
-    std::list<IObserver<T> *> _childObservers;
+    std::list<std::shared_ptr<IObserver<T> >> _childObservers;
     std::function<std::vector<T>()> _resourceFactory;
-    std::function<IObservable<T> &(std::vector<T>)> _observableFactory;
+    std::function<std::shared_ptr<IObservable<T>> (std::vector<T>)> _observableFactory;
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Scope(typename ScopeObservable<T>::resourceFactory resourceFactory, typename ScopeObservable<T>::observableFactory observableFactory)
+std::shared_ptr<ScopeObservable<T>> Scope(typename ScopeObservable<T>::resourceFactory resourceFactory, typename ScopeObservable<T>::observableFactory observableFactory)
 {
-    return std::shared_ptr<IObservable<T>>(new ScopeObservable<T>(resourceFactory, observableFactory));
+    return std::make_shared<ScopeObservable<T>>(resourceFactory, observableFactory);
 }

@@ -17,7 +17,7 @@ public:
 };
 
 template <typename T>
-std::shared_ptr<IObservable<T>> Empty()
+std::shared_ptr<EmptyObservable<T>> Empty()
 {
-    return std::shared_ptr<IObservable<T>>(new EmptyObservable<T>());
+    return std::make_shared<EmptyObservable<T>>();
 }
