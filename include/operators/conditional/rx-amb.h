@@ -7,33 +7,33 @@ class AmbOperator : public Operator<Tdest>
     {
     private:
         Operator<Tdest> *_operator;
-        IObservable<Tsrc> &_activeObserver;
+        std::shared_ptr<IObservable<Tsrc>> _activeObserver;
 
     public:
-        AmbObserver(Operator<Tdest> *op, std::shared_ptr<IObservable<Tsrc>>> _activeObserver)
-            : _operator(op)
+        AmbObserver(Operator<Tdest> *op, std::shared_ptr<IObservable<Tsrc>>& _activeObserver)
+            : _operator(op), _activeObserver(_activeObserver)
         {
         }
 
         void OnNext(const Tsrc &value)
         {
             // If there is no active observer this will be the active observer
-            if (_activeObserver == nullptr || _activeObserver == this)
+            if (_activeObserver.get() == nullptr || _activeObserver.get() == this)
             {
-                _activeObserver = this;
+                _activeObserver.reset(this);
                 _operator->NotifyOnNext(value);
             }
         }
 
         void OnCompleted()
         {
-            if (_activeObserver == this)
+            if (_activeObserver.get() == this)
                 _operator->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e)
         {
-            if (_activeObserver == this)
+            if (_activeObserver.get() == this)
                 _operator->NotifyOnError(e);
         }
     };
