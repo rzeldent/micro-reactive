@@ -3,6 +3,7 @@
 #include <Arduino.h>
 
 #include <list>
+#include <vector>
 #include <tuple>
 #include <vector>
 #include <mutex>
@@ -10,6 +11,8 @@
 #include <tuple>
 #include <iterator>
 #include <memory>
+
+
 namespace rx
 {
 // core

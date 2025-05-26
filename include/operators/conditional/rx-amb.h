@@ -1,16 +1,16 @@
 // For each item from only the first of the given observables deliver from the new observable that is returned, on the specified scheduler
 
 template <typename Tsrc, typename Tdest = Tsrc>
-class Amb : public Operator<Tdest>
+class AmbOperator : public Operator<Tdest>
 {
     class AmbObserver : public IObserver<Tsrc>
     {
     private:
         Operator<Tdest> *_operator;
-        IObservable<Tsrc> *&_activeObserver;
+        IObservable<Tsrc> &_activeObserver;
 
     public:
-        AmbObserver(Operator<Tdest> *op, IObservable<Tsrc> *&_activeObserver)
+        AmbObserver(Operator<Tdest> *op, std::shared_ptr<IObservable<Tsrc>>> _activeObserver)
             : _operator(op)
         {
         }
@@ -40,12 +40,12 @@ class Amb : public Operator<Tdest>
 
 private:
     std::vector<AmbObserver> _observers;
-    std::vector<std::shared_ptr<IObservable<Tsrc>>> _observables;
-    IObservable<Tsrc> *_activeObserver = nullptr;
+    std::vector<std::shared_ptr<std::shared_ptr<IObservable<Tsrc>>>> _observables;
+    std::shared_ptr<IObservable<Tsrc>> _activeObserver;
 
 public:
     template <typename... Observables>
-    Amb(Observables... observables)
+    AmbOperator(Observables... observables)
         : _observables{observables...}
     {
         _observers = std::vector<std::shared_ptr<AmbObserver>>(sizeof...(observables), _activeObserver);
