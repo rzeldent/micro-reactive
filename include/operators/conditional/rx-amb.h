@@ -48,7 +48,7 @@ public:
     AmbOperator(Observables... observables)
         : _observables{observables...}
     {
-        _observers = std::vector<std::shared_ptr<AmbObserver>>(sizeof...(observables), &_activeObserver);
+        _observers = std::vector<std::shared_ptr<AmbObserver>>(sizeof...(observables), _activeObserver);
     }
 
     void Subscribe(std::shared_ptr<IObserver<Tdest>> observer)
