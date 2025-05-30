@@ -7,10 +7,10 @@ class AmbOperator : public Operator<Tdest>
     {
     private:
         Operator<Tdest> *_operator;
-        std::shared_ptr<IObservable<Tsrc>> _activeObserver;
+        IObservable<Tsrc> **_activeObserver;
 
     public:
-        AmbObserver(Operator<Tdest> *op, std::shared_ptr<IObservable<Tsrc>>& _activeObserver)
+        AmbObserver(Operator<Tdest> *op, IObservable<Tsrc> **_activeObserver)
             : _operator(op), _activeObserver(_activeObserver)
         {
         }
@@ -18,22 +18,22 @@ class AmbOperator : public Operator<Tdest>
         void OnNext(const Tsrc &value)
         {
             // If there is no active observer this will be the active observer
-            if (_activeObserver.get() == nullptr || _activeObserver.get() == this)
+            if (*_activeObserver == nullptr || *_activeObserver == this)
             {
-                _activeObserver.reset(this);
+                *_activeObserver = this;
                 _operator->NotifyOnNext(value);
             }
         }
 
         void OnCompleted()
         {
-            if (_activeObserver.get() == this)
+            if (*_activeObserver == this)
                 _operator->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e)
         {
-            if (_activeObserver.get() == this)
+            if (*_activeObserver == this)
                 _operator->NotifyOnError(e);
         }
     };
@@ -41,14 +41,14 @@ class AmbOperator : public Operator<Tdest>
 private:
     std::vector<AmbObserver> _observers;
     std::vector<std::shared_ptr<std::shared_ptr<IObservable<Tsrc>>>> _observables;
-    std::shared_ptr<IObservable<Tsrc>> _activeObserver;
+    AmbObserver * _activeObserver;
 
 public:
     template <typename... Observables>
     AmbOperator(Observables... observables)
         : _observables{observables...}
     {
-        _observers = std::vector<std::shared_ptr<AmbObserver>>(sizeof...(observables), _activeObserver);
+        _observers = std::vector<std::shared_ptr<AmbObserver>>(sizeof...(observables), &_activeObserver);
     }
 
     void Subscribe(std::shared_ptr<IObserver<Tdest>> observer)
