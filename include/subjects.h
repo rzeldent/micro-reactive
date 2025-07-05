@@ -41,6 +41,11 @@ public:
             observer->OnError(e);
     }
 
+    // Convert to IObservable for use with operators
+    std::shared_ptr<IObservable<T>> AsObservable() {
+        return std::static_pointer_cast<IObservable<T>>(std::shared_ptr<Subject<T>>(this, [](Subject<T>*){}));
+    }
+
     ~Subject() = default;
 };
 
@@ -99,6 +104,11 @@ public:
 
     bool HasValue() const {
         return _hasValue;
+    }
+
+    // Convert to IObservable for use with operators
+    std::shared_ptr<IObservable<T>> AsObservable() {
+        return std::static_pointer_cast<IObservable<T>>(std::shared_ptr<BehaviorSubject<T>>(this, [](BehaviorSubject<T>*){}));
     }
 
     ~BehaviorSubject() = default;
