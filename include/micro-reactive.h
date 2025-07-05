@@ -1,28 +1,29 @@
-#pragma once
+#ifndef MICRO_REACTIVE_H
+#define MICRO_REACTIVE_H
 
-//#include <Arduino.h>
+/**
+ * Micro-Reactive Library
+ * A lightweight, C++11-compatible reactive programming library for ESP32/Arduino
+ * 
+ * Features:
+ * - Source Observables (Empty, Never, Range, Create, Iterate, Timer, Interval, Defer)
+ * - Transform Operators (Map, Filter, Take, Skip)
+ * - Subjects (Subject, BehaviorSubject, ReplaySubject, SynchronizedSubject)
+ * - Memory-safe shared_ptr based design
+ * - Exception handling support
+ * - Thread-safe components
+ */
 
-#include <list>
-#include <vector>
-#include <tuple>
-#include <vector>
-#include <mutex>
-#include <functional>
-#include <tuple>
-#include <iterator>
-#include <memory>
+// Core reactive interfaces and base classes
+#include "core.h"
 
-// core - THESE WORK
-#include "core/core.h"
+// Source observables - create reactive streams
+#include "sources.h"
 
-// sources - NOW FIXED
-#include "sources/sources.h"
+// Transform operators - modify reactive streams
+#include "operators.h"
 
-// observers
-//#include "observers/observers.h"
+// Subjects - both observer and observable
+#include "subjects.h"
 
-// subjects - NOW FIXED
-#include "subjects/subjects.h"
-
-// operators - NOW FIXED
-#include "operators/operators.h"
+#endif // MICRO_REACTIVE_H
