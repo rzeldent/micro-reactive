@@ -1,4 +1,10 @@
 // Returns an observable that calls the specified observable factory to create an observable for each new observer that subscribes
+#pragma once
+#include <functional>
+#include <memory>
+#include <list>
+
+namespace rx {
 
 template <typename T>
 class DeferObservable : public IObservable<T>
@@ -6,12 +12,12 @@ class DeferObservable : public IObservable<T>
 public:
     typedef std::function<std::shared_ptr<IObservable<T>>()> factory;
 
-    DeferObservable<T>(factory factory)
+    explicit DeferObservable(factory factory)
         : _factory(factory)
     {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
     {
         _childObservers.push_back(observer);
         if (_observable == nullptr)
@@ -20,7 +26,7 @@ public:
         _observable->Subscribe(observer);
     }
 
-    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
     {
         _childObservers.remove(observer);
         if (_childObservers.empty())
@@ -37,7 +43,9 @@ public:
     {
         for (auto observer : _childObservers)
         {
-            _observable->UnSubscribe(nullptr);
+            if (_observable) {
+                _observable->UnSubscribe(observer);
+            }
             observer->OnCompleted();
         }
 
@@ -57,4 +65,6 @@ template <typename T>
 std::shared_ptr<DeferObservable<T>> Defer(typename DeferObservable<T>::factory create)
 {
     return std::make_shared<DeferObservable<T>>(create);
+}
+
 }

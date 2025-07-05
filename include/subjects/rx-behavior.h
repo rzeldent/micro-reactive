@@ -1,58 +1,91 @@
+#ifndef RX_BEHAVIOR_H
+#define RX_BEHAVIOR_H
+
+#include <memory>
+#include <list>
+#include <exception>
+#include "../core/core.h"
+
+namespace rx {
+
 //  Maintains the current value and emits it to any new subscribers, ensuring they receive the most recent data upon subscription
 
 template <typename T>
-class BehaviorSubject : public IObservable<T>, public IObserver<T>
+class BehaviorSubject : public ISubject<T>
 {
 private:
-    std::list<IObserver<T>*> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
     T _value;
+    bool _hasValue;
 
 public:
-    BehaviorSubject(T value);
-    void Subscribe(IObserver<T>*observer) override;
-    void UnSubscribe(IObserver<T>*observer) override;
-    void OnNext(const T value) override;
-    void OnCompleted() override;
-    void OnError(const std::exception &e) override;
+    BehaviorSubject(const T &value)
+        : _value(value), _hasValue(true)
+    {
+    }
+
+    BehaviorSubject()
+        : _hasValue(false)
+    {
+    }
+
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        _childObservers.push_back(observer);
+        if (_hasValue)
+            observer->OnNext(_value);
+    }
+
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        _childObservers.remove(observer);
+    }
+
+    void OnNext(const T &value) override
+    {
+        _value = value;
+        _hasValue = true;
+        for (auto observer : _childObservers)
+            observer->OnNext(value);
+    }
+
+    void OnCompleted() override
+    {
+        for (auto observer : _childObservers)
+            observer->OnCompleted();
+    }
+
+    void OnError(const std::exception &e) override
+    {
+        for (auto observer : _childObservers)
+            observer->OnError(e);
+    }
+
+    T GetValue() const
+    {
+        return _value;
+    }
+
+    bool HasValue() const
+    {
+        return _hasValue;
+    }
+
+    ~BehaviorSubject() = default;
 };
 
 template <typename T>
-BehaviorSubject<T>::BehaviorSubject(T value)
-    : _value(value)
+std::shared_ptr<BehaviorSubject<T>> CreateBehaviorSubject(const T &value)
 {
+    return std::make_shared<BehaviorSubject<T>>(value);
 }
 
 template <typename T>
-void BehaviorSubject<T>::Subscribe(IObserver<T>*observer)
+std::shared_ptr<BehaviorSubject<T>> CreateBehaviorSubject()
 {
-    _childObservers.push_back(&observer);
-    observer.OnNext(_value);
+    return std::make_shared<BehaviorSubject<T>>();
 }
 
-template <typename T>
-void BehaviorSubject<T>::UnSubscribe(IObserver<T>*observer)
-{
-    _childObservers.remove(&observer);
-}
+} // namespace rx
 
-template <typename T>
-void BehaviorSubject<T>::OnNext(const T value)
-{
-    _value = value;
-    for (auto observer : _childObservers)
-        observer->OnNext(value);
-}
-
-template <typename T>
-void BehaviorSubject<T>::OnCompleted()
-{
-    for (auto observer : _childObservers)
-        observer->OnCompleted();
-}
-
-template <typename T>
-void BehaviorSubject<T>::OnError(const std::exception &e)
-{
-    for (auto observer : _childObservers)
-        observer->OnError(e);
-}
+#endif // RX_BEHAVIOR_H

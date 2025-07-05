@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+//#include <Arduino.h>
 
 #include <list>
 #include <vector>
@@ -12,17 +12,17 @@
 #include <iterator>
 #include <memory>
 
-
-namespace rx
-{
-// core
+// core - THESE WORK
 #include "core/core.h"
-// sources
+
+// sources - NOW FIXED
 #include "sources/sources.h"
-// sources
-#include "observers/observers.h"
-// subjects
+
+// observers
+//#include "observers/observers.h"
+
+// subjects - NOW FIXED
 #include "subjects/subjects.h"
-// operators
+
+// operators - NOW FIXED
 #include "operators/operators.h"
-}

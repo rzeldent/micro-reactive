@@ -1,7 +1,10 @@
 // Consumes values from an observable using default empty method implementations with optional overrides of each function
+#pragma once
 
-template <typename T>
-class IObserver
+namespace rx 
+{
+    template <typename T>
+    class IObserver
 {
 public:
 	virtual void OnNext(const T &value) = 0;
@@ -10,4 +13,5 @@ public:
 
 protected:
 	virtual ~IObserver() = default;
-};
+    };
+}

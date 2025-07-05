@@ -1,33 +1,41 @@
 // Returns an observable that executes the specified function when a subscriber subscribes to it
+#pragma once
 
-template <typename T>
-class CreateObservable : public IObservable<T>
+namespace rx 
 {
-public:
-    typedef std::function<void(std::shared_ptr<IObserver<T>>)> factory;
-
-    CreateObservable(factory create)
-        : _create(create)
+    template <typename T>
+    class CreateSource : public IObservable<T>
     {
-    }
+    public:
+        typedef std::function<void(std::shared_ptr<IObserver<T>>)> FactoryType;
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer)
+    private:
+        FactoryType _createFunction;
+
+    public:
+        explicit CreateSource(FactoryType createFunction)
+            : _createFunction(createFunction)
+        {
+        }
+
+        void Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            if (_createFunction) {
+                _createFunction(observer);
+            }
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            // Default implementation - nothing to do for create observables
+        }
+
+        virtual ~CreateSource() = default;
+    };
+
+    template <typename T>
+    std::shared_ptr<CreateSource<T>> Create(std::function<void(std::shared_ptr<IObserver<T>>)> createFunction)
     {
-        _create(observer);
+        return std::make_shared<CreateSource<T>>(createFunction);
     }
-
-    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
-    {
-    }
-
-    ~CreateObservable() = default;
-
-private:
-    factory _create;
-};
-
-template <typename T>
-std::shared_ptr<CreateObservable<T>> Create(typename CreateObservable<T>::factory create)
-{
-    return std::make_shared<CreateObservable<T>>(create);
 }

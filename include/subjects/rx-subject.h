@@ -1,48 +1,59 @@
+#ifndef RX_SUBJECT_H
+#define RX_SUBJECT_H
+
+#include <memory>
+#include <list>
+#include <exception>
+#include "../core/core.h"
+
+namespace rx {
+
 // Emits new items to its subscribers
 
 template <typename T>
-class Subject : public IObservable<T>, public IObserver<T>
+class Subject : public ISubject<T>
 {
 private:
-    std::list<IObserver<T>*> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
 
 public:
-    void Subscribe(IObserver<T>*observer) override;
-    void UnSubscribe(IObserver<T>*observer) override;
-    void OnNext(T value) override;
-    void OnCompleted() override;
-    void OnError(const std::exception &e) override;
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        _childObservers.push_back(observer);
+    }
+
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        _childObservers.remove(observer);
+    }
+
+    void OnNext(const T &value) override
+    {
+        for (auto observer : _childObservers)
+            observer->OnNext(value);
+    }
+
+    void OnCompleted() override
+    {
+        for (auto observer : _childObservers)
+            observer->OnCompleted();
+    }
+
+    void OnError(const std::exception &e) override
+    {
+        for (auto observer : _childObservers)
+            observer->OnError(e);
+    }
+
+    ~Subject() = default;
 };
 
 template <typename T>
-void Subject<T>::Subscribe(IObserver<T>*observer)
+std::shared_ptr<Subject<T>> CreateSubject()
 {
-    _childObservers.push_back(&observer);
+    return std::make_shared<Subject<T>>();
 }
 
-template <typename T>
-void Subject<T>::UnSubscribe(IObserver<T>*observer)
-{
-    _childObservers.remove(&observer);
-}
+} // namespace rx
 
-template <typename T>
-void Subject<T>::OnNext(T value)
-{
-    for (auto observer : _childObservers)
-        observer->OnNext(value);
-}
-
-template <typename T>
-void Subject<T>::OnCompleted()
-{
-    for (auto observer : _childObservers)
-        observer->OnCompleted();
-}
-
-template <typename T>
-void Subject<T>::OnError(const std::exception &e)
-{
-    for (auto observer : _childObservers)
-        observer->OnError(e);
-}
+#endif // RX_SUBJECT_H

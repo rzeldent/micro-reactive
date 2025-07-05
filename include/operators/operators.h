@@ -7,6 +7,10 @@
 
 // Transform operators
 #include "transform/rx-buffercount.h"
+#include "transform/rx-map.h"
+#include "transform/rx-filter.h"
+#include "transform/rx-take.h"
+#include "transform/rx-skip.h"
 
 // Combine operators
 #include "combine/rx-combinelatest.h"

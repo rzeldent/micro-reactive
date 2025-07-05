@@ -1,3 +1,13 @@
+#ifndef RX_ALL_H
+#define RX_ALL_H
+
+#include <functional>
+#include <memory>
+#include <exception>
+#include "../../core/core.h"
+
+namespace rx {
+
 // Returns an Observable that emits true if every item emitted by the source Observable satisfies a specified condition, otherwise false. Emits true if the source Observable terminates without emitting any item
 
 template <typename Tsrc, typename Tdest = bool>
@@ -16,13 +26,13 @@ class AllOperator : public Operator<Tdest>
         {
         }
 
-        void OnNext(const Tsrc &value)
+        void OnNext(const Tsrc &value) override
         {
             _operator->NotifyOnNext(_predicate(value));
             _emitted = true;
         }
 
-        void OnCompleted()
+        void OnCompleted() override
         {
             if (!_emitted)
             {
@@ -31,7 +41,7 @@ class AllOperator : public Operator<Tdest>
             }
         }
 
-        void OnError(const std::exception &e)
+        void OnError(const std::exception &e) override
         {
             _operator->NotifyOnError(e);
         }
@@ -47,14 +57,14 @@ public:
         _observer = std::make_shared<AllObserver>(this, predicate);
     }
 
-    void Subscribe(std::shared_ptr<IObserver<Tdest>> observer)
+    void Subscribe(std::shared_ptr<IObserver<Tdest>> observer) override
     {
         Operator<Tdest>::Subscribe(observer);
         if (this->_childObservers.size() == 1)
             _observable->Subscribe(_observer);
     }
 
-    void UnSubscribe(std::shared_ptr<IObserver<Tdest>> observer)
+    void UnSubscribe(std::shared_ptr<IObserver<Tdest>> observer) override
     {
         Operator<Tdest>::UnSubscribe(observer);
         if (this->_childObservers.empty())
@@ -63,7 +73,11 @@ public:
 };
 
 template <typename Tsrc, typename Tdest = bool>
-std::shared_ptr<AllOperator<Tsrc, Tdest>> All(std::function<Tdest(const Tsrc &)> predicate)
+std::shared_ptr<AllOperator<Tsrc, Tdest>> All(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> predicate)
 {
-    return std::make_shared<AllOperator<Tsrc, Tdest>>(predicate);
+    return std::make_shared<AllOperator<Tsrc, Tdest>>(observable, predicate);
 }
+
+} // namespace rx
+
+#endif // RX_ALL_H

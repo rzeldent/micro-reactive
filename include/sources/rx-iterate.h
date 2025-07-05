@@ -1,23 +1,28 @@
 //  Returns an observable that sends each value in the collection
+#pragma once
+#include <vector>
+#include <memory>
+
+namespace rx {
 
 template <typename T>
 class IterateObservable : public IObservable<T>
 {
 public:
-    IterateObservable(std::vector<T> values)
-        : _values(values)
+    explicit IterateObservable(std::vector<T> values)
+        : _values(std::move(values))
     {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
     {
-        for (auto value : _values)
+        for (const auto& value : _values)
             observer->OnNext(value);
 
         observer->OnCompleted();
     }
 
-    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
     {
     }
 
@@ -30,5 +35,7 @@ private:
 template <typename T>
 std::shared_ptr<IterateObservable<T>> Iterate(std::vector<T> values)
 {
-    return std::make_shared<IterateObservable<T>>(values);
+    return std::make_shared<IterateObservable<T>>(std::move(values));
+}
+
 }

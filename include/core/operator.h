@@ -1,5 +1,9 @@
-template <typename T>
-class Operator : public IObservable<T>
+#pragma once
+
+namespace rx 
+{
+    template <typename T>
+    class Operator : public IObservable<T>
 {
 public:
     std::list<std::shared_ptr<IObserver<T>>> _childObservers;
@@ -31,4 +35,5 @@ public:
     {
         _childObservers.remove(observer);
     }
-};
+    };
+}

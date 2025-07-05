@@ -1,73 +1,109 @@
-// For each item from only the first of the given observables deliver from the new observable that is returned, on the specified scheduler
+#ifndef RX_AMB_H
+#define RX_AMB_H
 
-template <typename Tsrc, typename Tdest = Tsrc>
-class AmbOperator : public Operator<Tdest>
+#include <functional>
+#include <memory>
+#include <exception>
+#include <vector>
+#include "../../core/core.h"
+
+namespace rx {
+
+// For each item from only the first of the given observables deliver from the new observable that is returned
+
+template <typename T>
+class AmbOperator : public Operator<T>
 {
-    class AmbObserver : public IObserver<Tsrc>
+    class AmbObserver : public IObserver<T>
     {
     private:
-        Operator<Tdest> *_operator;
-        IObservable<Tsrc> **_activeObserver;
+        AmbOperator<T> *_operator;
+        int _index;
 
     public:
-        AmbObserver(Operator<Tdest> *op, IObservable<Tsrc> **_activeObserver)
-            : _operator(op), _activeObserver(_activeObserver)
+        AmbObserver(AmbOperator<T> *op, int index)
+            : _operator(op), _index(index)
         {
         }
 
-        void OnNext(const Tsrc &value)
+        void OnNext(const T &value) override
         {
-            // If there is no active observer this will be the active observer
-            if (*_activeObserver == nullptr || *_activeObserver == this)
+            if (_operator->SetActiveObserver(_index))
             {
-                *_activeObserver = this;
                 _operator->NotifyOnNext(value);
             }
         }
 
-        void OnCompleted()
+        void OnCompleted() override
         {
-            if (*_activeObserver == this)
+            if (_operator->IsActiveObserver(_index))
                 _operator->NotifyOnCompleted();
         }
 
-        void OnError(const std::exception &e)
+        void OnError(const std::exception &e) override
         {
-            if (*_activeObserver == this)
+            if (_operator->IsActiveObserver(_index))
                 _operator->NotifyOnError(e);
         }
     };
 
 private:
-    std::vector<AmbObserver> _observers;
-    std::vector<std::shared_ptr<std::shared_ptr<IObservable<Tsrc>>>> _observables;
-    AmbObserver * _activeObserver;
+    std::vector<std::shared_ptr<AmbObserver>> _observers;
+    std::vector<std::shared_ptr<IObservable<T>>> _observables;
+    int _activeObserverIndex = -1;
 
 public:
-    template <typename... Observables>
-    AmbOperator(Observables... observables)
-        : _observables{observables...}
+    AmbOperator(const std::vector<std::shared_ptr<IObservable<T>>> &observables)
+        : _observables(observables)
     {
-        _observers = std::vector<std::shared_ptr<AmbObserver>>(sizeof...(observables), _activeObserver);
+        for (size_t i = 0; i < _observables.size(); ++i)
+        {
+            _observers.push_back(std::make_shared<AmbObserver>(this, static_cast<int>(i)));
+        }
     }
 
-    void Subscribe(std::shared_ptr<IObserver<Tdest>> observer)
+    bool SetActiveObserver(int index)
     {
-        Operator<Tdest>::Subscribe(observer);
+        if (_activeObserverIndex == -1)
+        {
+            _activeObserverIndex = index;
+            return true;
+        }
+        return _activeObserverIndex == index;
+    }
+
+    bool IsActiveObserver(int index)
+    {
+        return _activeObserverIndex == index;
+    }
+
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        Operator<T>::Subscribe(observer);
         if (this->_childObservers.size() == 1)
         {
             for (size_t i = 0; i < _observables.size(); ++i)
-                _observables[i]->Subscribe(&_observers[i]);
+                _observables[i]->Subscribe(_observers[i]);
         }
     }
 
-    void UnSubscribe(std::shared_ptr<IObserver<Tdest>> observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
     {
-        Operator<Tdest>::UnSubscribe(observer);
+        Operator<T>::UnSubscribe(observer);
         if (this->_childObservers.empty())
         {
             for (size_t i = 0; i < _observables.size(); ++i)
-                _observables[i]->UnSubscribe(&_observers[i]);
+                _observables[i]->UnSubscribe(_observers[i]);
         }
     }
 };
+
+template <typename T>
+std::shared_ptr<AmbOperator<T>> Amb(const std::vector<std::shared_ptr<IObservable<T>>> &observables)
+{
+    return std::make_shared<AmbOperator<T>>(observables);
+}
+
+} // namespace rx
+
+#endif // RX_AMB_H

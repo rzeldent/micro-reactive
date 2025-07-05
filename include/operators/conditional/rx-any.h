@@ -1,61 +1,87 @@
+#ifndef RX_ANY_H
+#define RX_ANY_H
+
+#include <functional>
+#include <memory>
+#include <exception>
+#include "../../core/core.h"
+
+namespace rx {
+
 // Returns an Observable that emits true if any item emitted by the source Observable satisfies a specified condition, otherwise false. Emits false if the source Observable terminates without emitting any item
 
 template <typename Tsrc, typename Tdest = bool>
-class Any : public IObserver<Tsrc>, IObservable<Tdest>
+class AnyOperator : public Operator<Tdest>
 {
-private:
-    std::list<IObserver<Tdest> *> _childObservers;
-    IObservable<Tsrc> *_observable;
-    std::function<bool(const Tsrc &)> _predicate;
-    bool _emitted = false;
-    bool _completed = false;
-
-public:
-    Any(IObservable<Tsrc> *observable, std::function<bool(const Tsrc &)> predicate)
-        : _observable(observable), _predicate(predicate)
+    class AnyObserver : public IObserver<Tsrc>
     {
-    }
+    private:
+        Operator<Tdest> *_operator;
+        std::function<bool(const Tsrc &)> _predicate;
+        bool _emitted;
 
-    void OnNext(const Tsrc &value) override
-    {
-        if (!_emitted && _predicate(value))
+    public:
+        AnyObserver(Operator<Tdest> *op, std::function<bool(const Tsrc &)> predicate)
+            : _operator(op), _predicate(predicate), _emitted(false)
         {
-            _emitted = true;
-            for (auto observer : _childObservers)
-                observer->OnNext(value);
         }
-    }
 
-    void OnCompleted()
-    {
-        for (auto observer : _childObservers)
+        void OnNext(const Tsrc &value) override
+        {
+            if (!_emitted && _predicate(value))
+            {
+                _emitted = true;
+                _operator->NotifyOnNext(true);
+                _operator->NotifyOnCompleted();
+            }
+        }
+
+        void OnCompleted() override
         {
             if (!_emitted)
-                observer->OnNext(false);
-
-            observer->OnCompleted();
+            {
+                _operator->NotifyOnNext(false);
+            }
+            _operator->NotifyOnCompleted();
         }
+
+        void OnError(const std::exception &e) override
+        {
+            _operator->NotifyOnError(e);
+        }
+    };
+
+    std::shared_ptr<IObservable<Tsrc>> _observable;
+    std::shared_ptr<AnyObserver> _observer;
+
+public:
+    AnyOperator(std::shared_ptr<IObservable<Tsrc>> observable, std::function<bool(const Tsrc &)> predicate)
+        : _observable(observable)
+    {
+        _observer = std::make_shared<AnyObserver>(this, predicate);
     }
 
-    void OnError(const std::exception &e) override
+    void Subscribe(std::shared_ptr<IObserver<Tdest>> observer) override
     {
-        for (auto observer : _childObservers)
-            observer->OnError(e);
-    }
-
-    IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
-    {
-        _childObservers.push_back(observer);
+        Operator<Tdest>::Subscribe(observer);
         if (this->_childObservers.size() == 1)
-            _observable->Subscribe(this);
-
-        return observer;
+            _observable->Subscribe(_observer);
     }
 
-    void UnSubscribe(IObserver<Tdest> *observer) override
+    void UnSubscribe(std::shared_ptr<IObserver<Tdest>> observer) override
     {
-        _childObservers.remove(observer);
+        Operator<Tdest>::UnSubscribe(observer);
         if (this->_childObservers.empty())
-            _observable->UnSubscribe(this);
+            _observable->UnSubscribe(_observer);
     }
 };
+
+template <typename Tsrc, typename Tdest = bool>
+std::shared_ptr<AnyOperator<Tsrc, Tdest>> Any(std::shared_ptr<IObservable<Tsrc>> observable, std::function<bool(const Tsrc &)> predicate)
+{
+    return std::make_shared<AnyOperator<Tsrc, Tdest>>(observable, predicate);
+}
+
+} // namespace rx
+
+#endif // RX_ANY_H

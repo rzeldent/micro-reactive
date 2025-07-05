@@ -1,51 +1,68 @@
+#ifndef RX_SYNCHRONIZEDSUBJECT_H
+#define RX_SYNCHRONIZEDSUBJECT_H
+
+#include <memory>
+#include <mutex>
+#include <exception>
+#include "../core/core.h"
+#include "rx-subject.h"
+
+namespace rx {
+
 // A subject that ensures that all notification are delivered to subscribers in a thread-safe manner
 
 template <typename T>
-class SynchronizedSubject : public IObservable<T>, public IObserver<T>
+class SynchronizedSubject : public ISubject<T>
 {
 private:
-    Subject<T> _subject;
+    std::shared_ptr<Subject<T>> _subject;
     std::mutex _mutex;
 
 public:
-    void Subscribe(IObserver<T>*observer) override;
-    void UnSubscribe(IObserver<T>*observer) override;
-    void OnNext(const T value) override;
-    void OnCompleted() override;
-    void OnError(const std::exception &e) override;
+    SynchronizedSubject()
+        : _subject(CreateSubject<T>())
+    {
+    }
+
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _subject->Subscribe(observer);
+    }
+
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _subject->UnSubscribe(observer);
+    }
+
+    void OnNext(const T &value) override
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _subject->OnNext(value);
+    }
+
+    void OnCompleted() override
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _subject->OnCompleted();
+    }
+
+    void OnError(const std::exception &e) override
+    {
+        std::lock_guard<std::mutex> lock(_mutex);
+        _subject->OnError(e);
+    }
+
+    ~SynchronizedSubject() = default;
 };
 
 template <typename T>
-void SynchronizedSubject<T>::Subscribe(IObserver<T>*observer)
+std::shared_ptr<SynchronizedSubject<T>> CreateSynchronizedSubject()
 {
-    std::lock_guard<std::mutex> lock(_mutex);
-    _subject.Subscribe(observer);
+    return std::make_shared<SynchronizedSubject<T>>();
 }
 
-template <typename T>
-void SynchronizedSubject<T>::UnSubscribe(IObserver<T>*observer)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    _subject.UnSubscribe(observer);
-}
+} // namespace rx
 
-template <typename T>
-void SynchronizedSubject<T>::OnNext(const T value)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    _subject.OnNext(value);
-}
-
-template <typename T>
-void SynchronizedSubject<T>::OnCompleted()
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    _subject.OnCompleted();
-}
-
-template <typename T>
-void SynchronizedSubject<T>::OnError(const std::exception &e)
-{
-    std::lock_guard<std::mutex> lock(_mutex);
-    _subject.OnError(e);
-}
+#endif // RX_SYNCHRONIZEDSUBJECT_H

@@ -1,4 +1,11 @@
 // Returns an observable that makes an observable by the specified observable factory using the resource provided by the specified resource factory for each new observer that subscribes
+#pragma once
+#include <functional>
+#include <memory>
+#include <vector>
+#include <list>
+
+namespace rx {
 
 template <typename T>
 class ScopeObservable : public IObservable<T>
@@ -12,15 +19,17 @@ public:
     {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
     {
-        auto observable = _observableFactory(_resourceFactory());
-        _childObservers.push_back(&observer);
-        observable.Subscribe(observer);
+        auto resource = _resourceFactory();
+        auto observable = _observableFactory(resource);
+        _childObservers.push_back(observer);
+        observable->Subscribe(observer);
     }
 
-    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
     {
+        _childObservers.remove(observer);
     }
 
     ~ScopeObservable()
@@ -32,7 +41,7 @@ public:
     }
 
 private:
-    std::list<std::shared_ptr<IObserver<T> >> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
     std::function<std::vector<T>()> _resourceFactory;
     std::function<std::shared_ptr<IObservable<T>> (std::vector<T>)> _observableFactory;
 };
@@ -41,4 +50,6 @@ template <typename T>
 std::shared_ptr<ScopeObservable<T>> Scope(typename ScopeObservable<T>::resourceFactory resourceFactory, typename ScopeObservable<T>::observableFactory observableFactory)
 {
     return std::make_shared<ScopeObservable<T>>(resourceFactory, observableFactory);
+}
+
 }

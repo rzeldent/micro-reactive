@@ -1,5 +1,7 @@
 //  Returns an observable that sends values in the range [first, last] by adding step to the previous value
 
+namespace rx {
+
 template <typename T>
 class RangeObservable : public IObservable<T>
 {
@@ -12,7 +14,7 @@ public:
     {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer)
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
     {
         for (auto value = _first; value <= _last; value += _step)
             observer->OnNext(value);
@@ -20,7 +22,7 @@ public:
         observer->OnCompleted();
     }
 
-    void UnSubscribe(std::shared_ptr<IObserver<T>> observer)
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
     {
     }
 
@@ -32,3 +34,5 @@ std::shared_ptr<RangeObservable<T>> Range(T first, T last, T step)
 {
     return std::make_shared<RangeObservable<T>>(first, last, step);
 }
+
+} // namespace rx

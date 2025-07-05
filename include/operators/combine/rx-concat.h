@@ -1,98 +1,110 @@
-// For each item from only the first of the given observables deliver from the new observable that is returned, on the specified scheduler
+#ifndef RX_CONCAT_H
+#define RX_CONCAT_H
 
-template <typename Tsrc, typename Tdest = Tsrc>
-class Concat : public IObserver<Tsrc>, IObservable<Tdest>
+#include <functional>
+#include <memory>
+#include <exception>
+#include <vector>
+#include <cstddef>
+#include "../../core/core.h"
+
+namespace rx {
+
+// Concatenates multiple observables into a single observable sequence
+
+template <typename T>
+class ConcatOperator : public Operator<T>
 {
-    class ConcatObserver : public IObserver<Tsrc>
+    class ConcatObserver : public IObserver<T>
     {
     private:
-        Concat<Tsrc, Tdest> *_parent;
-        std::vector<Tsrc> _buffer;
-        bool _isComplete = false;
+        ConcatOperator<T> *_parent;
 
     public:
-        ConcatObserver(Concat<Tsrc, Tdest> *parent)
+        ConcatObserver(ConcatOperator<T> *parent)
             : _parent(parent)
         {
         }
 
-        void OnNext(const Tsrc &value)
+        void OnNext(const T &value) override
         {
-            if (_parent->_activeObserver == this)
-                _parent->NotifyOnNext(value);
-            else
-                _buffer.push_back(value);
+            _parent->NotifyOnNext(value);
         }
 
-        void OnCompleted()
+        void OnCompleted() override
         {
-            _isComplete = true;
-            while (_parent->_activeObserver != _parent->_observers.cend())
-            {
-                // Switch to the next observer
-                _parent->_activeObserver++;
-                auto observer = _parent->_activeObserver;
-                if (!observer->_buffer.empty())
-                {
-                    // we have some buffered values in the new observer. Call OnNext for each of them
-                    for (const auto &value : observer->_buffer)
-                        _parent->NotifyOnNext(value);
-
-                    observer->_buffer.clear();
-                }
-
-                // Switch to the next observer
-                if (!observer->_isComplete)
-                    return;
-            }
-
-            // No more observers left, notify completion
-            _parent->NotifyOnCompleted();
+            _parent->OnObservableCompleted();
         }
 
-        void OnError(const std::exception &e)
+        void OnError(const std::exception &e) override
         {
             _parent->NotifyOnError(e);
         }
     };
 
 private:
-    std::list<IObserver<Tdest> *> _childObservers;
-    std::vector<ConcatObserver> _observers;
-    std::vector<IObservable<Tsrc> *> _observables;
-    typename std::vector<ConcatObserver>::const_iterator _activeObserver;
+    std::vector<std::shared_ptr<IObservable<T>>> _observables;
+    std::shared_ptr<ConcatObserver> _observer;
+    size_t _currentIndex = 0;
+    bool _isSubscribed = false;
 
 public:
-    template <typename... Observables>
-    Concat(Observables... observables)
-        : _observables{observables...}
+    ConcatOperator(const std::vector<std::shared_ptr<IObservable<T>>> &observables)
+        : _observables(observables)
     {
-        _observers.reserve(sizeof...(observables));
-        for (size_t i = 0; i < sizeof...(observables); ++i)
-            _observers.emplace_back(ConcatObserver(this));
-
-        _activeObserver = _observers.cbegin();
+        _observer = std::make_shared<ConcatObserver>(this);
     }
 
-    IObserver<Tdest> *Subscribe(IObserver<Tdest> *observer) override
+    void OnObservableCompleted()
     {
-        _childObservers.push_back(observer);
-        if (this->_childObservers.size() == 1)
+        if (_currentIndex < _observables.size())
         {
-            for (size_t i = 0; i < _observables.size(); ++i)
-                _observables[i]->Subscribe(_observers[i].get());
+            _observables[_currentIndex]->UnSubscribe(_observer);
         }
 
-        return observer;
+        _currentIndex++;
+        
+        if (_currentIndex < _observables.size())
+        {
+            _observables[_currentIndex]->Subscribe(_observer);
+        }
+        else
+        {
+            this->NotifyOnCompleted();
+        }
     }
 
-    void UnSubscribe(IObserver<Tdest> *observer) override
+    void Subscribe(std::shared_ptr<IObserver<T>> observer) override
     {
-        _childObservers.remove(observer);
-        if (this->_childObservers.empty())
+        Operator<T>::Subscribe(observer);
+        if (this->_childObservers.size() == 1 && !_isSubscribed && !_observables.empty())
         {
-            for (size_t i = 0; i < _observables.size(); ++i)
-                _observables[i]->UnSubscribe(_observers[i].get());
+            _isSubscribed = true;
+            _currentIndex = 0;
+            _observables[_currentIndex]->Subscribe(_observer);
+        }
+    }
+
+    void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+    {
+        Operator<T>::UnSubscribe(observer);
+        if (this->_childObservers.empty() && _isSubscribed)
+        {
+            _isSubscribed = false;
+            if (_currentIndex < _observables.size())
+            {
+                _observables[_currentIndex]->UnSubscribe(_observer);
+            }
         }
     }
 };
+
+template <typename T>
+std::shared_ptr<ConcatOperator<T>> Concat(const std::vector<std::shared_ptr<IObservable<T>>> &observables)
+{
+    return std::make_shared<ConcatOperator<T>>(observables);
+}
+
+} // namespace rx
+
+#endif // RX_CONCAT_H

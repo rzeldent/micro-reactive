@@ -1,19 +1,19 @@
 #include <unity.h>
-#include <micro-reactive.h>
+#include <vector>
+#include "micro-reactive.h"
 
 void Test_Range()
 {
     class RangeTestObserver : public rx::IObserver<int>
     {
     public:
-        int _next = 0;
-        bool _onNext = false;
+        std::vector<int> receivedValues;
         bool _onCompleted = false;
+        bool _onError = false;
         
         void OnNext(const int &value) override
         {
-            _onNext = true;
-            TEST_ASSERT_EQUAL_MESSAGE(_next++, value, "Value emitted is not in the expected range");
+            receivedValues.push_back(value);
         }
 
         void OnCompleted() override
@@ -23,6 +23,7 @@ void Test_Range()
 
         void OnError(const std::exception &e) override
         {
+            _onError = true;
             TEST_FAIL_MESSAGE("OnError was called");        
         }
 
@@ -32,7 +33,13 @@ void Test_Range()
     auto observer = std::make_shared<RangeTestObserver>();
     auto observable = rx::Range<int>(0, 10, 1);
     observable->Subscribe(observer);
-    TEST_ASSERT_TRUE_MESSAGE(observer->_next == 11, "Not all values were emitted");
-    TEST_ASSERT_TRUE_MESSAGE(observer->_onNext, "OnNext was not called");
+    
+    TEST_ASSERT_EQUAL_MESSAGE(11, observer->receivedValues.size(), "Not all values were emitted");
     TEST_ASSERT_TRUE_MESSAGE(observer->_onCompleted, "OnCompleted was not called");
+    TEST_ASSERT_FALSE_MESSAGE(observer->_onError, "OnError should not have been called");
+    
+    // Verify the sequence is correct: 0, 1, 2, ..., 10
+    for (int i = 0; i <= 10; i++) {
+        TEST_ASSERT_EQUAL_MESSAGE(i, observer->receivedValues[i], "Value emitted is not in the expected range");
+    }
 }

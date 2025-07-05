@@ -1,6 +1,11 @@
-template <typename T>
-class ISubject : public IObservable<T>, IObserver<T>
+#pragma once
+
+namespace rx 
 {
-protected:
-    virtual ~ISubject() = default;
-};
+    template <typename T>
+    class ISubject : public IObservable<T>, IObserver<T>
+    {
+    protected:
+        virtual ~ISubject() = default;
+    };
+}
