@@ -15,29 +15,29 @@ namespace rx {
 template <typename T>
 class Subject : public ISubject<T> {
 private:
-    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> child_observers_;
 
 public:
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.push_back(observer);
+        child_observers_.push_back(observer);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.remove(observer);
+        child_observers_.remove(observer);
     }
 
     void OnNext(const T &value) override {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnNext(value);
     }
 
     void OnCompleted() override {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnCompleted();
     }
 
     void OnError(const std::exception &e) override {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnError(e);
     }
 
@@ -60,50 +60,50 @@ std::shared_ptr<Subject<T>> CreateSubject() {
 template <typename T>
 class BehaviorSubject : public ISubject<T> {
 private:
-    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
-    T _value;
-    bool _hasValue;
+    std::list<std::shared_ptr<IObserver<T>>> child_observers_;
+    T value_;
+    bool has_value_;
 
 public:
-    BehaviorSubject(const T &value) : _value(value), _hasValue(true) {
+    BehaviorSubject(const T &value) : value_(value), has_value_(true) {
     }
 
-    BehaviorSubject() : _hasValue(false) {
+    BehaviorSubject() : has_value_(false) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.push_back(observer);
-        if (_hasValue)
-            observer->OnNext(_value);
+        child_observers_.push_back(observer);
+        if (has_value_)
+            observer->OnNext(value_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.remove(observer);
+        child_observers_.remove(observer);
     }
 
     void OnNext(const T &value) override {
-        _value = value;
-        _hasValue = true;
-        for (auto observer : _childObservers)
+        value_ = value;
+        has_value_ = true;
+        for (auto observer : child_observers_)
             observer->OnNext(value);
     }
 
     void OnCompleted() override {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnCompleted();
     }
 
     void OnError(const std::exception &e) override {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnError(e);
     }
 
     T GetValue() const {
-        return _value;
+        return value_;
     }
 
     bool HasValue() const {
-        return _hasValue;
+        return has_value_;
     }
 
     // Convert to IObservable for use with operators
@@ -130,40 +130,40 @@ std::shared_ptr<BehaviorSubject<T>> CreateBehaviorSubject() {
 template <typename T>
 class ReplaySubject : public ISubject<T> {
 private:
-    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
-    size_t _size;
-    std::list<T> _values;
+    std::list<std::shared_ptr<IObserver<T>>> child_observers_;
+    size_t size_;
+    std::list<T> values_;
 
 public:
-    ReplaySubject(size_t size) : _size(size) {
+    ReplaySubject(size_t size) : size_(size) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.push_back(observer);
-        for (const auto &value : _values)
+        child_observers_.push_back(observer);
+        for (const auto &value : values_)
             observer->OnNext(value);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.remove(observer);
+        child_observers_.remove(observer);
     }
 
     void OnNext(const T &value) override {
-        _values.push_back(value);
-        if (_values.size() > _size)
-            _values.pop_front();
+        values_.push_back(value);
+        if (values_.size() > size_)
+            values_.pop_front();
 
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnNext(value);
     }
 
     void OnCompleted() override {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnCompleted();
     }
 
     void OnError(const std::exception &e) override {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnError(e);
     }
 
@@ -181,36 +181,36 @@ std::shared_ptr<ReplaySubject<T>> CreateReplaySubject(size_t size = 10) {
 template <typename T>
 class SynchronizedSubject : public ISubject<T> {
 private:
-    std::shared_ptr<Subject<T>> _subject;
-    std::mutex _mutex;
+    std::shared_ptr<Subject<T>> subject_;
+    std::mutex mutex_;
 
 public:
-    SynchronizedSubject() : _subject(CreateSubject<T>()) {
+    SynchronizedSubject() : subject_(CreateSubject<T>()) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _subject->Subscribe(observer);
+        std::lock_guard<std::mutex> lock(mutex_);
+        subject_->Subscribe(observer);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _subject->UnSubscribe(observer);
+        std::lock_guard<std::mutex> lock(mutex_);
+        subject_->UnSubscribe(observer);
     }
 
     void OnNext(const T &value) override {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _subject->OnNext(value);
+        std::lock_guard<std::mutex> lock(mutex_);
+        subject_->OnNext(value);
     }
 
     void OnCompleted() override {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _subject->OnCompleted();
+        std::lock_guard<std::mutex> lock(mutex_);
+        subject_->OnCompleted();
     }
 
     void OnError(const std::exception &e) override {
-        std::lock_guard<std::mutex> lock(_mutex);
-        _subject->OnError(e);
+        std::lock_guard<std::mutex> lock(mutex_);
+        subject_->OnError(e);
     }
 
     ~SynchronizedSubject() = default;

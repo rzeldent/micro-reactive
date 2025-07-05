@@ -58,15 +58,15 @@ std::shared_ptr<NeverObservable<T>> Never() {
 template <typename T>
 class RangeObservable : public IObservable<T> {
 private:
-    T _first, _last, _step;
+    T first_, last_, step_;
 
 public:
     RangeObservable(T first, T last, T step)
-        : _first(first), _last(last), _step(step) {
+        : first_(first), last_(last), step_(step) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        for (auto value = _first; value <= _last; value += _step)
+        for (auto value = first_; value <= last_; value += step_)
             observer->OnNext(value);
         observer->OnCompleted();
     }
@@ -94,14 +94,14 @@ std::shared_ptr<RangeObservable<T>> Range(T first, T count) {
 template <typename T>
 class FromVectorObservable : public IObservable<T> {
 private:
-    std::vector<T> _values;
+    std::vector<T> values_;
 
 public:
-    FromVectorObservable(const std::vector<T>& values) : _values(values) {
+    FromVectorObservable(const std::vector<T>& values) : values_(values) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        for (const auto& value : _values) {
+        for (const auto& value : values_) {
             observer->OnNext(value);
         }
         observer->OnCompleted();
@@ -124,16 +124,16 @@ std::shared_ptr<FromVectorObservable<T>> FromVector(const std::vector<T>& values
 template <typename T>
 class CreateObservable : public IObservable<T> {
 private:
-    std::function<void(std::shared_ptr<IObserver<T>>)> _create;
+    std::function<void(std::shared_ptr<IObserver<T>>)> create_;
 
 public:
     CreateObservable(std::function<void(std::shared_ptr<IObserver<T>>)> create)
-        : _create(create) {
+        : create_(create) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         try {
-            _create(observer);
+            create_(observer);
         } catch (const std::exception& e) {
             observer->OnError(e);
         }
@@ -156,16 +156,16 @@ std::shared_ptr<CreateObservable<T>> Create(std::function<void(std::shared_ptr<I
 template <typename T>
 class IterateObservable : public IObservable<T> {
 private:
-    std::vector<T> _values;
+    std::vector<T> values_;
 
 public:
     template <typename Container>
     IterateObservable(const Container& container) 
-        : _values(container.begin(), container.end()) {
+        : values_(container.begin(), container.end()) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        for (const auto& value : _values) {
+        for (const auto& value : values_) {
             observer->OnNext(value);
         }
         observer->OnCompleted();
@@ -188,16 +188,16 @@ std::shared_ptr<IterateObservable<T>> Iterate(const Container& container) {
 template <typename T>
 class DeferObservable : public IObservable<T> {
 private:
-    std::function<std::shared_ptr<IObservable<T>>()> _factory;
+    std::function<std::shared_ptr<IObservable<T>>()> factory_;
 
 public:
     DeferObservable(std::function<std::shared_ptr<IObservable<T>>()> factory)
-        : _factory(factory) {
+        : factory_(factory) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         try {
-            auto observable = _factory();
+            auto observable = factory_();
             observable->Subscribe(observer);
         } catch (const std::exception& e) {
             observer->OnError(e);
@@ -221,14 +221,14 @@ std::shared_ptr<DeferObservable<T>> Defer(std::function<std::shared_ptr<IObserva
 template <typename T = int>
 class TimerObservable : public IObservable<T> {
 private:
-    std::chrono::milliseconds _delay;
+    std::chrono::milliseconds delay_;
 
 public:
-    TimerObservable(std::chrono::milliseconds delay) : _delay(delay) {
+    TimerObservable(std::chrono::milliseconds delay) : delay_(delay) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        std::this_thread::sleep_for(_delay);
+        std::this_thread::sleep_for(delay_);
         observer->OnNext(T{});
         observer->OnCompleted();
     }
@@ -250,17 +250,17 @@ std::shared_ptr<TimerObservable<T>> Timer(std::chrono::milliseconds delay) {
 template <typename T = int>
 class IntervalObservable : public IObservable<T> {
 private:
-    std::chrono::milliseconds _interval;
-    int _count;
+    std::chrono::milliseconds interval_;
+    int count_;
 
 public:
     IntervalObservable(std::chrono::milliseconds interval, int count = 5) 
-        : _interval(interval), _count(count) {
+        : interval_(interval), count_(count) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        for (int i = 0; i < _count; ++i) {
-            std::this_thread::sleep_for(_interval);
+        for (int i = 0; i < count_; ++i) {
+            std::this_thread::sleep_for(interval_);
             observer->OnNext(T(i));
         }
         observer->OnCompleted();

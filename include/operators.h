@@ -16,46 +16,46 @@ template <typename Tsrc, typename Tdest>
 class MapOperator : public Operator<Tdest> {
     class MapObserver : public IObserver<Tsrc> {
     private:
-        Operator<Tdest> *_operator;
-        std::function<Tdest(const Tsrc &)> _transform;
+        Operator<Tdest> *operator_;
+        std::function<Tdest(const Tsrc &)> transform_;
 
     public:
         MapObserver(Operator<Tdest> *op, std::function<Tdest(const Tsrc &)> transform)
-            : _operator(op), _transform(transform) {
+            : operator_(op), transform_(transform) {
         }
 
         void OnNext(const Tsrc &value) override {
-            _operator->NotifyOnNext(_transform(value));
+            operator_->NotifyOnNext(transform_(value));
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<Tsrc>> _observable;
-    std::shared_ptr<MapObserver> _observer;
+    std::shared_ptr<IObservable<Tsrc>> observable_;
+    std::shared_ptr<MapObserver> observer_;
 
 public:
     MapOperator(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> transform)
-        : _observable(observable) {
-        _observer = std::make_shared<MapObserver>(this, transform);
+        : observable_(observable) {
+        observer_ = std::make_shared<MapObserver>(this, transform);
     }
 
     void Subscribe(std::shared_ptr<IObserver<Tdest>> observer) override {
         Operator<Tdest>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<Tdest>> observer) override {
         Operator<Tdest>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -71,47 +71,47 @@ template <typename T>
 class FilterOperator : public Operator<T> {
     class FilterObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        std::function<bool(const T &)> _predicate;
+        Operator<T> *operator_;
+        std::function<bool(const T &)> predicate_;
 
     public:
         FilterObserver(Operator<T> *op, std::function<bool(const T &)> predicate)
-            : _operator(op), _predicate(predicate) {
+            : operator_(op), predicate_(predicate) {
         }
 
         void OnNext(const T &value) override {
-            if (_predicate(value))
-                _operator->NotifyOnNext(value);
+            if (predicate_(value))
+                operator_->NotifyOnNext(value);
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<FilterObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<FilterObserver> observer_;
 
 public:
     FilterOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-        : _observable(observable) {
-        _observer = std::make_shared<FilterObserver>(this, predicate);
+        : observable_(observable) {
+        observer_ = std::make_shared<FilterObserver>(this, predicate);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -127,53 +127,53 @@ template <typename T>
 class TakeOperator : public Operator<T> {
     class TakeObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        size_t _count;
-        size_t _taken = 0;
+        Operator<T> *operator_;
+        size_t count_;
+        size_t taken_ = 0;
 
     public:
         TakeObserver(Operator<T> *op, size_t count)
-            : _operator(op), _count(count) {
+            : operator_(op), count_(count) {
         }
 
         void OnNext(const T &value) override {
-            if (_taken < _count) {
-                _operator->NotifyOnNext(value);
-                _taken++;
-                if (_taken == _count)
-                    _operator->NotifyOnCompleted();
+            if (taken_ < count_) {
+                operator_->NotifyOnNext(value);
+                taken_++;
+                if (taken_ == count_)
+                    operator_->NotifyOnCompleted();
             }
         }
 
         void OnCompleted() override {
-            if (_taken < _count)
-                _operator->NotifyOnCompleted();
+            if (taken_ < count_)
+                operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<TakeObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<TakeObserver> observer_;
 
 public:
     TakeOperator(std::shared_ptr<IObservable<T>> observable, size_t count)
-        : _observable(observable) {
-        _observer = std::make_shared<TakeObserver>(this, count);
+        : observable_(observable) {
+        observer_ = std::make_shared<TakeObserver>(this, count);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -189,51 +189,51 @@ template <typename T>
 class SkipOperator : public Operator<T> {
     class SkipObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        size_t _count;
-        size_t _skipped = 0;
+        Operator<T> *operator_;
+        size_t count_;
+        size_t skipped_ = 0;
 
     public:
         SkipObserver(Operator<T> *op, size_t count)
-            : _operator(op), _count(count) {
+            : operator_(op), count_(count) {
         }
 
         void OnNext(const T &value) override {
-            if (_skipped < _count) {
-                _skipped++;
+            if (skipped_ < count_) {
+                skipped_++;
             } else {
-                _operator->NotifyOnNext(value);
+                operator_->NotifyOnNext(value);
             }
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<SkipObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<SkipObserver> observer_;
 
 public:
     SkipOperator(std::shared_ptr<IObservable<T>> observable, size_t count)
-        : _observable(observable) {
-        _observer = std::make_shared<SkipObserver>(this, count);
+        : observable_(observable) {
+        observer_ = std::make_shared<SkipObserver>(this, count);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -249,16 +249,16 @@ template <typename T>
 class DistinctOperator : public Operator<T> {
     class DistinctObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        std::vector<T> _seen;
+        Operator<T> *operator_;
+        std::vector<T> seen_;
 
     public:
-        DistinctObserver(Operator<T> *op) : _operator(op) {}
+        DistinctObserver(Operator<T> *op) : operator_(op) {}
 
         void OnNext(const T &value) override {
             // Check if we've seen this value before
             bool found = false;
-            for (const auto& seen : _seen) {
+            for (const auto& seen : seen_) {
                 if (seen == value) {
                     found = true;
                     break;
@@ -266,39 +266,39 @@ class DistinctOperator : public Operator<T> {
             }
             
             if (!found) {
-                _seen.push_back(value);
-                _operator->NotifyOnNext(value);
+                seen_.push_back(value);
+                operator_->NotifyOnNext(value);
             }
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<DistinctObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<DistinctObserver> observer_;
 
 public:
     DistinctOperator(std::shared_ptr<IObservable<T>> observable)
-        : _observable(observable) {
-        _observer = std::make_shared<DistinctObserver>(this);
+        : observable_(observable) {
+        observer_ = std::make_shared<DistinctObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -314,53 +314,53 @@ template <typename T, typename TAcc>
 class ScanOperator : public Operator<TAcc> {
     class ScanObserver : public IObserver<T> {
     private:
-        Operator<TAcc> *_operator;
-        std::function<TAcc(const TAcc&, const T&)> _accumulator;
-        TAcc _seed;
-        bool _first = true;
+        Operator<TAcc> *operator_;
+        std::function<TAcc(const TAcc&, const T&)> accumulator_;
+        TAcc seed_;
+        bool first_ = true;
 
     public:
         ScanObserver(Operator<TAcc> *op, TAcc seed, std::function<TAcc(const TAcc&, const T&)> accumulator)
-            : _operator(op), _seed(seed), _accumulator(accumulator) {}
+            : operator_(op), seed_(seed), accumulator_(accumulator) {}
 
         void OnNext(const T &value) override {
-            if (_first) {
-                _seed = _accumulator(_seed, value);
-                _first = false;
+            if (first_) {
+                seed_ = accumulator_(seed_, value);
+                first_ = false;
             } else {
-                _seed = _accumulator(_seed, value);
+                seed_ = accumulator_(seed_, value);
             }
-            _operator->NotifyOnNext(_seed);
+            operator_->NotifyOnNext(seed_);
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<ScanObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<ScanObserver> observer_;
 
 public:
     ScanOperator(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc&, const T&)> accumulator)
-        : _observable(observable) {
-        _observer = std::make_shared<ScanObserver>(this, seed, accumulator);
+        : observable_(observable) {
+        observer_ = std::make_shared<ScanObserver>(this, seed, accumulator);
     }
 
     void Subscribe(std::shared_ptr<IObserver<TAcc>> observer) override {
         Operator<TAcc>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<TAcc>> observer) override {
         Operator<TAcc>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -376,47 +376,47 @@ template <typename T, typename TAcc>
 class ReduceOperator : public Operator<TAcc> {
     class ReduceObserver : public IObserver<T> {
     private:
-        Operator<TAcc> *_operator;
-        std::function<TAcc(const TAcc&, const T&)> _accumulator;
-        TAcc _seed;
+        Operator<TAcc> *operator_;
+        std::function<TAcc(const TAcc&, const T&)> accumulator_;
+        TAcc seed_;
 
     public:
         ReduceObserver(Operator<TAcc> *op, TAcc seed, std::function<TAcc(const TAcc&, const T&)> accumulator)
-            : _operator(op), _seed(seed), _accumulator(accumulator) {}
+            : operator_(op), seed_(seed), accumulator_(accumulator) {}
 
         void OnNext(const T &value) override {
-            _seed = _accumulator(_seed, value);
+            seed_ = accumulator_(seed_, value);
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnNext(_seed);
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnNext(seed_);
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<ReduceObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<ReduceObserver> observer_;
 
 public:
     ReduceOperator(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc&, const T&)> accumulator)
-        : _observable(observable) {
-        _observer = std::make_shared<ReduceObserver>(this, seed, accumulator);
+        : observable_(observable) {
+        observer_ = std::make_shared<ReduceObserver>(this, seed, accumulator);
     }
 
     void Subscribe(std::shared_ptr<IObserver<TAcc>> observer) override {
         Operator<TAcc>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<TAcc>> observer) override {
         Operator<TAcc>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -433,49 +433,49 @@ template <typename T>
 class ThrottleOperator : public Operator<T> {
     class ThrottleObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        size_t _interval;
-        size_t _count = 0;
+        Operator<T> *operator_;
+        size_t interval_;
+        size_t count_ = 0;
 
     public:
         ThrottleObserver(Operator<T> *op, size_t interval)
-            : _operator(op), _interval(interval) {}
+            : operator_(op), interval_(interval) {}
 
         void OnNext(const T &value) override {
-            _count++;
-            if (_count % _interval == 0) {
-                _operator->NotifyOnNext(value);
+            count_++;
+            if (count_ % interval_ == 0) {
+                operator_->NotifyOnNext(value);
             }
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<ThrottleObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<ThrottleObserver> observer_;
 
 public:
     ThrottleOperator(std::shared_ptr<IObservable<T>> observable, size_t interval)
-        : _observable(observable) {
-        _observer = std::make_shared<ThrottleObserver>(this, interval);
+        : observable_(observable) {
+        observer_ = std::make_shared<ThrottleObserver>(this, interval);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -491,50 +491,50 @@ template <typename T>
 class FirstOperator : public Operator<T> {
     class FirstObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        bool _emitted = false;
+        Operator<T> *operator_;
+        bool emitted_ = false;
 
     public:
-        FirstObserver(Operator<T> *op) : _operator(op) {}
+        FirstObserver(Operator<T> *op) : operator_(op) {}
 
         void OnNext(const T &value) override {
-            if (!_emitted) {
-                _emitted = true;
-                _operator->NotifyOnNext(value);
-                _operator->NotifyOnCompleted();
+            if (!emitted_) {
+                emitted_ = true;
+                operator_->NotifyOnNext(value);
+                operator_->NotifyOnCompleted();
             }
         }
 
         void OnCompleted() override {
-            if (!_emitted) {
-                _operator->NotifyOnCompleted();
+            if (!emitted_) {
+                operator_->NotifyOnCompleted();
             }
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<FirstObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<FirstObserver> observer_;
 
 public:
     FirstOperator(std::shared_ptr<IObservable<T>> observable)
-        : _observable(observable) {
-        _observer = std::make_shared<FirstObserver>(this);
+        : observable_(observable) {
+        observer_ = std::make_shared<FirstObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -550,49 +550,49 @@ template <typename T>
 class LastOperator : public Operator<T> {
     class LastObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        T _lastValue;
-        bool _hasValue = false;
+        Operator<T> *operator_;
+        T last_value_;
+        bool has_value_ = false;
 
     public:
-        LastObserver(Operator<T> *op) : _operator(op) {}
+        LastObserver(Operator<T> *op) : operator_(op) {}
 
         void OnNext(const T &value) override {
-            _lastValue = value;
-            _hasValue = true;
+            last_value_ = value;
+            has_value_ = true;
         }
 
         void OnCompleted() override {
-            if (_hasValue) {
-                _operator->NotifyOnNext(_lastValue);
+            if (has_value_) {
+                operator_->NotifyOnNext(last_value_);
             }
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<LastObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<LastObserver> observer_;
 
 public:
     LastOperator(std::shared_ptr<IObservable<T>> observable)
-        : _observable(observable) {
-        _observer = std::make_shared<LastObserver>(this);
+        : observable_(observable) {
+        observer_ = std::make_shared<LastObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -624,54 +624,54 @@ template <typename T>
 class BufferOperator : public Operator<std::vector<T>> {
     class BufferObserver : public IObserver<T> {
     private:
-        Operator<std::vector<T>> *_operator;
-        size_t _bufferSize;
-        std::vector<T> _buffer;
+        Operator<std::vector<T>> *operator_;
+        size_t buffer_size_;
+        std::vector<T> buffer_;
 
     public:
         BufferObserver(Operator<std::vector<T>> *op, size_t bufferSize)
-            : _operator(op), _bufferSize(bufferSize) {
+            : operator_(op), buffer_size_(bufferSize) {
         }
 
         void OnNext(const T &value) override {
-            _buffer.push_back(value);
-            if (_buffer.size() >= _bufferSize) {
-                _operator->NotifyOnNext(_buffer);
-                _buffer.clear();
+            buffer_.push_back(value);
+            if (buffer_.size() >= buffer_size_) {
+                operator_->NotifyOnNext(buffer_);
+                buffer_.clear();
             }
         }
 
         void OnCompleted() override {
-            if (!_buffer.empty()) {
-                _operator->NotifyOnNext(_buffer);
+            if (!buffer_.empty()) {
+                operator_->NotifyOnNext(buffer_);
             }
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<BufferObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<BufferObserver> observer_;
 
 public:
     BufferOperator(std::shared_ptr<IObservable<T>> observable, size_t bufferSize)
-        : _observable(observable) {
-        _observer = std::make_shared<BufferObserver>(this, bufferSize);
+        : observable_(observable) {
+        observer_ = std::make_shared<BufferObserver>(this, bufferSize);
     }
 
     void Subscribe(std::shared_ptr<IObserver<std::vector<T>>> observer) override {
         Operator<std::vector<T>>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<std::vector<T>>> observer) override {
         Operator<std::vector<T>>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -687,54 +687,54 @@ template <typename T>
 class TakeWhileOperator : public Operator<T> {
     class TakeWhileObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        std::function<bool(const T &)> _predicate;
-        bool _completed;
+        Operator<T> *operator_;
+        std::function<bool(const T &)> predicate_;
+        bool completed_;
 
     public:
         TakeWhileObserver(Operator<T> *op, std::function<bool(const T &)> predicate)
-            : _operator(op), _predicate(predicate), _completed(false) {
+            : operator_(op), predicate_(predicate), completed_(false) {
         }
 
         void OnNext(const T &value) override {
-            if (!_completed && _predicate(value)) {
-                _operator->NotifyOnNext(value);
-            } else if (!_completed) {
-                _completed = true;
-                _operator->NotifyOnCompleted();
+            if (!completed_ && predicate_(value)) {
+                operator_->NotifyOnNext(value);
+            } else if (!completed_) {
+                completed_ = true;
+                operator_->NotifyOnCompleted();
             }
         }
 
         void OnCompleted() override {
-            if (!_completed) {
-                _operator->NotifyOnCompleted();
+            if (!completed_) {
+                operator_->NotifyOnCompleted();
             }
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<TakeWhileObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<TakeWhileObserver> observer_;
 
 public:
     TakeWhileOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-        : _observable(observable) {
-        _observer = std::make_shared<TakeWhileObserver>(this, predicate);
+        : observable_(observable) {
+        observer_ = std::make_shared<TakeWhileObserver>(this, predicate);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -750,51 +750,51 @@ template <typename T>
 class SkipWhileOperator : public Operator<T> {
     class SkipWhileObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        std::function<bool(const T &)> _predicate;
-        bool _skipping;
+        Operator<T> *operator_;
+        std::function<bool(const T &)> predicate_;
+        bool skipping_;
 
     public:
         SkipWhileObserver(Operator<T> *op, std::function<bool(const T &)> predicate)
-            : _operator(op), _predicate(predicate), _skipping(true) {
+            : operator_(op), predicate_(predicate), skipping_(true) {
         }
 
         void OnNext(const T &value) override {
-            if (_skipping && _predicate(value)) {
+            if (skipping_ && predicate_(value)) {
                 return; // Skip this value
             }
-            _skipping = false; // Stop skipping once condition fails
-            _operator->NotifyOnNext(value);
+            skipping_ = false; // Stop skipping once condition fails
+            operator_->NotifyOnNext(value);
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<SkipWhileObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<SkipWhileObserver> observer_;
 
 public:
     SkipWhileOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-        : _observable(observable) {
-        _observer = std::make_shared<SkipWhileObserver>(this, predicate);
+        : observable_(observable) {
+        observer_ = std::make_shared<SkipWhileObserver>(this, predicate);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -810,50 +810,50 @@ template <typename T>
 class StartWithOperator : public Operator<T> {
     class StartWithObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
+        Operator<T> *operator_;
 
     public:
-        StartWithObserver(Operator<T> *op) : _operator(op) {
+        StartWithObserver(Operator<T> *op) : operator_(op) {
         }
 
         void OnNext(const T &value) override {
-            _operator->NotifyOnNext(value);
+            operator_->NotifyOnNext(value);
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<StartWithObserver> _observer;
-    std::vector<T> _startValues;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<StartWithObserver> observer_;
+    std::vector<T> start_values_;
 
 public:
     StartWithOperator(std::shared_ptr<IObservable<T>> observable, std::vector<T> startValues)
-        : _observable(observable), _startValues(startValues) {
-        _observer = std::make_shared<StartWithObserver>(this);
+        : observable_(observable), start_values_(startValues) {
+        observer_ = std::make_shared<StartWithObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1) {
+        if (this->child_observers_.size() == 1) {
             // Emit start values first
-            for (const auto& value : _startValues) {
+            for (const auto& value : start_values_) {
                 this->NotifyOnNext(value);
             }
-            _observable->Subscribe(_observer);
+            observable_->Subscribe(observer_);
         }
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -874,51 +874,51 @@ template <typename T>
 class DefaultIfEmptyOperator : public Operator<T> {
     class DefaultIfEmptyObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        T _defaultValue;
-        bool _hasEmitted;
+        Operator<T> *operator_;
+        T default_value_;
+        bool has_emitted_;
 
     public:
         DefaultIfEmptyObserver(Operator<T> *op, T defaultValue)
-            : _operator(op), _defaultValue(defaultValue), _hasEmitted(false) {
+            : operator_(op), default_value_(defaultValue), has_emitted_(false) {
         }
 
         void OnNext(const T &value) override {
-            _hasEmitted = true;
-            _operator->NotifyOnNext(value);
+            has_emitted_ = true;
+            operator_->NotifyOnNext(value);
         }
 
         void OnCompleted() override {
-            if (!_hasEmitted) {
-                _operator->NotifyOnNext(_defaultValue);
+            if (!has_emitted_) {
+                operator_->NotifyOnNext(default_value_);
             }
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<DefaultIfEmptyObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<DefaultIfEmptyObserver> observer_;
 
 public:
     DefaultIfEmptyOperator(std::shared_ptr<IObservable<T>> observable, T defaultValue)
-        : _observable(observable) {
-        _observer = std::make_shared<DefaultIfEmptyObserver>(this, defaultValue);
+        : observable_(observable) {
+        observer_ = std::make_shared<DefaultIfEmptyObserver>(this, defaultValue);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -934,46 +934,46 @@ template <typename T>
 class CountOperator : public Operator<size_t> {
     class CountObserver : public IObserver<T> {
     private:
-        Operator<size_t> *_operator;
-        size_t _count;
+        Operator<size_t> *operator_;
+        size_t count_;
 
     public:
-        CountObserver(Operator<size_t> *op) : _operator(op), _count(0) {
+        CountObserver(Operator<size_t> *op) : operator_(op), count_(0) {
         }
 
         void OnNext(const T &value) override {
-            _count++;
+            count_++;
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnNext(_count);
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnNext(count_);
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<CountObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<CountObserver> observer_;
 
 public:
     CountOperator(std::shared_ptr<IObservable<T>> observable)
-        : _observable(observable) {
-        _observer = std::make_shared<CountObserver>(this);
+        : observable_(observable) {
+        observer_ = std::make_shared<CountObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<size_t>> observer) override {
         Operator<size_t>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<size_t>> observer) override {
         Operator<size_t>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -989,46 +989,46 @@ template <typename T>
 class SumOperator : public Operator<T> {
     class SumObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        T _sum;
+        Operator<T> *operator_;
+        T sum_;
 
     public:
-        SumObserver(Operator<T> *op) : _operator(op), _sum(T{}) {
+        SumObserver(Operator<T> *op) : operator_(op), sum_(T{}) {
         }
 
         void OnNext(const T &value) override {
-            _sum += value;
+            sum_ += value;
         }
 
         void OnCompleted() override {
-            _operator->NotifyOnNext(_sum);
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnNext(sum_);
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<SumObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<SumObserver> observer_;
 
 public:
     SumOperator(std::shared_ptr<IObservable<T>> observable)
-        : _observable(observable) {
-        _observer = std::make_shared<SumObserver>(this);
+        : observable_(observable) {
+        observer_ = std::make_shared<SumObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -1044,52 +1044,52 @@ template <typename T>
 class MinOperator : public Operator<T> {
     class MinObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        T _min;
-        bool _hasValue;
+        Operator<T> *operator_;
+        T min_;
+        bool has_value_;
 
     public:
-        MinObserver(Operator<T> *op) : _operator(op), _min(T{}), _hasValue(false) {
+        MinObserver(Operator<T> *op) : operator_(op), min_(T{}), has_value_(false) {
         }
 
         void OnNext(const T &value) override {
-            if (!_hasValue || value < _min) {
-                _min = value;
-                _hasValue = true;
+            if (!has_value_ || value < min_) {
+                min_ = value;
+                has_value_ = true;
             }
         }
 
         void OnCompleted() override {
-            if (_hasValue) {
-                _operator->NotifyOnNext(_min);
+            if (has_value_) {
+                operator_->NotifyOnNext(min_);
             }
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<MinObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<MinObserver> observer_;
 
 public:
     MinOperator(std::shared_ptr<IObservable<T>> observable)
-        : _observable(observable) {
-        _observer = std::make_shared<MinObserver>(this);
+        : observable_(observable) {
+        observer_ = std::make_shared<MinObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -1105,52 +1105,52 @@ template <typename T>
 class MaxOperator : public Operator<T> {
     class MaxObserver : public IObserver<T> {
     private:
-        Operator<T> *_operator;
-        T _max;
-        bool _hasValue;
+        Operator<T> *operator_;
+        T max_;
+        bool has_value_;
 
     public:
-        MaxObserver(Operator<T> *op) : _operator(op), _max(T{}), _hasValue(false) {
+        MaxObserver(Operator<T> *op) : operator_(op), max_(T{}), has_value_(false) {
         }
 
         void OnNext(const T &value) override {
-            if (!_hasValue || value > _max) {
-                _max = value;
-                _hasValue = true;
+            if (!has_value_ || value > max_) {
+                max_ = value;
+                has_value_ = true;
             }
         }
 
         void OnCompleted() override {
-            if (_hasValue) {
-                _operator->NotifyOnNext(_max);
+            if (has_value_) {
+                operator_->NotifyOnNext(max_);
             }
-            _operator->NotifyOnCompleted();
+            operator_->NotifyOnCompleted();
         }
 
         void OnError(const std::exception &e) override {
-            _operator->NotifyOnError(e);
+            operator_->NotifyOnError(e);
         }
     };
 
-    std::shared_ptr<IObservable<T>> _observable;
-    std::shared_ptr<MaxObserver> _observer;
+    std::shared_ptr<IObservable<T>> observable_;
+    std::shared_ptr<MaxObserver> observer_;
 
 public:
     MaxOperator(std::shared_ptr<IObservable<T>> observable)
-        : _observable(observable) {
-        _observer = std::make_shared<MaxObserver>(this);
+        : observable_(observable) {
+        observer_ = std::make_shared<MaxObserver>(this);
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::Subscribe(observer);
-        if (this->_childObservers.size() == 1)
-            _observable->Subscribe(_observer);
+        if (this->child_observers_.size() == 1)
+            observable_->Subscribe(observer_);
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
         Operator<T>::UnSubscribe(observer);
-        if (this->_childObservers.empty())
-            _observable->UnSubscribe(_observer);
+        if (this->child_observers_.empty())
+            observable_->UnSubscribe(observer_);
     }
 };
 
@@ -1162,3 +1162,4 @@ std::shared_ptr<MaxOperator<T>> Max(std::shared_ptr<IObservable<T>> observable) 
 } // namespace rx
 
 #endif // MICRO_REACTIVE_OPERATORS_H
+

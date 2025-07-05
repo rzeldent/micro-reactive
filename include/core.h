@@ -41,29 +41,29 @@ protected:
 template <typename T>
 class Operator : public IObservable<T> {
 public:
-    std::list<std::shared_ptr<IObserver<T>>> _childObservers;
+    std::list<std::shared_ptr<IObserver<T>>> child_observers_;
 
     void NotifyOnNext(const T &value) {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnNext(value);
     }
 
     void NotifyOnCompleted() {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnCompleted();
     }
 
     void NotifyOnError(const std::exception &e) {
-        for (auto observer : _childObservers)
+        for (auto observer : child_observers_)
             observer->OnError(e);
     }
 
     virtual void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.push_back(observer);
+        child_observers_.push_back(observer);
     }
 
     virtual void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
-        _childObservers.remove(observer);
+        child_observers_.remove(observer);
     }
 };
 
