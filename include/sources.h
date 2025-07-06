@@ -8,6 +8,9 @@
 #include <chrono>
 #include <thread>
 #include <algorithm>
+#include <mutex>
+#include <atomic>
+#include <condition_variable>
 
 namespace rx {
 
@@ -17,8 +20,9 @@ namespace rx {
 template <typename T>
 class EmptyObservable : public IObservable<T> {
 public:
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         observer->OnCompleted();
+        return std::make_shared<Subscription>([](){});  // No-op subscription
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
@@ -38,8 +42,9 @@ std::shared_ptr<EmptyObservable<T>> Empty() {
 template <typename T>
 class NeverObservable : public IObservable<T> {
 public:
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         // Never emits anything, never completes
+        return std::make_shared<Subscription>([](){});  // No-op subscription
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
@@ -66,10 +71,11 @@ public:
         : first_(first), last_(last), step_(step) {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         for (auto value = first_; value <= last_; value += step_)
             observer->OnNext(value);
         observer->OnCompleted();
+        return std::make_shared<Subscription>([](){});  // No-op subscription for completed observable
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
@@ -101,11 +107,12 @@ public:
     FromVectorObservable(const std::vector<T>& values) : values_(values) {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         for (const auto& value : values_) {
             observer->OnNext(value);
         }
         observer->OnCompleted();
+        return std::make_shared<Subscription>([](){});  // No-op subscription for completed observable
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
@@ -132,12 +139,13 @@ public:
         : create_(create) {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         try {
             create_(observer);
         } catch (const std::exception& e) {
             observer->OnError(e);
         }
+        return std::make_shared<Subscription>([](){});  // No-op subscription
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
@@ -165,11 +173,12 @@ public:
         : values_(container.begin(), container.end()) {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         for (const auto& value : values_) {
             observer->OnNext(value);
         }
         observer->OnCompleted();
+        return std::make_shared<Subscription>([](){});  // No-op subscription for completed observable
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
@@ -196,12 +205,13 @@ public:
         : factory_(factory) {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
         try {
             auto observable = factory_();
-            observable->Subscribe(observer);
+            return observable->Subscribe(observer);
         } catch (const std::exception& e) {
             observer->OnError(e);
+            return std::make_shared<Subscription>([](){});  // No-op subscription on error
         }
     }
 
@@ -217,50 +227,73 @@ std::shared_ptr<DeferObservable<T>> Defer(std::function<std::shared_ptr<IObserva
 }
 
 // =============================================================================
-// TIMER OBSERVABLE - Threaded version for non-blocking operation
+// TIMER OBSERVABLE - Threaded version with proper resource management
 // =============================================================================
 template <typename T = int>
-class TimerObservable : public IObservable<T> {
+class TimerObservable : public IObservable<T>, public std::enable_shared_from_this<TimerObservable<T>> {
 private:
     std::chrono::milliseconds delay_;
     std::vector<std::shared_ptr<IObserver<T>>> observers_;
     std::thread timer_thread_;
-    bool is_running_;
+    std::atomic<bool> is_running_;
+    std::atomic<bool> should_stop_;
+    mutable std::mutex observers_mutex_;
+    std::condition_variable stop_cv_;
+    std::mutex stop_mutex_;
 
 public:
     TimerObservable(std::chrono::milliseconds delay) 
-        : delay_(delay), is_running_(false) {
+        : delay_(delay), is_running_(false), should_stop_(false) {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        observers_.push_back(observer);
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+        {
+            std::lock_guard<std::mutex> lock(observers_mutex_);
+            observers_.push_back(observer);
+        }
         
-        if (!is_running_) {
-            is_running_ = true;
+        if (!is_running_.exchange(true)) {
+            should_stop_ = false;
             timer_thread_ = std::thread([this]() {
-                std::this_thread::sleep_for(delay_);
-                
-                // Notify all observers
-                for (auto& obs : observers_) {
-                    if (obs) {
-                        obs->OnNext(T{});
-                        obs->OnCompleted();
+                std::unique_lock<std::mutex> lock(stop_mutex_);
+                if (!stop_cv_.wait_for(lock, delay_, [this] { return should_stop_.load(); })) {
+                    // Timer completed, notify all observers
+                    std::lock_guard<std::mutex> obs_lock(observers_mutex_);
+                    for (auto& obs : observers_) {
+                        if (obs) {
+                            obs->OnNext(T{});
+                            obs->OnCompleted();
+                        }
                     }
                 }
                 is_running_ = false;
             });
-            timer_thread_.detach(); // Detach to avoid blocking destructor
         }
+        
+        // Return subscription for cleanup
+        auto weak_self = std::weak_ptr<TimerObservable<T>>(std::static_pointer_cast<TimerObservable<T>>(this->shared_from_this()));
+        return std::make_shared<Subscription>([weak_self, observer]() {
+            if (auto self = weak_self.lock()) {
+                self->UnSubscribe(observer);
+            }
+        });
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
+        std::lock_guard<std::mutex> lock(observers_mutex_);
         auto it = std::find(observers_.begin(), observers_.end(), observer);
         if (it != observers_.end()) {
             observers_.erase(it);
         }
     }
 
-    ~TimerObservable() = default;
+    ~TimerObservable() {
+        should_stop_ = true;
+        stop_cv_.notify_all();
+        if (timer_thread_.joinable()) {
+            timer_thread_.join();
+        }
+    }
 };
 
 template <typename T = int>
@@ -269,59 +302,89 @@ std::shared_ptr<TimerObservable<T>> Timer(std::chrono::milliseconds delay) {
 }
 
 // =============================================================================
-// INTERVAL OBSERVABLE - Threaded version for non-blocking operation
+// INTERVAL OBSERVABLE - Threaded version with proper resource management
 // =============================================================================
 template <typename T = int>
-class IntervalObservable : public IObservable<T> {
+class IntervalObservable : public IObservable<T>, public std::enable_shared_from_this<IntervalObservable<T>> {
 private:
     std::chrono::milliseconds interval_;
     int count_;
     std::vector<std::shared_ptr<IObserver<T>>> observers_;
     std::thread interval_thread_;
-    bool is_running_;
+    std::atomic<bool> is_running_;
+    std::atomic<bool> should_stop_;
+    mutable std::mutex observers_mutex_;
+    std::condition_variable stop_cv_;
+    std::mutex stop_mutex_;
 
 public:
     IntervalObservable(std::chrono::milliseconds interval, int count = 5) 
-        : interval_(interval), count_(count), is_running_(false) {
+        : interval_(interval), count_(count), is_running_(false), should_stop_(false) {
     }
 
-    void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        observers_.push_back(observer);
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+        {
+            std::lock_guard<std::mutex> lock(observers_mutex_);
+            observers_.push_back(observer);
+        }
         
-        if (!is_running_) {
-            is_running_ = true;
+        if (!is_running_.exchange(true)) {
+            should_stop_ = false;
             interval_thread_ = std::thread([this]() {
-                for (int i = 0; i < count_; ++i) {
-                    std::this_thread::sleep_for(interval_);
+                for (int i = 0; i < count_ && !should_stop_.load(); ++i) {
+                    std::unique_lock<std::mutex> lock(stop_mutex_);
+                    if (stop_cv_.wait_for(lock, interval_, [this] { return should_stop_.load(); })) {
+                        break; // Stop requested
+                    }
                     
                     // Notify all observers
-                    for (auto& obs : observers_) {
-                        if (obs) {
-                            obs->OnNext(T(i));
+                    {
+                        std::lock_guard<std::mutex> obs_lock(observers_mutex_);
+                        for (auto& obs : observers_) {
+                            if (obs) {
+                                obs->OnNext(T(i));
+                            }
                         }
                     }
                 }
                 
-                // Complete all observers
-                for (auto& obs : observers_) {
-                    if (obs) {
-                        obs->OnCompleted();
+                // Complete all observers if not stopped
+                if (!should_stop_.load()) {
+                    std::lock_guard<std::mutex> obs_lock(observers_mutex_);
+                    for (auto& obs : observers_) {
+                        if (obs) {
+                            obs->OnCompleted();
+                        }
                     }
                 }
                 is_running_ = false;
             });
-            interval_thread_.detach(); // Detach to avoid blocking destructor
         }
+        
+        // Return subscription for cleanup
+        auto weak_self = std::weak_ptr<IntervalObservable<T>>(std::static_pointer_cast<IntervalObservable<T>>(this->shared_from_this()));
+        return std::make_shared<Subscription>([weak_self, observer]() {
+            if (auto self = weak_self.lock()) {
+                self->UnSubscribe(observer);
+            }
+        });
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
+        std::lock_guard<std::mutex> lock(observers_mutex_);
         auto it = std::find(observers_.begin(), observers_.end(), observer);
         if (it != observers_.end()) {
             observers_.erase(it);
         }
     }
 
-    ~IntervalObservable() = default;
+    ~IntervalObservable() {
+        should_stop_ = true;
+        stop_cv_.notify_all();
+        if (interval_thread_.joinable()) {
+            interval_thread_.join();
+        }
+    }
 };
 
 template <typename T = int>

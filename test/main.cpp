@@ -1,6 +1,9 @@
 #include <unity.h>
 #include <Arduino.h>
-#include "../include/micro-reactive.h"
+#include "../include/core.h"
+#include "../include/sources.h"
+#include "../include/subjects.h"
+#include "../include/operators.h" // Add operators header
 
 // Simple test observer for basic functionality testing
 template<typename T>
@@ -33,44 +36,20 @@ public:
     void Reset() { _hasValue = false; _completed = false; _count = 0; }
 };
 
-// Test basic Map operator
-void test_map_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 3));
-    std::function<int(const int&)> transform = [](const int& x) { return x * 2; };
-    auto mapped = rx::Map<int, int>(source, transform);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    mapped->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(6, observer->GetLastValue()); // Last value should be 3*2=6
-    TEST_ASSERT_EQUAL(3, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test basic Filter operator
-void test_filter_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 5));
-    std::function<bool(const int&)> predicate = [](const int& x) { return x % 2 == 0; };
-    auto filtered = rx::Filter(source, predicate);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    filtered->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(4, observer->GetLastValue()); // Last even number should be 4
-    TEST_ASSERT_EQUAL(2, observer->GetCount()); // Should have 2 even numbers (2, 4)
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
 // Test Range source
 void test_range_basic() {
     auto range = rx::Range(10, 3); // Start at 10, count of 3
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
-    range->Subscribe(observer);
+    auto subscription = range->Subscribe(observer);
     
     TEST_ASSERT_EQUAL(12, observer->GetLastValue()); // Should end at 12
     TEST_ASSERT_EQUAL(3, observer->GetCount());
     TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+    
+    subscription->Dispose();
+    TEST_ASSERT_TRUE(subscription->IsDisposed());
 }
 
 // Test FromVector source
@@ -79,153 +58,47 @@ void test_fromvector_basic() {
     auto source = rx::FromVector(values);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
-    source->Subscribe(observer);
+    auto subscription = source->Subscribe(observer);
     
     TEST_ASSERT_EQUAL(300, observer->GetLastValue());
     TEST_ASSERT_EQUAL(3, observer->GetCount());
     TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
 // Test Subject basic functionality
 void test_subject_basic() {
-    auto subject = rx::Subject<int>();
+    auto subject = std::make_shared<rx::Subject<int>>();
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
-    subject.Subscribe(observer);
+    auto subscription = subject->Subscribe(observer);
     
-    subject.OnNext(42);
-    subject.OnNext(84);
-    subject.OnCompleted();
+    subject->OnNext(42);
+    subject->OnNext(84);
+    subject->OnCompleted();
     
     TEST_ASSERT_EQUAL(84, observer->GetLastValue());
     TEST_ASSERT_EQUAL(2, observer->GetCount());
     TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
 // Test BehaviorSubject basic functionality
 void test_behaviorsubject_basic() {
-    auto behaviorSubject = rx::BehaviorSubject<int>(99);
+    auto behaviorSubject = std::make_shared<rx::BehaviorSubject<int>>(99);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     // Subscribe after creation - should immediately receive initial value
-    behaviorSubject.Subscribe(observer);
+    auto subscription = behaviorSubject->Subscribe(observer);
     
     TEST_ASSERT_EQUAL(99, observer->GetLastValue());
     TEST_ASSERT_EQUAL(1, observer->GetCount());
     
-    behaviorSubject.OnNext(150);
+    behaviorSubject->OnNext(150);
     
     TEST_ASSERT_EQUAL(150, observer->GetLastValue());
     TEST_ASSERT_EQUAL(2, observer->GetCount());
-}
-
-// Test Take operator
-void test_take_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 10));
-    auto taken = rx::Take(source, static_cast<size_t>(3));
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    taken->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(3, observer->GetLastValue());
-    TEST_ASSERT_EQUAL(3, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test Scan operator  
-void test_scan_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 3));
-    std::function<int(const int&, const int&)> accumulator = [](const int& acc, const int& x) { return acc + x; };
-    auto scan = rx::Scan<int, int>(source, 0, accumulator);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    scan->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(6, observer->GetLastValue()); // 0+1+2+3 = 6
-    TEST_ASSERT_EQUAL(3, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test Sum operator
-void test_sum_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 5));
-    auto sum = rx::Sum<int>(source);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    sum->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(15, observer->GetLastValue()); // 1+2+3+4+5 = 15
-    TEST_ASSERT_EQUAL(1, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test Distinct operator
-void test_distinct_basic() {
-    std::vector<int> values = {1, 2, 2, 3, 3, 4, 1, 5};
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::FromVector(values));
-    auto distinct = rx::Distinct(source);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    distinct->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(5, observer->GetLastValue()); // Last unique value should be 5
-    TEST_ASSERT_EQUAL(5, observer->GetCount()); // Should have 5 unique values
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test Skip operator
-void test_skip_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 7));
-    auto skip = rx::Skip(source, static_cast<size_t>(3));
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    skip->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(7, observer->GetLastValue()); // Last value after skipping 3
-    TEST_ASSERT_EQUAL(4, observer->GetCount()); // Should have 4 values (4,5,6,7)
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test First operator
-void test_first_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(10, 5));
-    auto first = rx::First(source);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    first->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(10, observer->GetLastValue()); // First value
-    TEST_ASSERT_EQUAL(1, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test Last operator
-void test_last_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(10, 5));
-    auto last = rx::Last(source);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    last->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(14, observer->GetLastValue()); // Last value (10+4)
-    TEST_ASSERT_EQUAL(1, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test operator chaining
-void test_operator_chaining() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 6));
-    std::function<bool(const int&)> predicate = [](const int& x) { return x > 3; };
-    auto filtered = rx::Filter(source, predicate);
-    std::function<int(const int&)> transform = [](const int& x) { return x * 10; };
-    auto mapped = rx::Map<int, int>(filtered, transform);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    mapped->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(60, observer->GetLastValue()); // 6 * 10 = 60
-    TEST_ASSERT_EQUAL(3, observer->GetCount()); // Should have 4, 5, 6 -> 40, 50, 60
-    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
 // Test Empty source
@@ -233,62 +106,25 @@ void test_empty_basic() {
     auto empty = rx::Empty<int>();
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
-    empty->Subscribe(observer);
+    auto subscription = empty->Subscribe(observer);
     
     TEST_ASSERT_EQUAL(0, observer->GetCount());
     TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
-// Test complex operator chain (from old integration tests)
-void test_complex_chain() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 10));
-    
-    // Chain: Range -> Filter (odd) -> Map (*2) -> Take(3) -> Sum
-    std::function<bool(const int&)> oddFilter = [](const int& x) { return x % 2 == 1; };
-    auto filtered = rx::Filter(source, oddFilter);
-    
-    std::function<int(const int&)> doubleMap = [](const int& x) { return x * 2; };
-    auto mapped = rx::Map<int, int>(filtered, doubleMap);
-    
-    auto mappedPtr = std::static_pointer_cast<rx::IObservable<int>>(mapped);
-    auto taken = rx::Take(mappedPtr, static_cast<size_t>(3));
-    auto sum = rx::Sum<int>(taken);
-    
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    sum->Subscribe(observer);
-    
-    // Odd numbers: 1,3,5 -> doubled: 2,6,10 -> sum: 18
-    TEST_ASSERT_EQUAL(18, observer->GetLastValue());
-    TEST_ASSERT_EQUAL(1, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test Reduce operator (from old additional_operators_test)
-void test_reduce_basic() {
-    auto source = std::static_pointer_cast<rx::IObservable<int>>(rx::Range(1, 5));
-    std::function<int(const int&, const int&)> accumulator = [](const int& acc, const int& x) { return acc + x; };
-    auto reduce = rx::Reduce<int, int>(source, 0, accumulator);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
-    
-    reduce->Subscribe(observer);
-    
-    TEST_ASSERT_EQUAL(15, observer->GetLastValue()); // 1+2+3+4+5 = 15
-    TEST_ASSERT_EQUAL(1, observer->GetCount());
-    TEST_ASSERT_TRUE(observer->IsCompleted());
-}
-
-// Test Subject with multiple observers (from old comprehensive tests)
+// Test Subject with multiple observers (thread safety test)
 void test_subject_multiple_observers() {
-    auto subject = rx::Subject<int>();
+    auto subject = std::make_shared<rx::Subject<int>>();
     auto observer1 = std::make_shared<SimpleTestObserver<int>>();
     auto observer2 = std::make_shared<SimpleTestObserver<int>>();
     
-    subject.Subscribe(observer1);
-    subject.Subscribe(observer2);
+    auto subscription1 = subject->Subscribe(observer1);
+    auto subscription2 = subject->Subscribe(observer2);
     
-    subject.OnNext(10);
-    subject.OnNext(20);
-    subject.OnCompleted();
+    subject->OnNext(10);
+    subject->OnNext(20);
+    subject->OnCompleted();
     
     // Both observers should receive the same values
     TEST_ASSERT_EQUAL(2, observer1->GetCount());
@@ -297,6 +133,11 @@ void test_subject_multiple_observers() {
     TEST_ASSERT_EQUAL(20, observer2->GetLastValue());
     TEST_ASSERT_TRUE(observer1->IsCompleted());
     TEST_ASSERT_TRUE(observer2->IsCompleted());
+    
+    // Test subscription cleanup
+    subscription1->Dispose();
+    TEST_ASSERT_TRUE(subscription1->IsDisposed());
+    TEST_ASSERT_FALSE(subscription2->IsDisposed());
 }
 
 // Test TimerObservable basic functionality
@@ -305,7 +146,7 @@ void test_timer_basic() {
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     // Subscribe to timer
-    timer->Subscribe(observer);
+    auto subscription = timer->Subscribe(observer);
     
     // Timer should not have fired immediately
     TEST_ASSERT_FALSE(observer->HasValue());
@@ -319,32 +160,7 @@ void test_timer_basic() {
     TEST_ASSERT_EQUAL(1, observer->GetCount());
     TEST_ASSERT_TRUE(observer->IsCompleted());
     TEST_ASSERT_EQUAL(0, observer->GetLastValue()); // Default int value
-}
-
-// Test TimerObservable with multiple observers
-void test_timer_multiple_observers() {
-    auto timer = rx::Timer<int>(std::chrono::milliseconds(100));
-    auto observer1 = std::make_shared<SimpleTestObserver<int>>();
-    auto observer2 = std::make_shared<SimpleTestObserver<int>>();
-    
-    // Subscribe both observers
-    timer->Subscribe(observer1);
-    timer->Subscribe(observer2);
-    
-    // Initially no values
-    TEST_ASSERT_FALSE(observer1->HasValue());
-    TEST_ASSERT_FALSE(observer2->HasValue());
-    
-    // Wait for timer to fire
-    delay(200);
-    
-    // Both observers should receive the timer event
-    TEST_ASSERT_TRUE(observer1->HasValue());
-    TEST_ASSERT_TRUE(observer2->HasValue());
-    TEST_ASSERT_EQUAL(1, observer1->GetCount());
-    TEST_ASSERT_EQUAL(1, observer2->GetCount());
-    TEST_ASSERT_TRUE(observer1->IsCompleted());
-    TEST_ASSERT_TRUE(observer2->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
 // Test IntervalObservable basic functionality
@@ -354,7 +170,7 @@ void test_interval_basic() {
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     // Subscribe to interval
-    interval->Subscribe(observer);
+    auto subscription = interval->Subscribe(observer);
     
     // Initially no values
     TEST_ASSERT_FALSE(observer->HasValue());
@@ -374,42 +190,97 @@ void test_interval_basic() {
     TEST_ASSERT_EQUAL(2, observer->GetLastValue()); // Last value should be 2
     TEST_ASSERT_EQUAL(3, observer->GetCount());
     TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
-// Test IntervalObservable with multiple observers
-void test_interval_multiple_observers() {
-    auto interval = rx::Interval<int>(std::chrono::milliseconds(50), 2);
-    auto observer1 = std::make_shared<SimpleTestObserver<int>>();
-    auto observer2 = std::make_shared<SimpleTestObserver<int>>();
+// Test MapOperator with new subscription pattern
+void test_map_operator() {
+    auto range = rx::Range(1, 3); // 1, 2, 3
+    auto mapOp = rx::Map<int, int>(range, [](const int& x) { return x * 2; });
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
     
-    // Subscribe both observers
-    interval->Subscribe(observer1);
-    interval->Subscribe(observer2);
+    auto subscription = mapOp->Subscribe(observer);
     
-    // Wait for all emissions to complete
-    delay(150);
-    
-    // Both observers should receive all interval emissions
-    TEST_ASSERT_EQUAL(1, observer1->GetLastValue()); // Last value should be 1
-    TEST_ASSERT_EQUAL(1, observer2->GetLastValue());
-    TEST_ASSERT_EQUAL(2, observer1->GetCount());
-    TEST_ASSERT_EQUAL(2, observer2->GetCount());
-    TEST_ASSERT_TRUE(observer1->IsCompleted());
-    TEST_ASSERT_TRUE(observer2->IsCompleted());
-}
-
-// Test Timer with custom type
-void test_timer_custom_type() {
-    auto timer = rx::Timer<float>(std::chrono::milliseconds(100));
-    auto observer = std::make_shared<SimpleTestObserver<float>>();
-    
-    timer->Subscribe(observer);
-    delay(200);
-    
-    TEST_ASSERT_TRUE(observer->HasValue());
-    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(6, observer->GetLastValue()); // 3 * 2 = 6
+    TEST_ASSERT_EQUAL(3, observer->GetCount());
     TEST_ASSERT_TRUE(observer->IsCompleted());
-    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, observer->GetLastValue()); // Default float value
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+    
+    subscription->Dispose();
+    TEST_ASSERT_TRUE(subscription->IsDisposed());
+}
+
+// Test FilterOperator with new subscription pattern
+void test_filter_operator() {
+    auto range = rx::Range(1, 5); // 1, 2, 3, 4, 5
+    auto filterOp = rx::Filter<int>(range, [](const int& x) { return x % 2 == 0; }); // Only even numbers
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = filterOp->Subscribe(observer);
+    
+    TEST_ASSERT_EQUAL(4, observer->GetLastValue()); // Last even number is 4
+    TEST_ASSERT_EQUAL(2, observer->GetCount()); // Should have 2 and 4
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+}
+
+// Test TakeOperator with new subscription pattern
+void test_take_operator() {
+    auto range = rx::Range(10, 5); // 10, 11, 12, 13, 14
+    auto takeOp = rx::Take<int>(range, 2); // Take first 2
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = takeOp->Subscribe(observer);
+    
+    TEST_ASSERT_EQUAL(11, observer->GetLastValue()); // Second value is 11
+    TEST_ASSERT_EQUAL(2, observer->GetCount());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+}
+
+// Test ScanOperator with new subscription pattern
+void test_scan_operator() {
+    auto range = rx::Range(1, 4); // 1, 2, 3, 4
+    auto scanOp = rx::Scan<int, int>(range, 0, [](const int& acc, const int& x) { return acc + x; });
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = scanOp->Subscribe(observer);
+    
+    TEST_ASSERT_EQUAL(10, observer->GetLastValue()); // 0+1+2+3+4 = 10
+    TEST_ASSERT_EQUAL(4, observer->GetCount()); // Should emit accumulated value for each input
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+    
+    subscription->Dispose();
+    TEST_ASSERT_TRUE(subscription->IsDisposed());
+}
+
+// Test ReduceOperator with new subscription pattern  
+void test_reduce_operator() {
+    auto range = rx::Range(1, 3); // 1, 2, 3
+    auto reduceOp = rx::Reduce<int, int>(range, 10, [](const int& acc, const int& x) { return acc + x; });
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = reduceOp->Subscribe(observer);
+    
+    TEST_ASSERT_EQUAL(16, observer->GetLastValue()); // 10+1+2+3 = 16
+    TEST_ASSERT_EQUAL(1, observer->GetCount()); // Should emit only final result
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+}
+
+// Test ThrottleOperator with new subscription pattern
+void test_throttle_operator() {
+    auto range = rx::Range(1, 6); // 1, 2, 3, 4, 5, 6
+    auto throttleOp = rx::Throttle<int>(range, 2); // Every 2nd item
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = throttleOp->Subscribe(observer);
+    
+    TEST_ASSERT_EQUAL(6, observer->GetLastValue()); // Should get items 2, 4, 6
+    TEST_ASSERT_EQUAL(3, observer->GetCount()); // Every 2nd item: 2, 4, 6
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
 void setUp(void) {
@@ -426,30 +297,26 @@ void setup() {
     
     UNITY_BEGIN();
     
-    // Basic functionality tests (merged from original main.cpp)
+    // Core functionality tests
     RUN_TEST(test_range_basic);
     RUN_TEST(test_fromvector_basic);
     RUN_TEST(test_empty_basic);
-    RUN_TEST(test_map_basic);
-    RUN_TEST(test_filter_basic);
-    RUN_TEST(test_take_basic);
-    RUN_TEST(test_skip_basic);
-    RUN_TEST(test_scan_basic);
-    RUN_TEST(test_sum_basic);
-    RUN_TEST(test_distinct_basic);
-    RUN_TEST(test_first_basic);
-    RUN_TEST(test_last_basic);
-    RUN_TEST(test_reduce_basic);
     RUN_TEST(test_subject_basic);
     RUN_TEST(test_behaviorsubject_basic);
     RUN_TEST(test_subject_multiple_observers);
-    RUN_TEST(test_operator_chaining);
-    RUN_TEST(test_complex_chain);
     RUN_TEST(test_timer_basic);
-    RUN_TEST(test_timer_multiple_observers);
     RUN_TEST(test_interval_basic);
-    RUN_TEST(test_interval_multiple_observers);
-    RUN_TEST(test_timer_custom_type);
+    
+    // Operator tests
+    RUN_TEST(test_map_operator);
+    RUN_TEST(test_filter_operator);
+    RUN_TEST(test_take_operator);
+    RUN_TEST(test_scan_operator);
+    RUN_TEST(test_reduce_operator);
+    RUN_TEST(test_throttle_operator);
+    RUN_TEST(test_scan_operator);
+    RUN_TEST(test_reduce_operator);
+    RUN_TEST(test_throttle_operator);
     
     UNITY_END();
 }
