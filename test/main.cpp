@@ -4,6 +4,10 @@
 #include "../include/sources.h"
 #include "../include/subjects.h"
 #include "../include/operators.h" // Add operators header
+#include "../include/advanced_operators.h"
+#include "../include/error_handling.h"
+#include "../include/scheduler.h"
+#include "../include/performance.h"
 
 // Simple test observer for basic functionality testing
 template<typename T>
@@ -283,6 +287,342 @@ void test_throttle_operator() {
     TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
+// =============================================================================
+// UTILITY OPERATOR TESTS - Test the newly updated utility operators
+// =============================================================================
+
+void test_first_operator() {
+    auto range = rx::Range(1, 5);
+    auto first_op = rx::First(std::static_pointer_cast<rx::IObservable<int>>(range));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = first_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(1, observer->GetLastValue()); // Should only emit the first value
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_last_operator() {
+    auto range = rx::Range(1, 5);
+    auto last_op = rx::Last(std::static_pointer_cast<rx::IObservable<int>>(range));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = last_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(5, observer->GetLastValue()); // Should only emit the last value
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_count_operator() {
+    auto range = rx::Range(1, 5);
+    auto count_op = rx::Count(std::static_pointer_cast<rx::IObservable<int>>(range));
+    auto observer = std::make_shared<SimpleTestObserver<size_t>>();
+    
+    auto subscription = count_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(5, observer->GetLastValue()); // Should count all 5 values
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_sum_operator() {
+    auto range = rx::Range(1, 5);
+    auto sum_op = rx::Sum(std::static_pointer_cast<rx::IObservable<int>>(range));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = sum_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(15, observer->GetLastValue()); // 1+2+3+4+5 = 15
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_min_operator() {
+    std::vector<int> data = {5, 2, 8, 1, 9, 3};
+    auto source = rx::FromVector(data);
+    auto min_op = rx::Min(std::static_pointer_cast<rx::IObservable<int>>(source));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = min_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(1, observer->GetLastValue()); // Minimum value
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_max_operator() {
+    std::vector<int> data = {5, 2, 8, 1, 9, 3};
+    auto source = rx::FromVector(data);
+    auto max_op = rx::Max(std::static_pointer_cast<rx::IObservable<int>>(source));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = max_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(9, observer->GetLastValue()); // Maximum value
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_default_if_empty_operator() {
+    auto empty_source = rx::Empty<int>();
+    auto default_op = rx::DefaultIfEmpty(std::static_pointer_cast<rx::IObservable<int>>(empty_source), 42);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = default_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(42, observer->GetLastValue()); // Should emit default value
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_start_with_operator() {
+    auto range = rx::Range(3, 2); // Emits 3, 4
+    auto start_with_op = rx::StartWith(std::static_pointer_cast<rx::IObservable<int>>(range), std::vector<int>{1, 2});
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = start_with_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(4, observer->GetCount());
+    // Values should be: 1, 2, 3, 4 (start values first, then original)
+    TEST_ASSERT_EQUAL(4, observer->GetLastValue());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_take_while_operator() {
+    auto range = rx::Range(1, 10);
+    std::function<bool(const int&)> predicate = [](const int& value) { return value < 5; };
+    auto take_while_op = rx::TakeWhile(std::static_pointer_cast<rx::IObservable<int>>(range), predicate);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = take_while_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(4, observer->GetCount());
+    TEST_ASSERT_EQUAL(4, observer->GetLastValue()); // Should take while < 5, so 1,2,3,4
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+void test_skip_while_operator() {
+    auto range = rx::Range(1, 6);
+    std::function<bool(const int&)> predicate = [](const int& value) { return value < 4; };
+    auto skip_while_op = rx::SkipWhile(std::static_pointer_cast<rx::IObservable<int>>(range), predicate);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = skip_while_op->Subscribe(observer);
+    
+    // Wait for completion
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(3, observer->GetCount());
+    TEST_ASSERT_EQUAL(6, observer->GetLastValue()); // Should skip 1,2,3 and emit 4,5,6
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
+// Test debounce operator
+void test_debounce_operator() {
+    auto range = rx::Range(1, 5);
+    auto debounced = rx::Debounce(range, std::chrono::milliseconds(50));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = debounced->Subscribe(observer);
+    
+    // Wait for debounce to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    
+    // Should only emit the last value due to debouncing
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(5, observer->GetLastValue());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+}
+
+// Test merge operator
+void test_merge_operator() {
+    auto range1 = rx::Range(1, 3);
+    auto range2 = rx::Range(10, 3);
+    auto merged = rx::Merge(range1, range2);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = merged->Subscribe(observer);
+    
+    // Should receive values from both streams
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(6, observer->GetCount()); // 3 from each range
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+}
+
+// Test zip operator
+void test_zip_operator() {
+    auto range1 = rx::Range(1, 3); // 1, 2, 3
+    auto range2 = rx::Range(10, 3); // 10, 11, 12
+    auto zipped = rx::Zip(range1, range2, [](const int& a, const int& b) {
+        return a + b; // Should produce 11, 13, 15
+    });
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = zipped->Subscribe(observer);
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(15, observer->GetLastValue()); // Last pair: 3 + 12 = 15
+    TEST_ASSERT_EQUAL(3, observer->GetCount()); // Three pairs
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+}
+
+// Test flat map operator
+void test_flatmap_operator() {
+    auto range = rx::Range(1, 3); // 1, 2, 3
+    auto flattened = rx::FlatMap(range, [](const int& x) {
+        return rx::Range(x * 10, 2); // 1->10,11; 2->20,21; 3->30,31
+    });
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = flattened->Subscribe(observer);
+    
+    // Should receive values from all inner observables
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(6, observer->GetCount()); // 2 values from each of 3 inner observables
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+}
+
+// Test concat operator
+void test_concat_operator() {
+    auto range1 = rx::Range(1, 2); // 1, 2
+    auto range2 = rx::Range(10, 2); // 10, 11
+    auto concatenated = rx::Concat(range1, range2);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = concatenated->Subscribe(observer);
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(11, observer->GetLastValue()); // Last value from second range
+    TEST_ASSERT_EQUAL(4, observer->GetCount()); // 2 from first + 2 from second
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+}
+
+// Test delay operator
+void test_delay_operator() {
+    auto range = rx::Range(1, 3);
+    auto delayed = rx::Delay(range, std::chrono::milliseconds(50));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = delayed->Subscribe(observer);
+    
+    // Wait for delay to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(3, observer->GetLastValue());
+    TEST_ASSERT_EQUAL(3, observer->GetCount());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+}
+
+// Test sample operator
+void test_sample_operator() {
+    // Create a source that emits quickly
+    auto source = std::make_shared<rx::Operator<int>>();
+    auto sampled = rx::Sample(source, std::chrono::milliseconds(100));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = sampled->Subscribe(observer);
+    
+    // Emit values rapidly
+    std::thread([source]() {
+        for (int i = 1; i <= 10; ++i) {
+            source->NotifyOnNext(i);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+        source->NotifyOnCompleted();
+    }).detach();
+    
+    // Wait for sampling to complete
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    // Should have fewer values than emitted due to sampling
+    TEST_ASSERT_TRUE(observer->GetCount() < 10);
+}
+
+// Test switch operator
+void test_switch_operator() {
+    auto subject = std::make_shared<rx::Subject<int>>();
+    auto switched = rx::Switch(subject, [](const int& x) {
+        return rx::Range(x * 10, 2); // Switch to new range each time
+    });
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = switched->Subscribe(observer);
+    
+    // Emit values to trigger switches
+    subject->OnNext(1); // Should switch to range 10, 11
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    subject->OnNext(2); // Should switch to range 20, 21 (cancelling previous)
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    subject->OnCompleted();
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    // Should only get values from the last switched observable
+    TEST_ASSERT_TRUE(observer->GetCount() >= 2);
+}
+
 void setUp(void) {
     // Set up code here - runs before each test
 }
@@ -314,9 +654,36 @@ void setup() {
     RUN_TEST(test_scan_operator);
     RUN_TEST(test_reduce_operator);
     RUN_TEST(test_throttle_operator);
-    RUN_TEST(test_scan_operator);
-    RUN_TEST(test_reduce_operator);
-    RUN_TEST(test_throttle_operator);
+    
+    // Utility operator tests
+    RUN_TEST(test_first_operator);
+    RUN_TEST(test_last_operator);
+    RUN_TEST(test_count_operator);
+    RUN_TEST(test_sum_operator);
+    RUN_TEST(test_min_operator);
+    RUN_TEST(test_max_operator);
+    RUN_TEST(test_default_if_empty_operator);
+    RUN_TEST(test_start_with_operator);
+    RUN_TEST(test_take_while_operator);
+    RUN_TEST(test_skip_while_operator);
+    
+    // Advanced features tests
+    RUN_TEST(test_debounce_operator);
+    RUN_TEST(test_merge_operator);
+    RUN_TEST(test_retry_operator);
+    RUN_TEST(test_scheduler_functionality);
+    RUN_TEST(test_memory_monitoring);
+    RUN_TEST(test_circular_buffer);
+    
+    // New advanced operator tests
+    RUN_TEST(test_zip_operator);
+    RUN_TEST(test_switch_operator);
+    RUN_TEST(test_flatmap_operator);
+    RUN_TEST(test_concat_operator);
+    RUN_TEST(test_start_with_operator);
+    RUN_TEST(test_delay_operator);
+    RUN_TEST(test_sample_operator);
+    RUN_TEST(test_switch_operator);
     
     UNITY_END();
 }

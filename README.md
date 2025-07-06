@@ -1,15 +1,17 @@
 # Micro-Reactive Library
 
-A lightweight reactive programming library for embedded systems, specifically designed for ESP32 and Arduino platforms using C++11.
+A comprehensive, lightweight reactive programming library for embedded systems, specifically designed for ESP32 and Arduino platforms using C++11.
 
 ## Features
 
 ### Core Components
 
-- **IObserver<T>**: Interface for consuming values from observables
-- **IObservable<T>**: Interface for sources of values
-- **ISubject<T>**: Interface combining both observer and observable
-- **Operator<T>**: Base class for reactive operators
+- **IObserver&lt;T&gt;**: Interface for consuming values from observables
+- **IObservable&lt;T&gt;**: Interface for sources of values
+- **ISubject&lt;T&gt;**: Interface combining both observer and observable
+- **Operator&lt;T&gt;**: Base class for reactive operators
+- **IDisposable & Subscription**: Resource management with automatic cleanup
+- **Thread Safety**: All components use mutexes and atomic operations for thread safety
 
 ### Sources (Observable Creators)
 
@@ -18,8 +20,8 @@ A lightweight reactive programming library for embedded systems, specifically de
 - **Empty**: Emits no items and completes immediately
 - **Never**: Never emits any items
 - **Iterate**: Emits each item from a collection
-- **Timer**: Emits a single value after a specified delay
-- **Interval**: Emits sequential numbers at specified intervals
+- **Timer**: Emits a single value after a specified delay (non-blocking, threaded)
+- **Interval**: Emits sequential numbers at specified intervals (non-blocking, threaded)
 - **Defer**: Creates a new observable for each subscriber
 
 ### Subjects
@@ -29,27 +31,68 @@ A lightweight reactive programming library for embedded systems, specifically de
 - **ReplaySubject**: Replays a specified number of previous values to new subscribers
 - **SynchronizedSubject**: Thread-safe subject wrapper
 
-### Operators
+### Transform Operators
 
-#### Transform Operators
 - **Map**: Transforms each item using a function
 - **Filter**: Filters items based on a predicate
-- **BufferCount**: Buffers items into arrays of specified size
 - **Take**: Takes only the first n items
 - **Skip**: Skips the first n items
+- **Scan**: Applies an accumulator function and emits intermediate results
+- **Reduce**: Applies an accumulator function and emits final result
+- **Throttle**: Emits only the first item in each time window
+- **Buffer**: Buffers items into arrays of specified size
+- **Distinct**: Filters out duplicate consecutive values
 
-#### Conditional Operators
-- **All**: Tests if all items satisfy a predicate
-- **Any**: Tests if any item satisfies a predicate
-- **Amb**: Returns the first observable to emit
+### Utility Operators
 
-#### Combine Operators
-- **CombineLatest**: Combines latest values from multiple observables
-- **Concat**: Concatenates multiple observables sequentially
+- **First**: Emits only the first value
+- **Last**: Emits only the last value
+- **Count**: Counts the number of emitted items
+- **Sum**: Calculates the sum of all numeric values
+- **Min**: Finds the minimum value
+- **Max**: Finds the maximum value
+- **DefaultIfEmpty**: Provides default value if source is empty
+- **StartWith**: Prepends values to the beginning
+- **TakeWhile**: Takes items while predicate is true
+- **SkipWhile**: Skips items while predicate is true
+
+### Advanced Operators
+
+- **Debounce**: Emits only after a quiet period
+- **CombineLatest**: Combines latest values from multiple sources
+- **Merge**: Merges multiple observables into one
+- **Zip**: Pairs values from multiple sources in sequence
+- **Switch**: Switches to latest inner observable (flattens observables of observables)
+- **FlatMap/SelectMany**: Flattens inner observables into a single stream
+- **Concat**: Concatenates observables sequentially (waits for each to complete)
+- **Sample**: Samples the source at specified time intervals
+- **WindowTime**: Groups values into time-based windows
+- **Delay**: Delays emission of all values by specified duration
+- **StartWith**: Starts the sequence with specified initial values
+
+### Error Handling
+
+- **Catch**: Handles errors and provides fallback observables
+- **CatchAndReturn**: Simple error handling with fallback values
+- **Retry**: Retries on error up to a specified number of times
+- **Finally**: Executes cleanup actions on completion or error
+- **SafeObserver**: Wraps observers with exception handling
+
+### Schedulers
+
+- **ImmediateScheduler**: Executes work immediately on current thread
+- **ThreadPoolScheduler**: Background execution with delayed and periodic scheduling
+
+### Performance & Memory Management
+
+- **ObjectPool**: Memory pooling for better performance
+- **CircularBuffer**: Efficient buffer for large data streams
+- **MemoryMonitor**: Memory usage tracking and monitoring
+- **OptimizedBuffer**: High-performance buffering operator
 
 ## Usage Examples
 
-### Basic Observable
+### Basic Observable with New Subscription Pattern
 
 ```cpp
 #include "micro-reactive.h"
@@ -69,8 +112,11 @@ auto observer = CreateObserver<int>(
     }
 );
 
-// Subscribe
-range->Subscribe(observer);
+// Subscribe and get disposable subscription
+auto subscription = range->Subscribe(observer);
+
+// Manually dispose when done (or let it auto-dispose)
+subscription->Dispose();
 ```
 
 ### Subject Example
@@ -85,7 +131,7 @@ auto observer = CreateObserver<int>(
         Serial.println(value); 
     }
 );
-subject->Subscribe(observer);
+auto subscription = subject->Subscribe(observer);
 
 // Emit values
 subject->OnNext(10);
@@ -93,18 +139,56 @@ subject->OnNext(20);
 subject->OnCompleted();
 ```
 
-### Operators Chaining
+### Advanced Operators Chaining
 
 ```cpp
-// Create a range and apply operators
+// Create a range and apply multiple operators
 auto range = Range<int>(1, 10, 1);
 auto filtered = Filter<int>(range, [](const int& x) { return x % 2 == 0; });
 auto mapped = Map<int, int>(filtered, [](const int& x) { return x * 10; });
 auto taken = Take<int>(mapped, 3);
 
-taken->Subscribe(observer);
+auto subscription = taken->Subscribe(observer);
 ```
 
+### Error Handling with Retry and Catch
+
+```cpp
+// Create an observable that might fail
+auto unreliable_source = CreateUnreliableSource();
+
+// Add retry logic
+auto with_retry = Retry(unreliable_source, 3);
+
+// Add fallback handling
+auto safe_source = CatchAndReturn(with_retry, -1);
+
+auto subscription = safe_source->Subscribe(observer);
+```
+
+### Advanced Operators - Debounce and Merge
+
+```cpp
+// Debounce rapid fire events
+auto debounced = Debounce(user_input_source, std::chrono::milliseconds(300));
+
+// Merge multiple streams
+auto stream1 = Timer<int>(1000, 42);
+auto stream2 = Interval<int>(500);
+auto merged = Merge(stream1, stream2);
+
+auto subscription = merged->Subscribe(observer);
+```
+
+### Custom Scheduler Usage
+
+```cpp
+// Use background scheduler for heavy work
+auto background_scheduler = std::make_shared<ThreadPoolScheduler>();
+auto debounced = Debounce(source, std::chrono::milliseconds(100), background_scheduler);
+
+auto subscription = debounced->Subscribe(observer);
+```
 ### BehaviorSubject
 
 ```cpp
@@ -112,44 +196,60 @@ taken->Subscribe(observer);
 auto behavior = CreateBehaviorSubject<int>(42);
 
 // New subscribers immediately receive the current value
-behavior->Subscribe(observer);  // Will immediately receive 42
+auto subscription = behavior->Subscribe(observer);  // Will immediately receive 42
 
 // Update the value
 behavior->OnNext(100);  // All subscribers receive 100
 ```
 
-### Timer and Interval
+### Timer and Interval (Thread-Safe, Non-Blocking)
 
 ```cpp
 // One-shot timer (fires once after 2 seconds)
 auto timer = Timer<unsigned long>(2000);
-timer->Subscribe(timerObserver);
+auto timer_subscription = timer->Subscribe(timerObserver);
 
 // Interval (fires every 1 second)
 auto interval = Interval<unsigned long>(1000);
-interval->Subscribe(intervalObserver);
+auto interval_subscription = interval->Subscribe(intervalObserver);
+
+// Both run asynchronously and can be disposed at any time
+timer_subscription->Dispose();
+interval_subscription->Dispose();
 ```
+
+## Thread Safety and Resource Management
+
+This library provides comprehensive thread safety and automatic resource management:
+
+- **Automatic Cleanup**: All subscriptions are automatically disposed when they go out of scope
+- **Thread-Safe Operations**: All observables, operators, and subjects use appropriate synchronization
+- **Resource Management**: RAII pattern ensures proper cleanup of threads and resources
+- **Memory Safety**: Weak pointers prevent circular dependencies
+
+## Performance Optimizations
+
+- **Object Pooling**: Reduces memory allocation overhead
+- **Circular Buffers**: Efficient memory usage for streaming data
+- **Memory Monitoring**: Track allocation patterns and optimize usage
+- **Scheduler Control**: Choose appropriate execution context for operations
 
 ## Platform Support
 
 - ESP32 (all variants)
-- Arduino-compatible boards
+- Arduino-compatible boards  
 - Requires C++11 compiler support
+- Thread support (std::thread, std::mutex, std::atomic)
 
 ## Memory Considerations
 
 This library uses smart pointers (std::shared_ptr) for memory management. On resource-constrained devices:
 
 - Use observables judiciously
-- Unsubscribe when no longer needed
+- Dispose subscriptions when no longer needed
 - Consider using shorter chains of operators
-- Monitor heap usage in complex scenarios
-
-## Thread Safety
-
-- **SynchronizedSubject**: Thread-safe subject implementation
-- Other components are not inherently thread-safe
-- Use appropriate synchronization for multi-threaded scenarios
+- Monitor heap usage with the built-in memory monitoring tools
+- Use object pooling for frequently created/destroyed objects
 
 ## Building
 
@@ -160,6 +260,14 @@ pio build
 pio upload
 ```
 
+## Testing
+
+The library includes comprehensive unit tests using Unity framework:
+
+```bash
+pio test
+```
+
 ## Examples
 
 See `src/main.cpp` for comprehensive examples of all implemented features.
@@ -168,4 +276,14 @@ See `src/main.cpp` for comprehensive examples of all implemented features.
 
 [Your License Here]
 
-## Reactive extensions for micro controllers
+## Contributing
+
+This library represents a modern, production-ready reactive programming solution for embedded systems with:
+
+- Comprehensive operator set (25+ operators)
+- Advanced error handling and recovery
+- Thread safety and resource management
+- Performance optimizations
+- Extensive test coverage
+
+Perfect for IoT applications, sensor data processing, and real-time embedded systems requiring reactive patterns.

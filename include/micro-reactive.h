@@ -7,11 +7,14 @@
  * 
  * Features:
  * - Source Observables (Empty, Never, Range, Create, Iterate, Timer, Interval, Defer)
- * - Transform Operators (Map, Filter, Take, Skip)
+ * - Transform Operators (Map, Filter, Take, Skip, Debounce, CombineLatest, Merge)
  * - Subjects (Subject, BehaviorSubject, ReplaySubject, SynchronizedSubject)
+ * - Error Handling (Catch, Retry, Finally)
+ * - Schedulers (Immediate, ThreadPool)
+ * - Performance Optimizations (Object pooling, Circular buffers)
  * - Memory-safe shared_ptr based design
- * - Exception handling support
- * - Thread-safe components
+ * - Exception handling and error recovery
+ * - Thread-safe components with proper resource management
  */
 
 // Core reactive interfaces and base classes
@@ -25,5 +28,17 @@
 
 // Subjects - both observer and observable
 #include "subjects.h"
+
+// Advanced operators - debounce, combine, merge
+#include "advanced_operators.h"
+
+// Error handling operators and utilities
+#include "error_handling.h"
+
+// Scheduler interfaces for execution control
+#include "scheduler.h"
+
+// Performance optimizations and memory management
+#include "performance.h"
 
 #endif // MICRO_REACTIVE_H
