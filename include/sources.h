@@ -7,6 +7,7 @@
 #include <vector>
 #include <chrono>
 #include <thread>
+#include <algorithm>
 
 namespace rx {
 
@@ -216,24 +217,47 @@ std::shared_ptr<DeferObservable<T>> Defer(std::function<std::shared_ptr<IObserva
 }
 
 // =============================================================================
-// TIMER OBSERVABLE - Desktop/testing compatible version
+// TIMER OBSERVABLE - Threaded version for non-blocking operation
 // =============================================================================
 template <typename T = int>
 class TimerObservable : public IObservable<T> {
 private:
     std::chrono::milliseconds delay_;
+    std::vector<std::shared_ptr<IObserver<T>>> observers_;
+    std::thread timer_thread_;
+    bool is_running_;
 
 public:
-    TimerObservable(std::chrono::milliseconds delay) : delay_(delay) {
+    TimerObservable(std::chrono::milliseconds delay) 
+        : delay_(delay), is_running_(false) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        std::this_thread::sleep_for(delay_);
-        observer->OnNext(T{});
-        observer->OnCompleted();
+        observers_.push_back(observer);
+        
+        if (!is_running_) {
+            is_running_ = true;
+            timer_thread_ = std::thread([this]() {
+                std::this_thread::sleep_for(delay_);
+                
+                // Notify all observers
+                for (auto& obs : observers_) {
+                    if (obs) {
+                        obs->OnNext(T{});
+                        obs->OnCompleted();
+                    }
+                }
+                is_running_ = false;
+            });
+            timer_thread_.detach(); // Detach to avoid blocking destructor
+        }
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
+        auto it = std::find(observers_.begin(), observers_.end(), observer);
+        if (it != observers_.end()) {
+            observers_.erase(it);
+        }
     }
 
     ~TimerObservable() = default;
@@ -245,28 +269,56 @@ std::shared_ptr<TimerObservable<T>> Timer(std::chrono::milliseconds delay) {
 }
 
 // =============================================================================
-// INTERVAL OBSERVABLE - Desktop/testing compatible version
+// INTERVAL OBSERVABLE - Threaded version for non-blocking operation
 // =============================================================================
 template <typename T = int>
 class IntervalObservable : public IObservable<T> {
 private:
     std::chrono::milliseconds interval_;
     int count_;
+    std::vector<std::shared_ptr<IObserver<T>>> observers_;
+    std::thread interval_thread_;
+    bool is_running_;
 
 public:
     IntervalObservable(std::chrono::milliseconds interval, int count = 5) 
-        : interval_(interval), count_(count) {
+        : interval_(interval), count_(count), is_running_(false) {
     }
 
     void Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        for (int i = 0; i < count_; ++i) {
-            std::this_thread::sleep_for(interval_);
-            observer->OnNext(T(i));
+        observers_.push_back(observer);
+        
+        if (!is_running_) {
+            is_running_ = true;
+            interval_thread_ = std::thread([this]() {
+                for (int i = 0; i < count_; ++i) {
+                    std::this_thread::sleep_for(interval_);
+                    
+                    // Notify all observers
+                    for (auto& obs : observers_) {
+                        if (obs) {
+                            obs->OnNext(T(i));
+                        }
+                    }
+                }
+                
+                // Complete all observers
+                for (auto& obs : observers_) {
+                    if (obs) {
+                        obs->OnCompleted();
+                    }
+                }
+                is_running_ = false;
+            });
+            interval_thread_.detach(); // Detach to avoid blocking destructor
         }
-        observer->OnCompleted();
     }
 
     void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override {
+        auto it = std::find(observers_.begin(), observers_.end(), observer);
+        if (it != observers_.end()) {
+            observers_.erase(it);
+        }
     }
 
     ~IntervalObservable() = default;

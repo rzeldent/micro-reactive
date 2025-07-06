@@ -299,6 +299,119 @@ void test_subject_multiple_observers() {
     TEST_ASSERT_TRUE(observer2->IsCompleted());
 }
 
+// Test TimerObservable basic functionality
+void test_timer_basic() {
+    auto timer = rx::Timer<int>(std::chrono::milliseconds(100)); // 100ms timer
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    // Subscribe to timer
+    timer->Subscribe(observer);
+    
+    // Timer should not have fired immediately
+    TEST_ASSERT_FALSE(observer->HasValue());
+    TEST_ASSERT_FALSE(observer->IsCompleted());
+    
+    // Wait for timer to fire (100ms + some buffer)
+    delay(200);
+    
+    // Timer should have fired
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_EQUAL(0, observer->GetLastValue()); // Default int value
+}
+
+// Test TimerObservable with multiple observers
+void test_timer_multiple_observers() {
+    auto timer = rx::Timer<int>(std::chrono::milliseconds(100));
+    auto observer1 = std::make_shared<SimpleTestObserver<int>>();
+    auto observer2 = std::make_shared<SimpleTestObserver<int>>();
+    
+    // Subscribe both observers
+    timer->Subscribe(observer1);
+    timer->Subscribe(observer2);
+    
+    // Initially no values
+    TEST_ASSERT_FALSE(observer1->HasValue());
+    TEST_ASSERT_FALSE(observer2->HasValue());
+    
+    // Wait for timer to fire
+    delay(200);
+    
+    // Both observers should receive the timer event
+    TEST_ASSERT_TRUE(observer1->HasValue());
+    TEST_ASSERT_TRUE(observer2->HasValue());
+    TEST_ASSERT_EQUAL(1, observer1->GetCount());
+    TEST_ASSERT_EQUAL(1, observer2->GetCount());
+    TEST_ASSERT_TRUE(observer1->IsCompleted());
+    TEST_ASSERT_TRUE(observer2->IsCompleted());
+}
+
+// Test IntervalObservable basic functionality
+void test_interval_basic() {
+    // Create interval that emits 3 values every 50ms
+    auto interval = rx::Interval<int>(std::chrono::milliseconds(50), 3);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    // Subscribe to interval
+    interval->Subscribe(observer);
+    
+    // Initially no values
+    TEST_ASSERT_FALSE(observer->HasValue());
+    TEST_ASSERT_FALSE(observer->IsCompleted());
+    
+    // Wait for first emission (50ms + buffer)
+    delay(80);
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(0, observer->GetLastValue()); // First value should be 0
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_FALSE(observer->IsCompleted()); // Should not be completed yet
+    
+    // Wait for all emissions to complete (3 * 50ms + buffer)
+    delay(120);
+    
+    // Should have all 3 values and be completed
+    TEST_ASSERT_EQUAL(2, observer->GetLastValue()); // Last value should be 2
+    TEST_ASSERT_EQUAL(3, observer->GetCount());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+}
+
+// Test IntervalObservable with multiple observers
+void test_interval_multiple_observers() {
+    auto interval = rx::Interval<int>(std::chrono::milliseconds(50), 2);
+    auto observer1 = std::make_shared<SimpleTestObserver<int>>();
+    auto observer2 = std::make_shared<SimpleTestObserver<int>>();
+    
+    // Subscribe both observers
+    interval->Subscribe(observer1);
+    interval->Subscribe(observer2);
+    
+    // Wait for all emissions to complete
+    delay(150);
+    
+    // Both observers should receive all interval emissions
+    TEST_ASSERT_EQUAL(1, observer1->GetLastValue()); // Last value should be 1
+    TEST_ASSERT_EQUAL(1, observer2->GetLastValue());
+    TEST_ASSERT_EQUAL(2, observer1->GetCount());
+    TEST_ASSERT_EQUAL(2, observer2->GetCount());
+    TEST_ASSERT_TRUE(observer1->IsCompleted());
+    TEST_ASSERT_TRUE(observer2->IsCompleted());
+}
+
+// Test Timer with custom type
+void test_timer_custom_type() {
+    auto timer = rx::Timer<float>(std::chrono::milliseconds(100));
+    auto observer = std::make_shared<SimpleTestObserver<float>>();
+    
+    timer->Subscribe(observer);
+    delay(200);
+    
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FLOAT_WITHIN(0.01f, 0.0f, observer->GetLastValue()); // Default float value
+}
+
 void setUp(void) {
     // Set up code here - runs before each test
 }
@@ -332,6 +445,11 @@ void setup() {
     RUN_TEST(test_subject_multiple_observers);
     RUN_TEST(test_operator_chaining);
     RUN_TEST(test_complex_chain);
+    RUN_TEST(test_timer_basic);
+    RUN_TEST(test_timer_multiple_observers);
+    RUN_TEST(test_interval_basic);
+    RUN_TEST(test_interval_multiple_observers);
+    RUN_TEST(test_timer_custom_type);
     
     UNITY_END();
 }
