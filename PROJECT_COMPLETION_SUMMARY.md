@@ -28,7 +28,7 @@ The micro-reactive library has been successfully modernized and enhanced into a 
 - First, Last, Count, Sum, Min, Max, DefaultIfEmpty, StartWith, TakeWhile, SkipWhile
 
 #### Advanced Operators
-- Debounce, CombineLatest, Merge
+- Debounce, CombineLatest, Merge, Zip, Switch, FlatMap, Concat, Sample, Delay, WithLatestFrom
 
 #### Error Handling Operators
 - Catch, CatchAndReturn, Retry, Finally

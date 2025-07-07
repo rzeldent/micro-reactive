@@ -2628,6 +2628,192 @@ typename std::enable_if<
     return Sample(std::static_pointer_cast<IObservable<T>>(source), interval, scheduler);
 }
 
+// =============================================================================
+// WITHLATESTFROM OPERATOR - Combines source with latest value from another observable
+// =============================================================================
+template<typename T1, typename T2, typename R>
+class WithLatestFromOperator : public Operator<R> {
+private:
+    std::shared_ptr<IObservable<T1>> source_;
+    std::shared_ptr<IObservable<T2>> other_;
+    std::function<R(const T1&, const T2&)> combiner_;
+    
+    mutable std::mutex state_mutex_;
+    std::shared_ptr<Subscription> source_subscription_;
+    std::shared_ptr<Subscription> other_subscription_;
+    
+    T2 latest_other_value_;
+    bool has_other_value_;
+
+    class SourceObserver : public IObserver<T1> {
+    private:
+        std::weak_ptr<WithLatestFromOperator<T1, T2, R>> parent_;
+
+    public:
+        SourceObserver(std::weak_ptr<WithLatestFromOperator<T1, T2, R>> parent) 
+            : parent_(parent) {}
+
+        void OnNext(const T1& value) override {
+            if (auto p = parent_.lock()) {
+                p->HandleSourceValue(value);
+            }
+        }
+
+        void OnCompleted() override {
+            if (auto p = parent_.lock()) {
+                p->HandleSourceCompleted();
+            }
+        }
+
+        void OnError(const std::exception& e) override {
+            if (auto p = parent_.lock()) {
+                p->NotifyOnError(e);
+            }
+        }
+    };
+
+    class OtherObserver : public IObserver<T2> {
+    private:
+        std::weak_ptr<WithLatestFromOperator<T1, T2, R>> parent_;
+
+    public:
+        OtherObserver(std::weak_ptr<WithLatestFromOperator<T1, T2, R>> parent) 
+            : parent_(parent) {}
+
+        void OnNext(const T2& value) override {
+            if (auto p = parent_.lock()) {
+                p->HandleOtherValue(value);
+            }
+        }
+
+        void OnCompleted() override {
+            if (auto p = parent_.lock()) {
+                p->HandleOtherCompleted();
+            }
+        }
+
+        void OnError(const std::exception& e) override {
+            if (auto p = parent_.lock()) {
+                p->NotifyOnError(e);
+            }
+        }
+    };
+
+public:
+    WithLatestFromOperator(
+        std::shared_ptr<IObservable<T1>> source,
+        std::shared_ptr<IObservable<T2>> other,
+        std::function<R(const T1&, const T2&)> combiner)
+        : source_(source)
+        , other_(other)
+        , combiner_(combiner)
+        , has_other_value_(false) {}
+
+    void HandleSourceValue(const T1& value) {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        if (has_other_value_) {
+            try {
+                R result = combiner_(value, latest_other_value_);
+                this->NotifyOnNext(result);
+            } catch (const std::exception& e) {
+                this->NotifyOnError(e);
+            }
+        }
+        // If no other value yet, ignore this source value
+    }
+
+    void HandleOtherValue(const T2& value) {
+        std::lock_guard<std::mutex> lock(state_mutex_);
+        latest_other_value_ = value;
+        has_other_value_ = true;
+    }
+
+    void HandleSourceCompleted() {
+        this->NotifyOnCompleted();
+    }
+
+    void HandleOtherCompleted() {
+        // Other completing doesn't complete the result stream
+        // Only source completion completes the result
+    }
+
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<R>> observer) override {
+        auto base_subscription = Operator<R>::Subscribe(observer);
+        
+        if (!source_subscription_) {
+            auto weak_self = std::weak_ptr<WithLatestFromOperator<T1, T2, R>>(
+                std::static_pointer_cast<WithLatestFromOperator<T1, T2, R>>(this->shared_from_this()));
+            
+            auto source_observer = std::make_shared<SourceObserver>(weak_self);
+            auto other_observer = std::make_shared<OtherObserver>(weak_self);
+            
+            // Subscribe to other first to ensure we have values before source emits
+            other_subscription_ = other_->Subscribe(other_observer);
+            source_subscription_ = source_->Subscribe(source_observer);
+        }
+
+        return base_subscription;
+    }
+};
+
+// WithLatestFrom factory function
+template<typename T1, typename T2, typename R>
+std::shared_ptr<WithLatestFromOperator<T1, T2, R>> WithLatestFrom(
+    std::shared_ptr<IObservable<T1>> source,
+    std::shared_ptr<IObservable<T2>> other,
+    std::function<R(const T1&, const T2&)> combiner) {
+    return std::make_shared<WithLatestFromOperator<T1, T2, R>>(source, other, combiner);
+}
+
+// Template overloads for common observable types
+template<typename T1, typename T2, typename R>
+std::shared_ptr<WithLatestFromOperator<T1, T2, R>> WithLatestFrom(
+    std::shared_ptr<Subject<T1>> source,
+    std::shared_ptr<Subject<T2>> other,
+    std::function<R(const T1&, const T2&)> combiner) {
+    return WithLatestFrom(
+        std::static_pointer_cast<IObservable<T1>>(source),
+        std::static_pointer_cast<IObservable<T2>>(other),
+        combiner
+    );
+}
+
+template<typename T1, typename T2, typename R>
+std::shared_ptr<WithLatestFromOperator<T1, T2, R>> WithLatestFrom(
+    std::shared_ptr<BehaviorSubject<T1>> source,
+    std::shared_ptr<BehaviorSubject<T2>> other,
+    std::function<R(const T1&, const T2&)> combiner) {
+    return WithLatestFrom(
+        std::static_pointer_cast<IObservable<T1>>(source),
+        std::static_pointer_cast<IObservable<T2>>(other),
+        combiner
+    );
+}
+
+// Mixed type overloads
+template<typename T1, typename T2, typename R>
+std::shared_ptr<WithLatestFromOperator<T1, T2, R>> WithLatestFrom(
+    std::shared_ptr<Subject<T1>> source,
+    std::shared_ptr<BehaviorSubject<T2>> other,
+    std::function<R(const T1&, const T2&)> combiner) {
+    return WithLatestFrom(
+        std::static_pointer_cast<IObservable<T1>>(source),
+        std::static_pointer_cast<IObservable<T2>>(other),
+        combiner
+    );
+}
+
+template<typename T1, typename T2, typename R>
+std::shared_ptr<WithLatestFromOperator<T1, T2, R>> WithLatestFrom(
+    std::shared_ptr<BehaviorSubject<T1>> source,
+    std::shared_ptr<Subject<T2>> other,
+    std::function<R(const T1&, const T2&)> combiner) {
+    return WithLatestFrom(
+        std::static_pointer_cast<IObservable<T1>>(source),
+        std::static_pointer_cast<IObservable<T2>>(other),
+        combiner
+    );
+}
 } // namespace rx
 
 #endif // MICRO_REACTIVE_OPERATORS_H

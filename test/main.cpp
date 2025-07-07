@@ -614,6 +614,49 @@ void test_retry_operator() {
     TEST_ASSERT_EQUAL(42, observer->GetLastValue());
 }
 
+// Test WithLatestFrom operator
+void test_withlatestfrom_operator() {
+    auto source = std::make_shared<rx::Subject<int>>();
+    auto other = std::make_shared<rx::Subject<std::string>>();
+    
+    std::function<std::string(const int&, const std::string&)> combiner = 
+        [](const int& num, const std::string& str) {
+            return str + std::to_string(num);
+        };
+    
+    auto combined = rx::WithLatestFrom(source, other, combiner);
+    auto observer = std::make_shared<SimpleTestObserver<std::string>>();
+    
+    auto subscription = combined->Subscribe(observer);
+    
+    // Emit from source first - should not produce output (no other value yet)
+    source->OnNext(1);
+    TEST_ASSERT_FALSE(observer->HasValue());
+    
+    // Emit from other
+    other->OnNext("Value: ");
+    TEST_ASSERT_FALSE(observer->HasValue()); // Still no output, only other emitted
+    
+    // Now emit from source - should combine with latest other value
+    source->OnNext(2);
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL_STRING("Value: 2", observer->GetLastValue().c_str());
+    
+    // Update other value
+    other->OnNext("Number: ");
+    
+    // Emit from source again - should use new other value
+    source->OnNext(3);
+    TEST_ASSERT_EQUAL_STRING("Number: 3", observer->GetLastValue().c_str());
+    TEST_ASSERT_EQUAL(2, observer->GetCount()); // Two emissions total
+    
+    // Complete source
+    source->OnCompleted();
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    subscription->Dispose();
+}
+
 // Test scheduler functionality
 void test_scheduler_functionality() {
     auto scheduler = std::make_shared<rx::ThreadPoolScheduler>();
@@ -930,6 +973,7 @@ void setup() {
     RUN_TEST(test_concat_operator);
     RUN_TEST(test_delay_operator);
     RUN_TEST(test_sample_operator);
+    RUN_TEST(test_withlatestfrom_operator);
     
     UNITY_END();
 }
