@@ -309,6 +309,242 @@ std::shared_ptr<FinallyOperator<T>> Finally(std::shared_ptr<IObservable<T>> sour
     return std::make_shared<FinallyOperator<T>>(source, finally_action);
 }
 
+// =============================================================================
+// ON ERROR RESUME NEXT OPERATOR - Switches to an alternate observable on error
+// =============================================================================
+template<typename T>
+class OnErrorResumeNextOperator : public Operator<T> {
+private:
+    std::shared_ptr<IObservable<T>> source_;
+    std::shared_ptr<IObservable<T>> fallback_source_;
+    std::shared_ptr<Subscription> source_subscription_;
+    std::shared_ptr<Subscription> fallback_subscription_;
+    mutable std::mutex subscription_mutex_;
+
+    class SourceObserver : public IObserver<T> {
+    private:
+        std::weak_ptr<OnErrorResumeNextOperator<T>> parent_;
+
+    public:
+        SourceObserver(std::weak_ptr<OnErrorResumeNextOperator<T>> parent) : parent_(parent) {}
+
+        void OnNext(const T& value) override {
+            if (auto p = parent_.lock()) {
+                p->NotifyOnNext(value);
+            }
+        }
+
+        void OnCompleted() override {
+            if (auto p = parent_.lock()) {
+                p->NotifyOnCompleted();
+            }
+        }
+
+        void OnError(const std::exception& e) override {
+            if (auto p = parent_.lock()) {
+                p->HandleSourceError(e);
+            }
+        }
+    };
+
+    class FallbackObserver : public IObserver<T> {
+    private:
+        std::weak_ptr<OnErrorResumeNextOperator<T>> parent_;
+
+    public:
+        FallbackObserver(std::weak_ptr<OnErrorResumeNextOperator<T>> parent) : parent_(parent) {}
+
+        void OnNext(const T& value) override {
+            if (auto p = parent_.lock()) {
+                p->NotifyOnNext(value);
+            }
+        }
+
+        void OnCompleted() override {
+            if (auto p = parent_.lock()) {
+                p->NotifyOnCompleted();
+            }
+        }
+
+        void OnError(const std::exception& e) override {
+            if (auto p = parent_.lock()) {
+                p->NotifyOnError(e);
+            }
+        }
+    };
+
+public:
+    OnErrorResumeNextOperator(std::shared_ptr<IObservable<T>> source,
+                             std::shared_ptr<IObservable<T>> fallback_source)
+        : source_(source), fallback_source_(fallback_source) {}
+
+    void HandleSourceError(const std::exception& e) {
+        if (fallback_source_) {
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            auto weak_self = std::weak_ptr<OnErrorResumeNextOperator<T>>(
+                std::static_pointer_cast<OnErrorResumeNextOperator<T>>(this->shared_from_this()));
+            auto fallback_observer = std::make_shared<FallbackObserver>(weak_self);
+            fallback_subscription_ = fallback_source_->Subscribe(fallback_observer);
+        } else {
+            this->NotifyOnError(e);
+        }
+    }
+
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+        auto base_subscription = Operator<T>::Subscribe(observer);
+        
+        if (!source_subscription_) {
+            auto weak_self = std::weak_ptr<OnErrorResumeNextOperator<T>>(
+                std::static_pointer_cast<OnErrorResumeNextOperator<T>>(this->shared_from_this()));
+            auto source_observer = std::make_shared<SourceObserver>(weak_self);
+            source_subscription_ = source_->Subscribe(source_observer);
+        }
+
+        return base_subscription;
+    }
+};
+
+// =============================================================================
+// TIMEOUT ERROR OPERATOR - Emits error if source doesn't emit within timeframe
+// =============================================================================
+template<typename T>
+class TimeoutErrorOperator : public Operator<T> {
+private:
+    std::shared_ptr<IObservable<T>> source_;
+    std::chrono::milliseconds timeout_duration_;
+    std::shared_ptr<IScheduler> scheduler_;
+    std::shared_ptr<Subscription> source_subscription_;
+    std::shared_ptr<IScheduledWork> timeout_work_;
+    mutable std::mutex state_mutex_;
+    std::atomic<bool> has_emitted_;
+    std::atomic<bool> has_completed_;
+
+    class TimeoutObserver : public IObserver<T> {
+    private:
+        std::weak_ptr<TimeoutErrorOperator<T>> parent_;
+
+    public:
+        TimeoutObserver(std::weak_ptr<TimeoutErrorOperator<T>> parent) : parent_(parent) {}
+
+        void OnNext(const T& value) override {
+            if (auto p = parent_.lock()) {
+                p->HandleValue(value);
+            }
+        }
+
+        void OnCompleted() override {
+            if (auto p = parent_.lock()) {
+                p->HandleCompleted();
+            }
+        }
+
+        void OnError(const std::exception& e) override {
+            if (auto p = parent_.lock()) {
+                p->HandleError(e);
+            }
+        }
+    };
+
+public:
+    TimeoutErrorOperator(std::shared_ptr<IObservable<T>> source,
+                        std::chrono::milliseconds timeout_duration,
+                        std::shared_ptr<IScheduler> scheduler = nullptr)
+        : source_(source), timeout_duration_(timeout_duration),
+          scheduler_(scheduler ? scheduler : std::make_shared<ThreadPoolScheduler>()),
+          has_emitted_(false), has_completed_(false) {}
+
+    void HandleValue(const T& value) {
+        has_emitted_.store(true);
+        this->NotifyOnNext(value);
+        ResetTimeout();
+    }
+
+    void HandleCompleted() {
+        has_completed_.store(true);
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            if (timeout_work_) {
+                timeout_work_->Cancel();
+            }
+        }
+        this->NotifyOnCompleted();
+    }
+
+    void HandleError(const std::exception& e) {
+        has_completed_.store(true);
+        {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            if (timeout_work_) {
+                timeout_work_->Cancel();
+            }
+        }
+        this->NotifyOnError(e);
+    }
+
+    void HandleTimeout() {
+        if (!has_completed_.load()) {
+            has_completed_.store(true);
+            std::string message = has_emitted_.load() ? 
+                "Timeout: No emission within " + std::to_string(timeout_duration_.count()) + "ms" :
+                "Timeout: No initial emission within " + std::to_string(timeout_duration_.count()) + "ms";
+            this->NotifyOnError(ReactiveException(message));
+        }
+    }
+
+    void ResetTimeout() {
+        if (!has_completed_.load()) {
+            std::lock_guard<std::mutex> lock(state_mutex_);
+            if (timeout_work_) {
+                timeout_work_->Cancel();
+            }
+            
+            auto weak_self = std::weak_ptr<TimeoutErrorOperator<T>>(
+                std::static_pointer_cast<TimeoutErrorOperator<T>>(this->shared_from_this()));
+            
+            timeout_work_ = scheduler_->ScheduleDelayed([weak_self]() {
+                if (auto self = weak_self.lock()) {
+                    self->HandleTimeout();
+                }
+            }, timeout_duration_);
+        }
+    }
+
+    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
+        auto base_subscription = Operator<T>::Subscribe(observer);
+        
+        if (!source_subscription_) {
+            has_emitted_.store(false);
+            has_completed_.store(false);
+            
+            auto weak_self = std::weak_ptr<TimeoutErrorOperator<T>>(
+                std::static_pointer_cast<TimeoutErrorOperator<T>>(this->shared_from_this()));
+            auto timeout_observer = std::make_shared<TimeoutObserver>(weak_self);
+            source_subscription_ = source_->Subscribe(timeout_observer);
+            
+            // Start initial timeout
+            ResetTimeout();
+        }
+
+        return base_subscription;
+    }
+};
+
+// Factory functions for new error handling operators
+template<typename T>
+std::shared_ptr<OnErrorResumeNextOperator<T>> OnErrorResumeNext(
+    std::shared_ptr<IObservable<T>> source,
+    std::shared_ptr<IObservable<T>> fallback_source) {
+    return std::make_shared<OnErrorResumeNextOperator<T>>(source, fallback_source);
+}
+
+template<typename T>
+std::shared_ptr<TimeoutErrorOperator<T>> TimeoutError(
+    std::shared_ptr<IObservable<T>> source,
+    std::chrono::milliseconds timeout_duration,
+    std::shared_ptr<IScheduler> scheduler = nullptr) {
+    return std::make_shared<TimeoutErrorOperator<T>>(source, timeout_duration, scheduler);
+}
+
 // Safe observer wrapper that catches exceptions
 template<typename T>
 class SafeObserver : public IObserver<T> {
