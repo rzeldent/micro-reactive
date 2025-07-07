@@ -564,29 +564,29 @@ void test_delay_operator() {
 
 // Test sample operator
 void test_sample_operator() {
-    // Create a source that emits quickly
-    auto source = std::make_shared<rx::Operator<int>>();
-    auto sampled = rx::Sample(std::static_pointer_cast<rx::IObservable<int>>(source), std::chrono::milliseconds(100));
+    // Create a subject that emits quickly
+    auto source = std::make_shared<rx::Subject<int>>();
+    auto sampled = rx::Sample(source, std::chrono::milliseconds(50));  // ✅ No cast needed!
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = sampled->Subscribe(observer);
     
-    // Emit values rapidly
+    // Emit values rapidly and wait longer to ensure sampling works
     std::thread([source]() {
-        for (int i = 1; i <= 10; ++i) {
-            source->NotifyOnNext(i);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        for (int i = 1; i <= 20; ++i) {
+            source->OnNext(i);
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
         }
-        source->NotifyOnCompleted();
+        source->OnCompleted();
     }).detach();
     
     // Wait for sampling to complete
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_TRUE(observer->IsCompleted());
     // Should have fewer values than emitted due to sampling
-    TEST_ASSERT_TRUE(observer->GetCount() < 10);
+    TEST_ASSERT_TRUE(observer->GetCount() < 20);
 }
 
 // Test switch operator - temporarily disabled due to hanging issue

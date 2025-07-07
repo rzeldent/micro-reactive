@@ -2378,6 +2378,10 @@ public:
             if (timer_work_) {
                 timer_work_->Cancel();
             }
+            // Emit final sampled value if we have one
+            if (has_value_) {
+                this->NotifyOnNext(last_value_);
+            }
         }
         this->NotifyOnCompleted();
     }
@@ -2580,6 +2584,48 @@ std::shared_ptr<SampleOperator<T>> WindowTime(
     std::chrono::milliseconds time_span,
     std::shared_ptr<IScheduler> scheduler = nullptr) {
     return Sample<T>(source, time_span, scheduler);
+}
+
+// Template overloads for Sample operator to eliminate explicit casts
+
+// Sample overload for Subject<T>
+template<typename T>
+std::shared_ptr<SampleOperator<T>> Sample(
+    std::shared_ptr<Subject<T>> source,
+    std::chrono::milliseconds interval,
+    std::shared_ptr<IScheduler> scheduler = nullptr) {
+    return Sample(std::static_pointer_cast<IObservable<T>>(source), interval, scheduler);
+}
+
+// Sample overload for BehaviorSubject<T>
+template<typename T>
+std::shared_ptr<SampleOperator<T>> Sample(
+    std::shared_ptr<BehaviorSubject<T>> source,
+    std::chrono::milliseconds interval,
+    std::shared_ptr<IScheduler> scheduler = nullptr) {
+    return Sample(std::static_pointer_cast<IObservable<T>>(source), interval, scheduler);
+}
+
+// Sample overload for RangeObservable<T>
+template<typename T>
+std::shared_ptr<SampleOperator<T>> Sample(
+    std::shared_ptr<RangeObservable<T>> source,
+    std::chrono::milliseconds interval,
+    std::shared_ptr<IScheduler> scheduler = nullptr) {
+    return Sample(std::static_pointer_cast<IObservable<T>>(source), interval, scheduler);
+}
+
+// Generic SFINAE overload for Sample with C++11 compatibility
+template<typename T, typename SourceType>
+typename std::enable_if<
+    std::is_base_of<IObservable<T>, SourceType>::value && 
+    !std::is_same<SourceType, IObservable<T>>::value,
+    std::shared_ptr<SampleOperator<T>>
+>::type Sample(
+    std::shared_ptr<SourceType> source,
+    std::chrono::milliseconds interval,
+    std::shared_ptr<IScheduler> scheduler = nullptr) {
+    return Sample(std::static_pointer_cast<IObservable<T>>(source), interval, scheduler);
 }
 
 } // namespace rx
