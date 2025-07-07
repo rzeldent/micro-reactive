@@ -25,6 +25,10 @@ private:
     mutable std::mutex mutex_;
 
 public:
+    // Default constructor for cases where no dispose action is needed
+    Subscription() : is_disposed_(false), dispose_action_(nullptr) {
+    }
+    
     Subscription(std::function<void()> dispose_action) 
         : is_disposed_(false), dispose_action_(std::move(dispose_action)) {
     }

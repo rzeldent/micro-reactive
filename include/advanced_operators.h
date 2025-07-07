@@ -229,75 +229,6 @@ public:
     }
 };
 
-// Merge operator - merges multiple observables into one
-template<typename T>
-class MergeOperator : public Operator<T> {
-private:
-    std::vector<std::shared_ptr<IObservable<T>>> sources_;
-    std::vector<std::shared_ptr<Subscription>> subscriptions_;
-    std::atomic<int> completed_count_;
-    mutable std::mutex subscriptions_mutex_;
-
-    class MergeObserver : public IObserver<T> {
-    private:
-        std::weak_ptr<MergeOperator<T>> parent_;
-        int source_index_;
-
-    public:
-        MergeObserver(std::weak_ptr<MergeOperator<T>> parent, int index) 
-            : parent_(parent), source_index_(index) {}
-
-        void OnNext(const T& value) override {
-            if (auto p = parent_.lock()) {
-                p->NotifyOnNext(value);
-            }
-        }
-
-        void OnCompleted() override {
-            if (auto p = parent_.lock()) {
-                p->HandleSourceCompleted();
-            }
-        }
-
-        void OnError(const std::exception& e) override {
-            if (auto p = parent_.lock()) {
-                p->NotifyOnError(e);
-            }
-        }
-    };
-
-public:
-    MergeOperator(std::vector<std::shared_ptr<IObservable<T>>> sources)
-        : sources_(sources), completed_count_(0) {}
-
-    void HandleSourceCompleted() {
-        int completed = completed_count_.fetch_add(1) + 1;
-        if (completed >= static_cast<int>(sources_.size())) {
-            this->NotifyOnCompleted();
-        }
-    }
-
-    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        auto base_subscription = Operator<T>::Subscribe(observer);
-        
-        {
-            std::lock_guard<std::mutex> lock(subscriptions_mutex_);
-            if (subscriptions_.empty()) {
-                auto weak_self = std::weak_ptr<MergeOperator<T>>(
-                    std::static_pointer_cast<MergeOperator<T>>(this->shared_from_this()));
-                
-                for (size_t i = 0; i < sources_.size(); ++i) {
-                    auto merge_observer = std::make_shared<MergeObserver>(weak_self, static_cast<int>(i));
-                    auto subscription = sources_[i]->Subscribe(merge_observer);
-                    subscriptions_.push_back(subscription);
-                }
-            }
-        }
-
-        return base_subscription;
-    }
-};
-
 // Zip operator - combines values from multiple sources by pairing them
 template<typename T1, typename T2, typename R>
 class ZipOperator : public Operator<R> {
@@ -508,7 +439,7 @@ public:
         
         // Unsubscribe from current inner observable
         if (inner_subscription_) {
-            inner_subscription_->Unsubscribe();
+            inner_subscription_->Dispose();
             inner_subscription_.reset();
         }
 
@@ -934,67 +865,6 @@ public:
     }
 };
 
-// StartWith operator - starts sequence with specified values
-template<typename T>
-class StartWithOperator : public Operator<T> {
-private:
-    std::shared_ptr<IObservable<T>> source_;
-    std::vector<T> initial_values_;
-    std::shared_ptr<Subscription> source_subscription_;
-    bool initial_emitted_;
-
-    class StartWithObserver : public IObserver<T> {
-    private:
-        std::weak_ptr<StartWithOperator<T>> parent_;
-
-    public:
-        StartWithObserver(std::weak_ptr<StartWithOperator<T>> parent) : parent_(parent) {}
-
-        void OnNext(const T& value) override {
-            if (auto p = parent_.lock()) {
-                p->NotifyOnNext(value);
-            }
-        }
-
-        void OnCompleted() override {
-            if (auto p = parent_.lock()) {
-                p->NotifyOnCompleted();
-            }
-        }
-
-        void OnError(const std::exception& e) override {
-            if (auto p = parent_.lock()) {
-                p->NotifyOnError(e);
-            }
-        }
-    };
-
-public:
-    StartWithOperator(std::shared_ptr<IObservable<T>> source, std::vector<T> initial_values)
-        : source_(source), initial_values_(initial_values), initial_emitted_(false) {}
-
-    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override {
-        auto base_subscription = Operator<T>::Subscribe(observer);
-        
-        // Emit initial values
-        if (!initial_emitted_) {
-            initial_emitted_ = true;
-            for (const auto& value : initial_values_) {
-                this->NotifyOnNext(value);
-            }
-        }
-        
-        if (!source_subscription_) {
-            auto weak_self = std::weak_ptr<StartWithOperator<T>>(
-                std::static_pointer_cast<StartWithOperator<T>>(this->shared_from_this()));
-            auto startwith_observer = std::make_shared<StartWithObserver>(weak_self);
-            source_subscription_ = source_->Subscribe(startwith_observer);
-        }
-
-        return base_subscription;
-    }
-};
-
 // Factory functions for advanced operators
 template<typename T>
 std::shared_ptr<DebounceOperator<T>> Debounce(
@@ -1077,22 +947,6 @@ std::shared_ptr<DelayOperator<T>> Delay(
     std::chrono::milliseconds delay,
     std::shared_ptr<IScheduler> scheduler = nullptr) {
     return std::make_shared<DelayOperator<T>>(source, delay, scheduler);
-}
-
-// StartWith operator factory
-template<typename T>
-std::shared_ptr<StartWithOperator<T>> StartWith(
-    std::shared_ptr<IObservable<T>> source,
-    std::vector<T> initial_values) {
-    return std::make_shared<StartWithOperator<T>>(source, initial_values);
-}
-
-// Overload for single initial value
-template<typename T>
-std::shared_ptr<StartWithOperator<T>> StartWith(
-    std::shared_ptr<IObservable<T>> source,
-    const T& initial_value) {
-    return std::make_shared<StartWithOperator<T>>(source, std::vector<T>{initial_value});
 }
 
 // WindowTime operator factory (alias for buffer with time)

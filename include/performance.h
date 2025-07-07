@@ -62,7 +62,7 @@ private:
     std::atomic<bool> is_disposed_;
     static ObjectPool<PooledSubscription>& GetPool() {
         static ObjectPool<PooledSubscription> pool(
-            []() { return std::make_unique<PooledSubscription>(); }, 
+            []() { return std::unique_ptr<PooledSubscription>(new PooledSubscription()); }, 
             20, 100);
         return pool;
     }
@@ -256,12 +256,20 @@ public:
 class MemoryMonitor {
 private:
     static std::atomic<size_t> allocated_bytes_;
+    static std::atomic<size_t> peak_bytes_;
     static std::atomic<size_t> allocation_count_;
 
 public:
     static void RecordAllocation(size_t bytes) {
-        allocated_bytes_.fetch_add(bytes);
+        size_t new_allocated = allocated_bytes_.fetch_add(bytes) + bytes;
         allocation_count_.fetch_add(1);
+        
+        // Update peak if necessary
+        size_t current_peak = peak_bytes_.load();
+        while (new_allocated > current_peak && 
+               !peak_bytes_.compare_exchange_weak(current_peak, new_allocated)) {
+            // Loop until successful update or current_peak is larger
+        }
     }
 
     static void RecordDeallocation(size_t bytes) {
@@ -272,21 +280,24 @@ public:
         return allocated_bytes_.load();
     }
 
+    static size_t GetPeakBytes() {
+        return peak_bytes_.load();
+    }
+
     static size_t GetAllocationCount() {
         return allocation_count_.load();
     }
 
     static void Reset() {
         allocated_bytes_.store(0);
+        peak_bytes_.store(0);
         allocation_count_.store(0);
     }
 };
 
 // Static initialization
-template<typename T>
 std::atomic<size_t> MemoryMonitor::allocated_bytes_{0};
-
-template<typename T>
+std::atomic<size_t> MemoryMonitor::peak_bytes_{0};
 std::atomic<size_t> MemoryMonitor::allocation_count_{0};
 
 // RAII memory tracker

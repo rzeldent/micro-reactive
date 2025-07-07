@@ -23,14 +23,11 @@
 // Source observables - create reactive streams
 #include "sources.h"
 
-// Transform operators - modify reactive streams
+// Transform operators - modify reactive streams (now includes advanced operators)
 #include "operators.h"
 
 // Subjects - both observer and observable
 #include "subjects.h"
-
-// Advanced operators - debounce, combine, merge
-#include "advanced_operators.h"
 
 // Error handling operators and utilities
 #include "error_handling.h"
