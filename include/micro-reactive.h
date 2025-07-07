@@ -6,15 +6,16 @@
  * A lightweight, C++11-compatible reactive programming library for ESP32/Arduino
  * 
  * Features:
- * - Source Observables (Empty, Never, Range, Create, Iterate, Timer, Interval, Defer)
- * - Transform Operators (Map, Filter, Take, Skip, Debounce, CombineLatest, Merge)
- * - Subjects (Subject, BehaviorSubject, ReplaySubject, SynchronizedSubject)
- * - Error Handling (Catch, Retry, Finally)
- * - Schedulers (Immediate, ThreadPool)
- * - Performance Optimizations (Object pooling, Circular buffers)
+ * - Source Observables (Empty, Never, Range, Create, Iterate, Timer, Interval, Defer, From, Just)
+ * - Transform Operators (Map, Filter, Take, Skip, Debounce, CombineLatest, Merge, FlatMap, Scan, Reduce)
+ * - Subjects (Subject, BehaviorSubject, ReplaySubject, SynchronizedSubject, AsyncSubject)
+ * - Error Handling (Catch, Retry, Finally, OnErrorResumeNext)
+ * - Schedulers (Immediate, ThreadPool, Single, Computation)
+ * - Performance Optimizations (Object pooling, Circular buffers, Lazy evaluation)
  * - Memory-safe shared_ptr based design
  * - Exception handling and error recovery
  * - Thread-safe components with proper resource management
+ * - Advanced debugging and logging utilities
  */
 
 // Core reactive interfaces and base classes

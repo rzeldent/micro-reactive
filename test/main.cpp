@@ -1,5 +1,4 @@
 #include <unity.h>
-#include <Arduino.h>
 #include "../include/core.h"
 #include "../include/sources.h"
 #include "../include/subjects.h"
@@ -156,7 +155,7 @@ void test_timer_basic() {
     TEST_ASSERT_FALSE(observer->IsCompleted());
     
     // Wait for timer to fire (100ms + some buffer)
-    delay(200);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
     
     // Timer should have fired
     TEST_ASSERT_TRUE(observer->HasValue());
@@ -180,14 +179,14 @@ void test_interval_basic() {
     TEST_ASSERT_FALSE(observer->IsCompleted());
     
     // Wait for first emission (50ms + buffer)
-    delay(80);
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_EQUAL(0, observer->GetLastValue()); // First value should be 0
     TEST_ASSERT_EQUAL(1, observer->GetCount());
     TEST_ASSERT_FALSE(observer->IsCompleted()); // Should not be completed yet
     
     // Wait for all emissions to complete (3 * 50ms + buffer)
-    delay(120);
+    std::this_thread::sleep_for(std::chrono::milliseconds((120)));
     
     // Should have all 3 values and be completed
     TEST_ASSERT_EQUAL(2, observer->GetLastValue()); // Last value should be 2
@@ -710,8 +709,6 @@ void tearDown(void) {
 
 // Test runner for PlatformIO
 void setup() {
-    delay(2000); // Give time for serial to initialize
-    
     UNITY_BEGIN();
     
     // Core functionality tests
