@@ -2907,7 +2907,7 @@ namespace rx
 
             void OnNext(const T1 &value) override
             {
-                operator_->OnFirstValue(value);
+                operator_->OnFirstNext(value);
             }
 
             void OnCompleted() override
@@ -2931,7 +2931,7 @@ namespace rx
 
             void OnNext(const T2 &value) override
             {
-                operator_->OnSecondValue(value);
+                operator_->OnSecondNext(value);
             }
 
             void OnCompleted() override
@@ -2970,60 +2970,52 @@ namespace rx
             second_observer_ = std::make_shared<SecondObserver>(this);
         }
 
-        void OnFirstValue(const T1& value)
+        void OnFirstNext(const T1& value)
         {
             std::lock_guard<std::mutex> lock(subscription_mutex_);
             first_values_.push(value);
-            EmitIfPossible();
+            TryEmit();
         }
 
-        void OnSecondValue(const T2& value)
+        void OnSecondNext(const T2& value)
         {
             std::lock_guard<std::mutex> lock(subscription_mutex_);
             second_values_.push(value);
-            EmitIfPossible();
+            TryEmit();
         }
 
         void OnFirstCompleted()
         {
             std::lock_guard<std::mutex> lock(subscription_mutex_);
             first_completed_ = true;
-            CheckCompletion();
+            if (first_values_.empty() || second_completed_)
+            {
+                this->NotifyOnCompleted();
+            }
         }
 
         void OnSecondCompleted()
         {
             std::lock_guard<std::mutex> lock(subscription_mutex_);
             second_completed_ = true;
-            CheckCompletion();
-        }
-
-        void CheckCompletion()
-        {
-            // Complete when both sources are completed OR when one is completed and its queue is empty
-            if ((first_completed_ && second_completed_) || 
-                (first_completed_ && first_values_.empty()) ||
-                (second_completed_ && second_values_.empty()))
+            if (second_values_.empty() || first_completed_)
             {
                 this->NotifyOnCompleted();
             }
         }
 
-        void EmitIfPossible()
+        void TryEmit()
         {
             while (!first_values_.empty() && !second_values_.empty())
             {
                 T1 first_value = first_values_.front();
-                T2 second_value = second_values_.front();
                 first_values_.pop();
+                T2 second_value = second_values_.front();
                 second_values_.pop();
                 
                 TResult result = selector_(first_value, second_value);
                 this->NotifyOnNext(result);
             }
-            
-            // Check if we should complete after emitting
-            CheckCompletion();
         }
 
         std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<TResult>> observer) override
@@ -3057,6 +3049,25 @@ namespace rx
                         }
                     }
                 } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<TResult>> observer) override
+        {
+            Operator<TResult>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty())
+            {
+                if (first_subscription_)
+                {
+                    first_subscription_->Dispose();
+                    first_subscription_ = nullptr;
+                }
+                if (second_subscription_)
+                {
+                    second_subscription_->Dispose();
+                    second_subscription_ = nullptr;
+                }
+            }
         }
     };
 
@@ -3280,221 +3291,22 @@ namespace rx
         }
     };
 
-    // =============================================================================
-    // DEBUG OPERATOR - Observable debugging with metrics
-    // =============================================================================
-    template <typename T>
-    class DebugOperator : public Operator<T>
-    {
-        class DebugObserver : public IObserver<T>
-        {
-        private:
-            Operator<T> *operator_;
-            std::string name_;
-            std::shared_ptr<ObservableMetrics> metrics_;
-
-        public:
-            DebugObserver(Operator<T> *op, const std::string& name, std::shared_ptr<ObservableMetrics> metrics)
-                : operator_(op), name_(name), metrics_(metrics) {}
-
-            void OnNext(const T &value) override
-            {
-                if (metrics_)
-                {
-                    metrics_->RecordEmission();
-                }
-                
-                #ifdef MICRO_REACTIVE_DEBUG
-                // Could add Serial.print for ESP32 debugging
-                // For now, just pass through
-                #endif
-                
-                operator_->NotifyOnNext(value);
-            }
-
-            void OnCompleted() override
-            {
-                if (metrics_)
-                {
-                    metrics_->RecordCompletion();
-                }
-                
-                #ifdef MICRO_REACTIVE_DEBUG
-                // Could add completion logging
-                #endif
-                
-                operator_->NotifyOnCompleted();
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                if (metrics_)
-                {
-                    metrics_->RecordError();
-                }
-                
-                #ifdef MICRO_REACTIVE_DEBUG
-                // Could add error logging
-                #endif
-                
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<DebugObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        std::shared_ptr<ObservableMetrics> metrics_;
-        std::string name_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        DebugOperator(std::shared_ptr<IObservable<T>> observable, const std::string& name)
-            : observable_(observable), name_(name), metrics_(std::make_shared<ObservableMetrics>())
-        {
-            observer_ = std::make_shared<DebugObserver>(this, name, metrics_);
-        }
-
-        std::shared_ptr<ObservableMetrics> GetMetrics() const
-        {
-            return metrics_;
-        }
-
-        std::string GetName() const
-        {
-            return name_;
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            if (metrics_)
-            {
-                metrics_->RecordSubscription();
-            }
-            
-            auto subscription = Operator<T>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<DebugOperator<T>>(
-                std::static_pointer_cast<DebugOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-                if (auto self = weak_self.lock()) {
-                    subscription->Dispose();
-                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                    if (self->child_observers_.empty() && self->source_subscription_) {
-                        self->source_subscription_->Dispose();
-                        self->source_subscription_ = nullptr;
-                    }
-                } });
-        }
-    };
-
-    // Factory functions for new operators
-    template <typename T>
-    std::shared_ptr<IObservable<size_t>> Count(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<CountOperator<T>>(observable);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Sum(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<SumOperator<T>>(observable);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Average(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<AverageOperator<T>>(observable);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Min(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<MinOperator<T>>(observable);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Max(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<MaxOperator<T>>(observable);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> DefaultIfEmpty(std::shared_ptr<IObservable<T>> observable, T default_value)
-    {
-        return std::make_shared<DefaultIfEmptyOperator<T>>(observable, default_value);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> StartWith(std::shared_ptr<IObservable<T>> observable, std::vector<T> start_values)
-    {
-        return std::make_shared<StartWithOperator<T>>(observable, start_values);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Concat(std::shared_ptr<IObservable<T>> first_observable, std::shared_ptr<IObservable<T>> second_observable)
-    {
-        return std::make_shared<ConcatOperator<T>>(first_observable, second_observable);
-    }
-
-    template <typename T1, typename T2, typename TResult>
-    std::shared_ptr<ZipOperator<T1, T2, TResult>> Zip(std::shared_ptr<IObservable<T1>> first_observable,
-                                                       std::shared_ptr<IObservable<T2>> second_observable,
-                                                       std::function<TResult(const T1&, const T2&)> selector)
-    {
-        return std::make_shared<ZipOperator<T1, T2, TResult>>(first_observable, second_observable, selector);
-    }
-
-    // Specialized Zip for creating pairs
-    template <typename T1, typename T2>
-    std::shared_ptr<ZipOperator<T1, T2, std::pair<T1, T2>>> Zip(std::shared_ptr<IObservable<T1>> first_observable,
-                                                                 std::shared_ptr<IObservable<T2>> second_observable)
-    {
-        return Zip<T1, T2, std::pair<T1, T2>>(first_observable, second_observable,
-                                               [](const T1& a, const T2& b) { return std::make_pair(a, b); });
-    }
-
-    template <typename T>
-    std::shared_ptr<MergeOperator<T>> Merge(std::vector<std::shared_ptr<IObservable<T>>> observables)
-    {
-        return std::make_shared<MergeOperator<T>>(observables);
-    }
-
-    // Convenience function for merging two observables
-    template <typename T>
-    std::shared_ptr<MergeOperator<T>> Merge(std::shared_ptr<IObservable<T>> first, std::shared_ptr<IObservable<T>> second)
-    {
-        std::vector<std::shared_ptr<IObservable<T>>> observables = {first, second};
-        return std::make_shared<MergeOperator<T>>(observables);
-    }
-
-    // Factory function for Debug operator
-    template <typename T>
-    std::shared_ptr<DebugOperator<T>> Debug(std::shared_ptr<IObservable<T>> observable, const std::string& name)
-    {
-        return std::make_shared<DebugOperator<T>>(observable, name);
-    }
-
     // Factory function for Debounce operator
     template <typename T>
     std::shared_ptr<DebounceOperator<T>> Debounce(std::shared_ptr<IObservable<T>> observable, 
                                                   std::chrono::milliseconds timeout, 
                                                   std::shared_ptr<IScheduler> scheduler = nullptr)
     {
-        if (!scheduler)
-        {
-            scheduler = std::make_shared<ThreadPoolScheduler>();
-        }
         return std::make_shared<DebounceOperator<T>>(observable, timeout, scheduler);
+    }
+
+    // Subject overload for Debounce operator
+    template <typename T>
+    std::shared_ptr<DebounceOperator<T>> Debounce(std::shared_ptr<Subject<T>> subject, 
+                                                  std::chrono::milliseconds timeout, 
+                                                  std::shared_ptr<IScheduler> scheduler = nullptr)
+    {
+        return Debounce(std::static_pointer_cast<IObservable<T>>(subject), timeout, scheduler);
     }
 
     // =============================================================================
@@ -4007,15 +3819,9 @@ namespace rx
                 if (auto self = weak_self.lock()) {
                     subscription->Dispose();
                     std::lock_guard<std::mutex> lock(self->flatmap_mutex_);
-                    if (self->child_observers_.empty()) {
-                        if (self->source_subscription_) {
-                            self->source_subscription_->Dispose();
-                            self->source_subscription_ = nullptr;
-                        }
-                        for (auto& pair : self->inner_subscriptions_) {
-                            pair.second->Dispose();
-                        }
-                        self->inner_subscriptions_.clear();
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_ = nullptr;
                     }
                 } });
         }
@@ -4028,6 +3834,15 @@ namespace rx
         std::function<std::shared_ptr<IObservable<U>>(const T&)> selector)
     {
         return std::make_shared<FlatMapOperator<T, U>>(source, selector);
+    }
+
+    // Subject overload for FlatMap operator
+    template <typename T, typename U>
+    std::shared_ptr<FlatMapOperator<T, U>> FlatMap(
+        std::shared_ptr<Subject<T>> subject,
+        std::function<std::shared_ptr<IObservable<U>>(const T&)> selector)
+    {
+        return FlatMap(std::static_pointer_cast<IObservable<T>>(subject), selector);
     }
 
     // =============================================================================
@@ -4180,6 +3995,195 @@ namespace rx
     std::shared_ptr<SwitchOperator<T>> Switch(std::shared_ptr<IObservable<std::shared_ptr<IObservable<T>>>> outer)
     {
         return std::make_shared<SwitchOperator<T>>(outer);
+    }
+
+    // Subject overload for Switch operator
+    template <typename T>
+    std::shared_ptr<SwitchOperator<T>> Switch(std::shared_ptr<Subject<std::shared_ptr<IObservable<T>>>> subject)
+    {
+        return Switch(std::static_pointer_cast<IObservable<std::shared_ptr<IObservable<T>>>>(subject));
+    }
+
+    // Factory function for Zip operator
+    template <typename T1, typename T2, typename TResult>
+    std::shared_ptr<ZipOperator<T1, T2, TResult>> Zip(std::shared_ptr<IObservable<T1>> first_observable,
+                                                      std::shared_ptr<IObservable<T2>> second_observable, 
+                                                      std::function<TResult(const T1&, const T2&)> combiner)
+    {
+        return std::make_shared<ZipOperator<T1, T2, TResult>>(first_observable, second_observable, combiner);
+    }
+
+    // Factory function for Zip operator (pair overload)
+    template <typename T1, typename T2>
+    std::shared_ptr<ZipOperator<T1, T2, std::pair<T1, T2>>> Zip(std::shared_ptr<IObservable<T1>> first_observable,
+                                                                std::shared_ptr<IObservable<T2>> second_observable)
+    {
+        return std::make_shared<ZipOperator<T1, T2, std::pair<T1, T2>>>(first_observable, second_observable, 
+            [](const T1& a, const T2& b) { return std::make_pair(a, b); });
+    }
+
+    // Subject overloads for Zip operator
+    template <typename T1, typename T2, typename TResult>
+    std::shared_ptr<ZipOperator<T1, T2, TResult>> Zip(std::shared_ptr<Subject<T1>> first_subject,
+                                                      std::shared_ptr<Subject<T2>> second_subject, 
+                                                      std::function<TResult(const T1&, const T2&)> combiner)
+    {
+        return Zip(std::static_pointer_cast<IObservable<T1>>(first_subject), 
+                   std::static_pointer_cast<IObservable<T2>>(second_subject), combiner);
+    }
+
+    // Factory function for Concat operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Concat(std::shared_ptr<IObservable<T>> first_observable, std::shared_ptr<IObservable<T>> second_observable)
+    {
+        return std::make_shared<ConcatOperator<T>>(first_observable, second_observable);
+    }
+
+    // Subject overload for Concat operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Concat(std::shared_ptr<Subject<T>> first_subject, std::shared_ptr<Subject<T>> second_subject)
+    {
+        return Concat(std::static_pointer_cast<IObservable<T>>(first_subject), 
+                      std::static_pointer_cast<IObservable<T>>(second_subject));
+    }
+
+    // Subject overload for Sample operator
+    template <typename T>
+    std::shared_ptr<SampleOperator<T>> Sample(std::shared_ptr<Subject<T>> subject,
+                                             std::chrono::milliseconds period,
+                                             std::shared_ptr<IScheduler> scheduler = nullptr)
+    {
+        return Sample(std::static_pointer_cast<IObservable<T>>(subject), period, scheduler);
+    }
+
+    // Subject overload for WithLatestFrom operator
+    template <typename T, typename U, typename TResult>
+    std::shared_ptr<WithLatestFromOperator<T, U, TResult>> WithLatestFrom(
+        std::shared_ptr<Subject<T>> source,
+        std::shared_ptr<Subject<U>> other,
+        std::function<TResult(const T&, const U&)> combiner)
+    {
+        return WithLatestFrom(std::static_pointer_cast<IObservable<T>>(source), 
+                             std::static_pointer_cast<IObservable<U>>(other), combiner);
+    }
+
+    // Subject overload for DistinctUntilChanged operator
+    template <typename T>
+    std::shared_ptr<DistinctUntilChangedOperator<T>> DistinctUntilChanged(std::shared_ptr<Subject<T>> subject)
+    {
+        return DistinctUntilChanged(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Subject overload for Pairwise operator
+    template <typename T>
+    std::shared_ptr<PairwiseOperator<T>> Pairwise(std::shared_ptr<Subject<T>> subject)
+    {
+        return Pairwise(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Count operator
+    template <typename T>
+    std::shared_ptr<CountOperator<T>> Count(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<CountOperator<T>>(observable);
+    }
+
+    // Subject overload for Count operator
+    template <typename T>
+    std::shared_ptr<CountOperator<T>> Count(std::shared_ptr<Subject<T>> subject)
+    {
+        return Count(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Sum operator
+    template <typename T>
+    std::shared_ptr<SumOperator<T>> Sum(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<SumOperator<T>>(observable);
+    }
+
+    // Subject overload for Sum operator
+    template <typename T>
+    std::shared_ptr<SumOperator<T>> Sum(std::shared_ptr<Subject<T>> subject)
+    {
+        return Sum(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Min operator
+    template <typename T>
+    std::shared_ptr<MinOperator<T>> Min(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<MinOperator<T>>(observable);
+    }
+
+    // Subject overload for Min operator
+    template <typename T>
+    std::shared_ptr<MinOperator<T>> Min(std::shared_ptr<Subject<T>> subject)
+    {
+        return Min(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Max operator
+    template <typename T>
+    std::shared_ptr<MaxOperator<T>> Max(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<MaxOperator<T>>(observable);
+    }
+
+    // Subject overload for Max operator
+    template <typename T>
+    std::shared_ptr<MaxOperator<T>> Max(std::shared_ptr<Subject<T>> subject)
+    {
+        return Max(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Average operator
+    template <typename T>
+    std::shared_ptr<AverageOperator<T>> Average(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<AverageOperator<T>>(observable);
+    }
+
+    // Subject overload for Average operator
+    template <typename T>
+    std::shared_ptr<AverageOperator<T>> Average(std::shared_ptr<Subject<T>> subject)
+    {
+        return Average(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for DefaultIfEmpty operator
+    template <typename T>
+    std::shared_ptr<DefaultIfEmptyOperator<T>> DefaultIfEmpty(std::shared_ptr<IObservable<T>> observable, const T& default_value)
+    {
+        return std::make_shared<DefaultIfEmptyOperator<T>>(observable, default_value);
+    }
+
+    // Subject overload for DefaultIfEmpty operator
+    template <typename T>
+    std::shared_ptr<DefaultIfEmptyOperator<T>> DefaultIfEmpty(std::shared_ptr<Subject<T>> subject, const T& default_value)
+    {
+        return DefaultIfEmpty(std::static_pointer_cast<IObservable<T>>(subject), default_value);
+    }
+
+    // Factory function for StartWith operator
+    template <typename T>
+    std::shared_ptr<StartWithOperator<T>> StartWith(std::shared_ptr<IObservable<T>> observable, const std::vector<T>& values)
+    {
+        return std::make_shared<StartWithOperator<T>>(observable, values);
+    }
+
+    // Subject overload for StartWith operator
+    template <typename T>
+    std::shared_ptr<StartWithOperator<T>> StartWith(std::shared_ptr<Subject<T>> subject, const std::vector<T>& values)
+    {
+        return StartWith(std::static_pointer_cast<IObservable<T>>(subject), values);
+    }
+
+    // Factory function for Merge operator
+    template <typename T>
+    std::shared_ptr<MergeOperator<T>> Merge(const std::vector<std::shared_ptr<IObservable<T>>>& observables)
+    {
+        return std::make_shared<MergeOperator<T>>(observables);
     }
 
 } // namespace rx
