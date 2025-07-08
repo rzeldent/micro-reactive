@@ -36,7 +36,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<EmptyObservable<T>> Empty()
+    std::shared_ptr<IObservable<T>> Empty()
     {
         return std::make_shared<EmptyObservable<T>>();
     }
@@ -62,7 +62,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<NeverObservable<T>> Never()
+    std::shared_ptr<IObservable<T>> Never()
     {
         return std::make_shared<NeverObservable<T>>();
     }
@@ -98,14 +98,14 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<RangeObservable<T>> Range(T first, T last, T step)
+    std::shared_ptr<IObservable<T>> Range(T first, T last, T step)
     {
         return std::make_shared<RangeObservable<T>>(first, last, step);
     }
 
     // Overload for Range with default step of 1
     template <typename T>
-    std::shared_ptr<RangeObservable<T>> Range(T first, T count)
+    std::shared_ptr<IObservable<T>> Range(T first, T count)
     {
         return std::make_shared<RangeObservable<T>>(first, first + count - 1, T(1));
     }
@@ -142,7 +142,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<FromVectorObservable<T>> FromVector(const std::vector<T> &values)
+    std::shared_ptr<IObservable<T>> FromVector(const std::vector<T> &values)
     {
         return std::make_shared<FromVectorObservable<T>>(values);
     }
@@ -183,7 +183,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<CreateObservable<T>> Create(std::function<void(std::shared_ptr<IObserver<T>>)> create)
+    std::shared_ptr<IObservable<T>> Create(std::function<void(std::shared_ptr<IObserver<T>>)> create)
     {
         return std::make_shared<CreateObservable<T>>(create);
     }
@@ -222,7 +222,7 @@ namespace rx
     };
 
     template <typename T, typename Container>
-    std::shared_ptr<IterateObservable<T>> Iterate(const Container &container)
+    std::shared_ptr<IObservable<T>> Iterate(const Container &container)
     {
         return std::make_shared<IterateObservable<T>>(container);
     }
@@ -264,7 +264,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<DeferObservable<T>> Defer(std::function<std::shared_ptr<IObservable<T>>()> factory)
+    std::shared_ptr<IObservable<T>> Defer(std::function<std::shared_ptr<IObservable<T>>()> factory)
     {
         return std::make_shared<DeferObservable<T>>(factory);
     }
@@ -348,7 +348,7 @@ namespace rx
     };
 
     template <typename T = int>
-    std::shared_ptr<TimerObservable<T>> Timer(std::chrono::milliseconds delay)
+    std::shared_ptr<IObservable<T>> Timer(std::chrono::milliseconds delay)
     {
         return std::make_shared<TimerObservable<T>>(delay);
     }
@@ -448,7 +448,7 @@ namespace rx
     };
 
     template <typename T = int>
-    std::shared_ptr<IntervalObservable<T>> Interval(std::chrono::milliseconds interval, int count = 5)
+    std::shared_ptr<IObservable<T>> Interval(std::chrono::milliseconds interval, int count = 5)
     {
         return std::make_shared<IntervalObservable<T>>(interval, count);
     }

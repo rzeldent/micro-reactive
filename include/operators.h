@@ -104,7 +104,7 @@ namespace rx
     };
 
     template <typename Tsrc, typename Tdest>
-    std::shared_ptr<MapOperator<Tsrc, Tdest>> Map(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> transform)
+    std::shared_ptr<IObservable<Tdest>> Map(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> transform)
     {
         return std::make_shared<MapOperator<Tsrc, Tdest>>(observable, transform);
     }
@@ -195,7 +195,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<FilterOperator<T>> Filter(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+    std::shared_ptr<IObservable<T>> Filter(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
     {
         return std::make_shared<FilterOperator<T>>(observable, predicate);
     }
@@ -290,7 +290,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<TakeOperator<T>> Take(std::shared_ptr<IObservable<T>> observable, size_t count)
+    std::shared_ptr<IObservable<T>> Take(std::shared_ptr<IObservable<T>> observable, size_t count)
     {
         return std::make_shared<TakeOperator<T>>(observable, count);
     }
@@ -384,7 +384,7 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<SkipOperator<T>> Skip(std::shared_ptr<IObservable<T>> observable, size_t count)
+    std::shared_ptr<IObservable<T>> Skip(std::shared_ptr<IObservable<T>> observable, size_t count)
     {
         return std::make_shared<SkipOperator<T>>(observable, count);
     }
@@ -484,13 +484,13 @@ namespace rx
     };
 
     template <typename T>
-    std::shared_ptr<DistinctOperator<T>> Distinct(std::shared_ptr<IObservable<T>> observable)
+    std::shared_ptr<IObservable<T>> Distinct(std::shared_ptr<IObservable<T>> observable)
     {
         return std::make_shared<DistinctOperator<T>>(observable);
     }
 
     template <typename T>
-    std::shared_ptr<DistinctOperator<T>> Distinct(std::shared_ptr<Subject<T>> subject)
+    std::shared_ptr<IObservable<T>> Distinct(std::shared_ptr<Subject<T>> subject)
     {
         return Distinct(std::static_pointer_cast<IObservable<T>>(subject));
     }
@@ -1574,38 +1574,38 @@ namespace rx
 
     // Factory functions for Do/Tap
     template <typename T>
-    std::shared_ptr<DoOperator<T>> Do(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> action)
+    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> action)
     {
         return std::make_shared<DoOperator<T>>(observable, action);
     }
 
     template <typename T>
-    std::shared_ptr<DoOperator<T>> Do(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> action)
+    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> action)
     {
         return Do(std::static_pointer_cast<IObservable<T>>(subject), action);
     }
 
     template <typename T>
-    std::shared_ptr<DoOperator<T>> Tap(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> action)
+    std::shared_ptr<IObservable<T>> Tap(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> action)
     {
         return Do(observable, action);
     }
 
     template <typename T>
-    std::shared_ptr<DoOperator<T>> Tap(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> action)
+    std::shared_ptr<IObservable<T>> Tap(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> action)
     {
         return Do(std::static_pointer_cast<IObservable<T>>(subject), action);
     }
 
     // Factory functions for Contains
     template <typename T>
-    std::shared_ptr<ContainsOperator<T>> Contains(std::shared_ptr<IObservable<T>> observable, const T &value)
+    std::shared_ptr<IObservable<bool>> Contains(std::shared_ptr<IObservable<T>> observable, const T &value)
     {
         return std::make_shared<ContainsOperator<T>>(observable, value);
     }
 
     template <typename T>
-    std::shared_ptr<ContainsOperator<T>> Contains(std::shared_ptr<Subject<T>> subject, const T &value)
+    std::shared_ptr<IObservable<bool>> Contains(std::shared_ptr<Subject<T>> subject, const T &value)
     {
         return Contains(std::static_pointer_cast<IObservable<T>>(subject), value);
     }
@@ -1723,13 +1723,13 @@ namespace rx
 
     // Aliases for commonly used functions
     template <typename T>
-    std::shared_ptr<FilterOperator<T>> Where(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+    std::shared_ptr<IObservable<T>> Where(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
     {
         return Filter(observable, predicate);
     }
 
     template <typename Tsrc, typename Tdest>
-    std::shared_ptr<MapOperator<Tsrc, Tdest>> Select(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> transform)
+    std::shared_ptr<IObservable<Tdest>> Select(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> transform)
     {
         return Map(observable, transform);
     }
@@ -3399,49 +3399,49 @@ namespace rx
 
     // Factory functions for new operators
     template <typename T>
-    std::shared_ptr<CountOperator<T>> Count(std::shared_ptr<IObservable<T>> observable)
+    std::shared_ptr<IObservable<size_t>> Count(std::shared_ptr<IObservable<T>> observable)
     {
         return std::make_shared<CountOperator<T>>(observable);
     }
 
     template <typename T>
-    std::shared_ptr<SumOperator<T>> Sum(std::shared_ptr<IObservable<T>> observable)
+    std::shared_ptr<IObservable<T>> Sum(std::shared_ptr<IObservable<T>> observable)
     {
         return std::make_shared<SumOperator<T>>(observable);
     }
 
     template <typename T>
-    std::shared_ptr<AverageOperator<T>> Average(std::shared_ptr<IObservable<T>> observable)
+    std::shared_ptr<IObservable<T>> Average(std::shared_ptr<IObservable<T>> observable)
     {
         return std::make_shared<AverageOperator<T>>(observable);
     }
 
     template <typename T>
-    std::shared_ptr<MinOperator<T>> Min(std::shared_ptr<IObservable<T>> observable)
+    std::shared_ptr<IObservable<T>> Min(std::shared_ptr<IObservable<T>> observable)
     {
         return std::make_shared<MinOperator<T>>(observable);
     }
 
     template <typename T>
-    std::shared_ptr<MaxOperator<T>> Max(std::shared_ptr<IObservable<T>> observable)
+    std::shared_ptr<IObservable<T>> Max(std::shared_ptr<IObservable<T>> observable)
     {
         return std::make_shared<MaxOperator<T>>(observable);
     }
 
     template <typename T>
-    std::shared_ptr<DefaultIfEmptyOperator<T>> DefaultIfEmpty(std::shared_ptr<IObservable<T>> observable, T default_value)
+    std::shared_ptr<IObservable<T>> DefaultIfEmpty(std::shared_ptr<IObservable<T>> observable, T default_value)
     {
         return std::make_shared<DefaultIfEmptyOperator<T>>(observable, default_value);
     }
 
     template <typename T>
-    std::shared_ptr<StartWithOperator<T>> StartWith(std::shared_ptr<IObservable<T>> observable, std::vector<T> start_values)
+    std::shared_ptr<IObservable<T>> StartWith(std::shared_ptr<IObservable<T>> observable, std::vector<T> start_values)
     {
         return std::make_shared<StartWithOperator<T>>(observable, start_values);
     }
 
     template <typename T>
-    std::shared_ptr<ConcatOperator<T>> Concat(std::shared_ptr<IObservable<T>> first_observable, std::shared_ptr<IObservable<T>> second_observable)
+    std::shared_ptr<IObservable<T>> Concat(std::shared_ptr<IObservable<T>> first_observable, std::shared_ptr<IObservable<T>> second_observable)
     {
         return std::make_shared<ConcatOperator<T>>(first_observable, second_observable);
     }
