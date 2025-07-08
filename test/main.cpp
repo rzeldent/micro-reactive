@@ -496,8 +496,7 @@ void test_skip_while_operator() {
 void test_debounce_operator() {
     auto subject = std::make_shared<Subject<int>>();
     auto scheduler = std::make_shared<TestScheduler>();
-    auto debounced = Debounce(subject, 
-                             std::chrono::milliseconds(50), scheduler);
+    auto debounced = Debounce(subject, std::chrono::milliseconds(50), scheduler);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = debounced->Subscribe(observer);
@@ -531,10 +530,7 @@ void test_merge_operator() {
     auto subject1 = std::make_shared<Subject<int>>();
     auto subject2 = std::make_shared<Subject<int>>();
     
-    std::vector<std::shared_ptr<IObservable<int>>> sources = {
-        subject1,
-        subject2
-    };
+    std::vector<std::shared_ptr<IObservable<int>>> sources = {subject1, subject2};
     
     auto merge_op = Merge(sources);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
@@ -574,9 +570,7 @@ void test_zip_operator() {
         return a + b; // Should produce 11, 13, 15
     };
     
-    auto zipped = Zip(subject1, 
-                         subject2, 
-                         zipper);
+    auto zipped = Zip(subject1, subject2, zipper);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = zipped->Subscribe(observer);
@@ -636,8 +630,7 @@ void test_concat_operator() {
     auto subject1 = std::make_shared<Subject<int>>();
     auto subject2 = std::make_shared<Subject<int>>();
     
-    auto concat_op = Concat(subject1,
-                           subject2);
+    auto concat_op = Concat(subject1, subject2);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = concat_op->Subscribe(observer);
@@ -780,9 +773,7 @@ void test_withlatestfrom_operator() {
             return str + std::to_string(num);
         };
     
-    auto combined = WithLatestFrom(source, 
-                                   other, 
-                                   combiner);
+    auto combined = WithLatestFrom(source, other, combiner);
     auto observer = std::make_shared<SimpleTestObserver<std::string>>();
     
     auto subscription = combined->Subscribe(observer);
@@ -921,8 +912,7 @@ void test_catch_operator() {
     auto source = std::make_shared<Subject<int>>();
     auto fallback_source = std::make_shared<Subject<int>>();
     
-    auto catch_op = Catch<int>(source, 
-        [fallback_source](const std::exception& e) -> std::shared_ptr<IObservable<int>> {
+    auto catch_op = Catch<int>(source, [fallback_source](const std::exception& e) -> std::shared_ptr<IObservable<int>> {
             return fallback_source;
         });
     
@@ -1051,8 +1041,7 @@ void test_timeout_error_operator_with_emission() {
 void test_safe_observer() {
     bool error_handled = false;
     auto inner_observer = std::make_shared<SimpleTestObserver<int>>();
-    auto safe_observer = MakeSafeObserver<int>(inner_observer, 
-        [&error_handled](const std::exception& e) {
+    auto safe_observer = MakeSafeObserver<int>(inner_observer, [&error_handled](const std::exception& e) {
             error_handled = true;
         });
     
@@ -1098,8 +1087,7 @@ void test_take_until_operator() {
     auto source = std::make_shared<Subject<int>>();
     auto trigger = std::make_shared<Subject<bool>>();
     
-    auto take_until_op = TakeUntil(source,
-                                     trigger);
+    auto take_until_op = TakeUntil(source, trigger);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = take_until_op->Subscribe(observer);
@@ -1125,8 +1113,7 @@ void test_skip_until_operator() {
     auto source = std::make_shared<Subject<int>>();
     auto trigger = std::make_shared<Subject<bool>>();
     
-    auto skip_until_op = SkipUntil(source,
-                                     trigger);
+    auto skip_until_op = SkipUntil(source, trigger);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = skip_until_op->Subscribe(observer);
@@ -1282,10 +1269,7 @@ void test_race_operator() {
     auto source1 = std::make_shared<Subject<int>>();
     auto source2 = std::make_shared<Subject<int>>();
     
-    std::vector<std::shared_ptr<IObservable<int>>> sources = {
-        source1,
-        source2
-    };
+    std::vector<std::shared_ptr<IObservable<int>>> sources = {source1, source2};
     
     auto race_op = Race(sources);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
