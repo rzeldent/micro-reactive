@@ -452,6 +452,115 @@ namespace rx
         }
     };
 
+    // Observable performance metrics
+    class ObservableMetrics
+    {
+    private:
+        std::atomic<size_t> emissions_count_;
+        std::atomic<size_t> subscriptions_count_;
+        std::atomic<size_t> errors_count_;
+        std::atomic<size_t> completions_count_;
+        std::chrono::high_resolution_clock::time_point start_time_;
+        std::chrono::high_resolution_clock::time_point last_emission_time_;
+        mutable std::mutex metrics_mutex_;
+
+    public:
+        ObservableMetrics()
+            : emissions_count_(0), subscriptions_count_(0), errors_count_(0), completions_count_(0)
+        {
+            start_time_ = std::chrono::high_resolution_clock::now();
+            last_emission_time_ = start_time_;
+        }
+
+        // Record metrics
+        void RecordEmission()
+        {
+            emissions_count_.fetch_add(1);
+            last_emission_time_ = std::chrono::high_resolution_clock::now();
+        }
+
+        void RecordSubscription()
+        {
+            subscriptions_count_.fetch_add(1);
+        }
+
+        void RecordError()
+        {
+            errors_count_.fetch_add(1);
+        }
+
+        void RecordCompletion()
+        {
+            completions_count_.fetch_add(1);
+        }
+
+        // Get metrics
+        size_t GetEmissionsCount() const
+        {
+            return emissions_count_.load();
+        }
+
+        size_t GetSubscriptionsCount() const
+        {
+            return subscriptions_count_.load();
+        }
+
+        size_t GetErrorsCount() const
+        {
+            return errors_count_.load();
+        }
+
+        size_t GetCompletionsCount() const
+        {
+            return completions_count_.load();
+        }
+
+        // Get timing metrics
+        std::chrono::milliseconds GetElapsedTime() const
+        {
+            auto now = std::chrono::high_resolution_clock::now();
+            return std::chrono::duration_cast<std::chrono::milliseconds>(now - start_time_);
+        }
+
+        std::chrono::milliseconds GetTimeSinceLastEmission() const
+        {
+            auto now = std::chrono::high_resolution_clock::now();
+            return std::chrono::duration_cast<std::chrono::milliseconds>(now - last_emission_time_);
+        }
+
+        // Get emission rate (emissions per second)
+        double GetEmissionRate() const
+        {
+            auto elapsed = GetElapsedTime();
+            if (elapsed.count() == 0) return 0.0;
+            return (double)emissions_count_.load() / (elapsed.count() / 1000.0);
+        }
+
+        // Reset all metrics
+        void Reset()
+        {
+            emissions_count_.store(0);
+            subscriptions_count_.store(0);
+            errors_count_.store(0);
+            completions_count_.store(0);
+            start_time_ = std::chrono::high_resolution_clock::now();
+            last_emission_time_ = start_time_;
+        }
+
+        // Get summary string
+        std::string GetSummary() const
+        {
+            std::string summary = "ObservableMetrics:\n";
+            summary += "  Emissions: " + std::to_string(GetEmissionsCount()) + "\n";
+            summary += "  Subscriptions: " + std::to_string(GetSubscriptionsCount()) + "\n";
+            summary += "  Errors: " + std::to_string(GetErrorsCount()) + "\n";
+            summary += "  Completions: " + std::to_string(GetCompletionsCount()) + "\n";
+            summary += "  Elapsed time: " + std::to_string(GetElapsedTime().count()) + "ms\n";
+            summary += "  Emission rate: " + std::to_string(GetEmissionRate()) + " emissions/sec\n";
+            return summary;
+        }
+    };
+
 } // namespace rx
 
 #endif // MICRO_REACTIVE_PERFORMANCE_H

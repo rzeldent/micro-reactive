@@ -329,8 +329,6 @@ void test_last_operator() {
 }
 
 void test_count_operator() {
-    // TODO: Implement CountOperator
-    /*
     auto range = Range(1, 5);
     auto count_op = Count(std::static_pointer_cast<IObservable<int>>(range));
     auto observer = std::make_shared<SimpleTestObserver<size_t>>();
@@ -346,11 +344,8 @@ void test_count_operator() {
     TEST_ASSERT_TRUE(observer->IsCompleted());
     
     subscription->Dispose();
-    */
 }
 
-// TODO: Implement SumOperator
-/*
 void test_sum_operator() {
     auto range = Range(1, 5);
     auto sum_op = Sum(std::static_pointer_cast<IObservable<int>>(range));
@@ -368,11 +363,8 @@ void test_sum_operator() {
     
     subscription->Dispose();
 }
-*/
 
 void test_min_operator() {
-    // TODO: Implement MinOperator
-    /*
     std::vector<int> data = {5, 2, 8, 1, 9, 3};
     auto source = FromVector(data);
     auto min_op = Min(std::static_pointer_cast<IObservable<int>>(source));
@@ -389,12 +381,9 @@ void test_min_operator() {
     TEST_ASSERT_TRUE(observer->IsCompleted());
     
     subscription->Dispose();
-    */
 }
 
 void test_max_operator() {
-    // TODO: Implement MaxOperator
-    /*
     std::vector<int> data = {5, 2, 8, 1, 9, 3};
     auto source = FromVector(data);
     auto max_op = Max(std::static_pointer_cast<IObservable<int>>(source));
@@ -403,7 +392,7 @@ void test_max_operator() {
     auto subscription = max_op->Subscribe(observer);
     
     // Wait for completion
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    delay(10);
     
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_EQUAL(1, observer->GetCount());
@@ -411,12 +400,9 @@ void test_max_operator() {
     TEST_ASSERT_TRUE(observer->IsCompleted());
     
     subscription->Dispose();
-    */
 }
 
 void test_default_if_empty_operator() {
-    // TODO: Implement DefaultIfEmptyOperator
-    /*
     auto empty_source = Empty<int>();
     auto default_op = DefaultIfEmpty(std::static_pointer_cast<IObservable<int>>(empty_source), 42);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
@@ -424,7 +410,7 @@ void test_default_if_empty_operator() {
     auto subscription = default_op->Subscribe(observer);
     
     // Wait for completion
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    delay(10);
     
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_EQUAL(1, observer->GetCount());
@@ -432,12 +418,9 @@ void test_default_if_empty_operator() {
     TEST_ASSERT_TRUE(observer->IsCompleted());
     
     subscription->Dispose();
-    */
 }
 
 void test_start_with_operator() {
-    // TODO: Implement StartWithOperator
-    /*
     auto range = Range(3, 2); // Emits 3, 4
     auto start_with_op = StartWith(std::static_pointer_cast<IObservable<int>>(range), std::vector<int>{1, 2});
     auto observer = std::make_shared<SimpleTestObserver<int>>();
@@ -445,7 +428,7 @@ void test_start_with_operator() {
     auto subscription = start_with_op->Subscribe(observer);
     
     // Wait for completion
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    delay(10);
     
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_EQUAL(4, observer->GetCount());
@@ -454,7 +437,6 @@ void test_start_with_operator() {
     TEST_ASSERT_TRUE(observer->IsCompleted());
     
     subscription->Dispose();
-    */
 }
 
 void test_take_while_operator() {
@@ -497,53 +479,117 @@ void test_skip_while_operator() {
 
 // Test debounce operator
 void test_debounce_operator() {
-    // TODO: Implement DebounceOperator
-    /*
-    auto range = Range(1, 5);
-    auto debounced = Debounce(std::static_pointer_cast<IObservable<int>>(range), std::chrono::milliseconds(50));
+    auto subject = std::make_shared<Subject<int>>();
+    auto scheduler = std::make_shared<TestScheduler>();
+    auto debounced = Debounce(std::static_pointer_cast<IObservable<int>>(subject), 
+                             std::chrono::milliseconds(50), scheduler);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = debounced->Subscribe(observer);
     
-    // Wait for debounce to complete
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    // Emit values rapidly
+    subject->OnNext(1);
+    scheduler->AdvanceBy(std::chrono::milliseconds(10)); // Not enough time
+    subject->OnNext(2);
+    scheduler->AdvanceBy(std::chrono::milliseconds(10)); // Not enough time
+    subject->OnNext(3);
     
-    // Should only emit the last value due to debouncing
-    TEST_ASSERT_TRUE(observer->HasValue());
-    TEST_ASSERT_EQUAL(5, observer->GetLastValue());
+    // Should not have emitted anything yet
+    TEST_ASSERT_EQUAL(0, observer->GetCount());
+    
+    // Wait for debounce timeout
+    scheduler->AdvanceBy(std::chrono::milliseconds(60));
+    
+    // Should emit the last value
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    TEST_ASSERT_EQUAL(3, observer->GetLastValue());
+    
+    // Complete the source
+    subject->OnCompleted();
+    
     TEST_ASSERT_TRUE(observer->IsCompleted());
-    */
+    subscription->Dispose();
 }
 
-// Test merge operator - TODO: Implement proper merge operator
+// Test merge operator
 void test_merge_operator() {
-    // Skip for now - need to implement proper merge operator
-    TEST_ASSERT_TRUE(true);
+    auto subject1 = std::make_shared<Subject<int>>();
+    auto subject2 = std::make_shared<Subject<int>>();
+    
+    std::vector<std::shared_ptr<IObservable<int>>> sources = {
+        std::static_pointer_cast<IObservable<int>>(subject1),
+        std::static_pointer_cast<IObservable<int>>(subject2)
+    };
+    
+    auto merge_op = Merge(sources);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = merge_op->Subscribe(observer);
+    
+    // Emit from first source
+    subject1->OnNext(1);
+    subject1->OnNext(2);
+    
+    // Emit from second source
+    subject2->OnNext(10);
+    subject2->OnNext(20);
+    
+    // Should have received all values
+    TEST_ASSERT_EQUAL(4, observer->GetCount());
+    TEST_ASSERT_EQUAL(20, observer->GetLastValue());
+    
+    // Complete first source
+    subject1->OnCompleted();
+    TEST_ASSERT_FALSE(observer->IsCompleted()); // Should not complete until all sources complete
+    
+    // Complete second source
+    subject2->OnCompleted();
+    TEST_ASSERT_TRUE(observer->IsCompleted()); // Now should be completed
+    
+    subscription->Dispose();
 }
 
 // Test zip operator
 void test_zip_operator() {
-    // TODO: Implement ZipOperator
-    /*
-    auto range1 = Range(1, 3); // 1, 2, 3
-    auto range2 = Range(10, 3); // 10, 11, 12
+    // Use subjects to control timing instead of ranges
+    auto subject1 = std::make_shared<Subject<int>>();
+    auto subject2 = std::make_shared<Subject<int>>();
     
     std::function<int(const int&, const int&)> zipper = [](const int& a, const int& b) {
         return a + b; // Should produce 11, 13, 15
     };
     
-    auto zipped = Zip(std::static_pointer_cast<IObservable<int>>(range1), 
-                         std::static_pointer_cast<IObservable<int>>(range2), 
+    auto zipped = Zip(std::static_pointer_cast<IObservable<int>>(subject1), 
+                         std::static_pointer_cast<IObservable<int>>(subject2), 
                          zipper);
     auto observer = std::make_shared<SimpleTestObserver<int>>();
     
     auto subscription = zipped->Subscribe(observer);
     
+    // Emit values in pairs
+    subject1->OnNext(1);
+    subject2->OnNext(10);
     TEST_ASSERT_TRUE(observer->HasValue());
-    TEST_ASSERT_EQUAL(15, observer->GetLastValue()); // Last pair: 3 + 12 = 15
-    TEST_ASSERT_EQUAL(3, observer->GetCount()); // Three pairs
+    TEST_ASSERT_EQUAL(11, observer->GetLastValue()); // 1 + 10 = 11
+    TEST_ASSERT_EQUAL(1, observer->GetCount());
+    
+    subject1->OnNext(2);
+    subject2->OnNext(11);
+    TEST_ASSERT_EQUAL(13, observer->GetLastValue()); // 2 + 11 = 13
+    TEST_ASSERT_EQUAL(2, observer->GetCount());
+    
+    subject1->OnNext(3);
+    subject2->OnNext(12);
+    TEST_ASSERT_EQUAL(15, observer->GetLastValue()); // 3 + 12 = 15
+    TEST_ASSERT_EQUAL(3, observer->GetCount());
+    
+    // Complete both subjects
+    subject1->OnCompleted();
+    subject2->OnCompleted();
+    
     TEST_ASSERT_TRUE(observer->IsCompleted());
-    */
+    
+    subscription->Dispose();
 }
 
 // Test flat map operator
@@ -1191,6 +1237,225 @@ void test_race_operator() {
     TEST_ASSERT_TRUE(observer->IsCompleted());
 }
 
+// =============================================================================
+// TEST SCHEDULER TESTS
+// =============================================================================
+void test_test_scheduler_basic() {
+    TestScheduler scheduler;
+    int execution_count = 0;
+    
+    // Schedule an action
+    scheduler.Schedule([&execution_count]() {
+        execution_count++;
+    });
+    
+    // Should not execute immediately
+    TEST_ASSERT_EQUAL(0, execution_count);
+    
+    // Advance time should execute the action
+    scheduler.AdvanceBy(std::chrono::milliseconds(1));
+    TEST_ASSERT_EQUAL(1, execution_count);
+}
+
+void test_test_scheduler_delayed() {
+    TestScheduler scheduler;
+    int execution_count = 0;
+    
+    // Schedule a delayed action
+    scheduler.ScheduleDelayed([&execution_count]() {
+        execution_count++;
+    }, std::chrono::milliseconds(100));
+    
+    // Should not execute immediately
+    TEST_ASSERT_EQUAL(0, execution_count);
+    
+    // Advance by less than delay - should not execute
+    scheduler.AdvanceBy(std::chrono::milliseconds(50));
+    TEST_ASSERT_EQUAL(0, execution_count);
+    
+    // Advance past delay - should execute
+    scheduler.AdvanceBy(std::chrono::milliseconds(60));
+    TEST_ASSERT_EQUAL(1, execution_count);
+}
+
+void test_test_scheduler_multiple_actions() {
+    TestScheduler scheduler;
+    std::vector<int> execution_order;
+    
+    // Schedule actions at different times
+    scheduler.ScheduleDelayed([&execution_order]() {
+        execution_order.push_back(2);
+    }, std::chrono::milliseconds(200));
+    
+    scheduler.ScheduleDelayed([&execution_order]() {
+        execution_order.push_back(1);
+    }, std::chrono::milliseconds(100));
+    
+    scheduler.ScheduleDelayed([&execution_order]() {
+        execution_order.push_back(3);
+    }, std::chrono::milliseconds(300));
+    
+    // Execute all actions
+    scheduler.Start();
+    
+    // Should execute in time order
+    TEST_ASSERT_EQUAL(3, execution_order.size());
+    TEST_ASSERT_EQUAL(1, execution_order[0]);
+    TEST_ASSERT_EQUAL(2, execution_order[1]);
+    TEST_ASSERT_EQUAL(3, execution_order[2]);
+}
+
+void test_test_scheduler_advance_to() {
+    TestScheduler scheduler;
+    int execution_count = 0;
+    
+    scheduler.ScheduleDelayed([&execution_count]() {
+        execution_count++;
+    }, std::chrono::milliseconds(150));
+    
+    scheduler.ScheduleDelayed([&execution_count]() {
+        execution_count++;
+    }, std::chrono::milliseconds(250));
+    
+    // Advance to time 200ms - should execute first action only
+    scheduler.AdvanceTo(std::chrono::milliseconds(200));
+    TEST_ASSERT_EQUAL(1, execution_count);
+    
+    // Advance to time 300ms - should execute second action
+    scheduler.AdvanceTo(std::chrono::milliseconds(300));
+    TEST_ASSERT_EQUAL(2, execution_count);
+}
+
+// =============================================================================
+// DEBUG OPERATOR TESTS
+// =============================================================================
+void test_debug_operator() {
+    auto range = Range(1, 3);
+    auto debug_op = Debug(std::static_pointer_cast<IObservable<int>>(range), "TestRange");
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = debug_op->Subscribe(observer);
+    
+    // Wait for completion
+    delay(10);
+    
+    // Verify the observable works normally
+    TEST_ASSERT_TRUE(observer->HasValue());
+    TEST_ASSERT_EQUAL(3, observer->GetCount());
+    TEST_ASSERT_EQUAL(3, observer->GetLastValue());
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    
+    // Verify metrics were collected
+    auto metrics = debug_op->GetMetrics();
+    TEST_ASSERT_TRUE(metrics != nullptr);
+    TEST_ASSERT_EQUAL(3, metrics->GetEmissionsCount());
+    TEST_ASSERT_EQUAL(1, metrics->GetSubscriptionsCount());
+    TEST_ASSERT_EQUAL(1, metrics->GetCompletionsCount());
+    TEST_ASSERT_EQUAL(0, metrics->GetErrorsCount());
+    
+    // Verify name
+    TEST_ASSERT_EQUAL_STRING("TestRange", debug_op->GetName().c_str());
+    
+    subscription->Dispose();
+}
+
+void test_debug_operator_with_error() {
+    auto subject = std::make_shared<Subject<int>>();
+    auto debug_op = Debug(std::static_pointer_cast<IObservable<int>>(subject), "ErrorTest");
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = debug_op->Subscribe(observer);
+    
+    // Emit some values
+    subject->OnNext(1);
+    subject->OnNext(2);
+    
+    // Emit an error
+    subject->OnError(std::runtime_error("Test error"));
+    
+    // Verify metrics
+    auto metrics = debug_op->GetMetrics();
+    TEST_ASSERT_EQUAL(2, metrics->GetEmissionsCount());
+    TEST_ASSERT_EQUAL(1, metrics->GetSubscriptionsCount());
+    TEST_ASSERT_EQUAL(0, metrics->GetCompletionsCount());
+    TEST_ASSERT_EQUAL(1, metrics->GetErrorsCount());
+    
+    subscription->Dispose();
+}
+
+// =============================================================================
+// OBSERVABLE METRICS TESTS
+// =============================================================================
+void test_observable_metrics_basic() {
+    ObservableMetrics metrics;
+    
+    // Initial state
+    TEST_ASSERT_EQUAL(0, metrics.GetEmissionsCount());
+    TEST_ASSERT_EQUAL(0, metrics.GetSubscriptionsCount());
+    TEST_ASSERT_EQUAL(0, metrics.GetErrorsCount());
+    TEST_ASSERT_EQUAL(0, metrics.GetCompletionsCount());
+    
+    // Record some events
+    metrics.RecordEmission();
+    metrics.RecordEmission();
+    metrics.RecordSubscription();
+    metrics.RecordError();
+    metrics.RecordCompletion();
+    
+    // Verify counts
+    TEST_ASSERT_EQUAL(2, metrics.GetEmissionsCount());
+    TEST_ASSERT_EQUAL(1, metrics.GetSubscriptionsCount());
+    TEST_ASSERT_EQUAL(1, metrics.GetErrorsCount());
+    TEST_ASSERT_EQUAL(1, metrics.GetCompletionsCount());
+    
+    // Test reset
+    metrics.Reset();
+    TEST_ASSERT_EQUAL(0, metrics.GetEmissionsCount());
+    TEST_ASSERT_EQUAL(0, metrics.GetSubscriptionsCount());
+    TEST_ASSERT_EQUAL(0, metrics.GetErrorsCount());
+    TEST_ASSERT_EQUAL(0, metrics.GetCompletionsCount());
+}
+
+void test_observable_metrics_timing() {
+    ObservableMetrics metrics;
+    
+    // Record some emissions with longer delays to ensure timing
+    metrics.RecordEmission();
+    delay(30);
+    metrics.RecordEmission();
+    delay(30);
+    metrics.RecordEmission();
+    
+    // Check timing metrics - use more lenient timing check
+    auto elapsed = metrics.GetElapsedTime();
+    TEST_ASSERT_TRUE(elapsed.count() >= 50); // At least 50ms should have passed
+    
+    auto since_last = metrics.GetTimeSinceLastEmission();
+    TEST_ASSERT_TRUE(since_last.count() >= 0); // Should be non-negative
+    
+    auto rate = metrics.GetEmissionRate();
+    TEST_ASSERT_TRUE(rate > 0); // Should have some emission rate
+}
+
+void test_observable_metrics_summary() {
+    ObservableMetrics metrics;
+    
+    // Record some events
+    metrics.RecordEmission();
+    metrics.RecordEmission();
+    metrics.RecordSubscription();
+    metrics.RecordCompletion();
+    
+    // Get summary string
+    auto summary = metrics.GetSummary();
+    TEST_ASSERT_TRUE(summary.length() > 0);
+    
+    // Summary should contain our counts (basic string contains check)
+    TEST_ASSERT_TRUE(summary.find("Emissions: 2") != std::string::npos);
+    TEST_ASSERT_TRUE(summary.find("Subscriptions: 1") != std::string::npos);
+    TEST_ASSERT_TRUE(summary.find("Completions: 1") != std::string::npos);
+}
+
 // Test runner for PlatformIO
 void setup() {
      Serial.begin(115200);
@@ -1222,17 +1487,17 @@ void setup() {
     // Utility operator tests
     RUN_TEST(test_first_operator);
     RUN_TEST(test_last_operator);
-    // RUN_TEST(test_count_operator);
-    // RUN_TEST(test_sum_operator);
-    // RUN_TEST(test_min_operator);
-    // RUN_TEST(test_max_operator);
-    // RUN_TEST(test_default_if_empty_operator);
-    // RUN_TEST(test_start_with_operator);
-    // RUN_TEST(test_take_while_operator);
-    // RUN_TEST(test_skip_while_operator);
+    RUN_TEST(test_count_operator);
+    RUN_TEST(test_sum_operator);
+    RUN_TEST(test_min_operator);
+    RUN_TEST(test_max_operator);
+    RUN_TEST(test_default_if_empty_operator);
+    RUN_TEST(test_start_with_operator);
+    RUN_TEST(test_take_while_operator);
+    RUN_TEST(test_skip_while_operator);
     
     // Advanced features tests
-    // RUN_TEST(test_debounce_operator);
+    RUN_TEST(test_debounce_operator);
     RUN_TEST(test_merge_operator);
     RUN_TEST(test_retry_operator);  // Re-enabled with safer test
     
@@ -1261,14 +1526,29 @@ void setup() {
     RUN_TEST(test_pairwise_operator);
     RUN_TEST(test_race_operator);
     
+    // Test scheduler tests
+    RUN_TEST(test_test_scheduler_basic);
+    RUN_TEST(test_test_scheduler_delayed);
+    RUN_TEST(test_test_scheduler_multiple_actions);
+    RUN_TEST(test_test_scheduler_advance_to);
+    
+    // Debug operator tests
+    RUN_TEST(test_debug_operator);
+    RUN_TEST(test_debug_operator_with_error);
+    
+    // Observable metrics tests
+    RUN_TEST(test_observable_metrics_basic);
+    RUN_TEST(test_observable_metrics_timing);
+    RUN_TEST(test_observable_metrics_summary);
+    
     // Advanced operator tests
-    // RUN_TEST(test_zip_operator);
-    // RUN_TEST(test_switch_operator);
-    // RUN_TEST(test_flatmap_operator);
-    // RUN_TEST(test_concat_operator);
-    // RUN_TEST(test_delay_operator);
-    // RUN_TEST(test_sample_operator);
-    // RUN_TEST(test_withlatestfrom_operator);
+    RUN_TEST(test_zip_operator);
+    RUN_TEST(test_switch_operator);
+    RUN_TEST(test_flatmap_operator);
+    RUN_TEST(test_concat_operator);
+    RUN_TEST(test_delay_operator);
+    RUN_TEST(test_sample_operator);
+    RUN_TEST(test_withlatestfrom_operator);
     
     UNITY_END();
 }

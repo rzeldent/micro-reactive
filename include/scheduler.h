@@ -235,6 +235,155 @@ namespace rx
         }
     };
 
+    // Test scheduler for deterministic testing
+    class TestScheduler : public IScheduler
+    {
+    private:
+        struct ScheduledAction
+        {
+            std::chrono::milliseconds when;
+            std::shared_ptr<IScheduledWork> work;
+            std::chrono::milliseconds period;
+            bool is_periodic;
+
+            ScheduledAction(std::chrono::milliseconds w, std::shared_ptr<IScheduledWork> work_item,
+                           std::chrono::milliseconds p = std::chrono::milliseconds::zero(),
+                           bool periodic = false)
+                : when(w), work(work_item), period(p), is_periodic(periodic) {}
+
+            bool operator<(const ScheduledAction& other) const
+            {
+                return when > other.when; // Reverse order for priority queue (min-heap)
+            }
+        };
+
+        std::chrono::milliseconds virtual_time_;
+        std::priority_queue<ScheduledAction> actions_;
+        mutable std::mutex scheduler_mutex_;
+
+    public:
+        TestScheduler() : virtual_time_(0) {}
+
+        // Get current virtual time
+        std::chrono::milliseconds GetVirtualTime() const
+        {
+            std::lock_guard<std::mutex> lock(scheduler_mutex_);
+            return virtual_time_;
+        }
+
+        // Advance virtual time by duration and execute due actions
+        void AdvanceBy(std::chrono::milliseconds duration)
+        {
+            std::lock_guard<std::mutex> lock(scheduler_mutex_);
+            auto target_time = virtual_time_ + duration;
+            AdvanceToInternal(target_time);
+        }
+
+        // Advance virtual time to specific time and execute due actions
+        void AdvanceTo(std::chrono::milliseconds time)
+        {
+            std::lock_guard<std::mutex> lock(scheduler_mutex_);
+            if (time >= virtual_time_)
+            {
+                AdvanceToInternal(time);
+            }
+        }
+
+        // Execute all scheduled actions
+        void Start()
+        {
+            std::lock_guard<std::mutex> lock(scheduler_mutex_);
+            while (!actions_.empty())
+            {
+                auto action = actions_.top();
+                actions_.pop();
+                virtual_time_ = action.when;
+                
+                if (!action.work->IsCancelled())
+                {
+                    action.work->Execute();
+                    
+                    if (action.is_periodic && !action.work->IsCancelled())
+                    {
+                        // Re-schedule periodic action
+                        auto next_time = action.when + action.period;
+                        actions_.emplace(next_time, action.work, action.period, true);
+                    }
+                }
+            }
+        }
+
+        // Stop all scheduled actions
+        void Stop()
+        {
+            std::lock_guard<std::mutex> lock(scheduler_mutex_);
+            while (!actions_.empty())
+            {
+                actions_.top().work->Cancel();
+                actions_.pop();
+            }
+        }
+
+        // IScheduler implementation
+        std::shared_ptr<IScheduledWork> Schedule(std::function<void()> action) override
+        {
+            return ScheduleDelayed(action, std::chrono::milliseconds::zero());
+        }
+
+        std::shared_ptr<IScheduledWork> ScheduleDelayed(
+            std::function<void()> action,
+            std::chrono::milliseconds delay) override
+        {
+            std::lock_guard<std::mutex> lock(scheduler_mutex_);
+            auto work = std::make_shared<ScheduledWork>(action);
+            auto when = virtual_time_ + delay;
+            actions_.emplace(when, work);
+            return work;
+        }
+
+        std::shared_ptr<IScheduledWork> SchedulePeriodic(
+            std::function<void()> action,
+            std::chrono::milliseconds period) override
+        {
+            std::lock_guard<std::mutex> lock(scheduler_mutex_);
+            auto work = std::make_shared<ScheduledWork>(action);
+            auto when = virtual_time_ + period;
+            actions_.emplace(when, work, period, true);
+            return work;
+        }
+
+    private:
+        void AdvanceToInternal(std::chrono::milliseconds target_time)
+        {
+            while (!actions_.empty() && actions_.top().when <= target_time)
+            {
+                auto action = actions_.top();
+                actions_.pop();
+                virtual_time_ = action.when;
+                
+                if (!action.work->IsCancelled())
+                {
+                    action.work->Execute();
+                    
+                    if (action.is_periodic && !action.work->IsCancelled())
+                    {
+                        // Re-schedule periodic action
+                        auto next_time = action.when + action.period;
+                        if (next_time <= target_time)
+                        {
+                            actions_.emplace(next_time, action.work, action.period, true);
+                        }
+                        else
+                        {
+                            actions_.emplace(next_time, action.work, action.period, true);
+                        }
+                    }
+                }
+            }
+            virtual_time_ = target_time;
+        }
+    };
+
     // Default schedulers
     namespace Schedulers
     {
@@ -247,6 +396,12 @@ namespace rx
         inline ThreadPoolScheduler &Background()
         {
             static ThreadPoolScheduler instance;
+            return instance;
+        }
+
+        inline TestScheduler &Test()
+        {
+            static TestScheduler instance;
             return instance;
         }
     }
