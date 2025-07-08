@@ -243,6 +243,21 @@ void test_take_operator() {
     TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
+// Test SkipOperator with new subscription pattern
+void test_skip_operator() {
+    auto range = Range(1, 5); // 1, 2, 3, 4, 5
+    auto skip_op = Skip(std::static_pointer_cast<IObservable<int>>(range), 2);
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = skip_op->Subscribe(observer);
+    
+    // Should skip first 2 elements (1, 2), emit 3, 4, 5
+    TEST_ASSERT_EQUAL(5, observer->GetLastValue()); // Last value is 5
+    TEST_ASSERT_EQUAL(3, observer->GetCount()); // Should have 3 values (3, 4, 5)
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+}
+
 // Test ScanOperator with new subscription pattern
 void test_scan_operator() {
     auto range = Range(1, 4); // 1, 2, 3, 4
@@ -1515,6 +1530,48 @@ void test_observable_metrics_summary() {
     TEST_ASSERT_TRUE(summary.find("Completions: 1") != std::string::npos);
 }
 
+// Test distinct operator
+void test_distinct_operator() {
+    auto subject = std::make_shared<Subject<int>>();
+    auto distinct_op = Distinct(std::static_pointer_cast<IObservable<int>>(subject));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = distinct_op->Subscribe(observer);
+    
+    // Emit sequence with duplicates: 1, 2, 2, 3, 1, 4
+    subject->OnNext(1);
+    subject->OnNext(2);
+    subject->OnNext(2); // Duplicate - should be filtered
+    subject->OnNext(3);
+    subject->OnNext(1); // Duplicate - should be filtered  
+    subject->OnNext(4);
+    subject->OnCompleted();
+    
+    // Should only emit distinct values: 1, 2, 3, 4
+    TEST_ASSERT_EQUAL(4, observer->GetLastValue()); // Last distinct value is 4
+    TEST_ASSERT_EQUAL(4, observer->GetCount()); // Should have 4 distinct values
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+}
+
+// Test average operator
+void test_average_operator() {
+    auto range = Range(1, 5); // 1, 2, 3, 4, 5
+    auto average_op = Average(std::static_pointer_cast<IObservable<int>>(range));
+    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    
+    auto subscription = average_op->Subscribe(observer);
+    
+    // Wait for completion
+    delay(10);
+    
+    // Should emit average: (1+2+3+4+5)/5 = 15/5 = 3
+    TEST_ASSERT_EQUAL(3, observer->GetLastValue()); // Average is 3
+    TEST_ASSERT_EQUAL(1, observer->GetCount()); // Should emit only final average
+    TEST_ASSERT_TRUE(observer->IsCompleted());
+    TEST_ASSERT_FALSE(subscription->IsDisposed());
+}
+
 // Test runner for PlatformIO
 void setup() {
      Serial.begin(115200);
@@ -1539,6 +1596,7 @@ void setup() {
     RUN_TEST(test_map_operator);
     RUN_TEST(test_filter_operator);
     RUN_TEST(test_take_operator);
+    RUN_TEST(test_skip_operator);
     RUN_TEST(test_scan_operator);
     RUN_TEST(test_reduce_operator);
     RUN_TEST(test_throttle_operator);
@@ -1548,12 +1606,14 @@ void setup() {
     RUN_TEST(test_last_operator);
     RUN_TEST(test_count_operator);
     RUN_TEST(test_sum_operator);
+    RUN_TEST(test_average_operator);
     RUN_TEST(test_min_operator);
     RUN_TEST(test_max_operator);
     RUN_TEST(test_default_if_empty_operator);
     RUN_TEST(test_start_with_operator);
     RUN_TEST(test_take_while_operator);
     RUN_TEST(test_skip_while_operator);
+    RUN_TEST(test_distinct_operator);
     
     // Advanced features tests
     RUN_TEST(test_debounce_operator);
