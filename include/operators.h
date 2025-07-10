@@ -580,6 +580,19 @@ namespace rx
         }
     };
 
+    // Factory function for Do operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> action)
+    {
+        return std::make_shared<DoOperator<T>>(observable, action);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> action)
+    {
+        return Do(std::static_pointer_cast<IObservable<T>>(subject), action);
+    }
+
     // =============================================================================
     // CONTAINS OPERATOR - Emits true if the source contains the specified value
     // =============================================================================
@@ -673,6 +686,19 @@ namespace rx
             }
         }
     };
+
+    // Factory function for Contains operator
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> Contains(std::shared_ptr<IObservable<T>> observable, const T& value)
+    {
+        return std::make_shared<ContainsOperator<T>>(observable, value);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> Contains(std::shared_ptr<Subject<T>> subject, const T& value)
+    {
+        return Contains(std::static_pointer_cast<IObservable<T>>(subject), value);
+    }
 
     // =============================================================================
     // TAKEUNTIL OPERATOR - Takes items until a trigger observable emits
@@ -814,6 +840,31 @@ namespace rx
         }
     };
 
+    // Factory function for TakeUntil operator
+    template <typename T, typename TriggerType>
+    std::shared_ptr<IObservable<T>> TakeUntil(std::shared_ptr<IObservable<T>> observable, std::shared_ptr<IObservable<TriggerType>> trigger)
+    {
+        return std::make_shared<TakeUntilOperator<T, TriggerType>>(observable, trigger);
+    }
+
+    template <typename T, typename TriggerType>
+    std::shared_ptr<IObservable<T>> TakeUntil(std::shared_ptr<Subject<T>> subject, std::shared_ptr<IObservable<TriggerType>> trigger)
+    {
+        return TakeUntil(std::static_pointer_cast<IObservable<T>>(subject), trigger);
+    }
+
+    template <typename T, typename TriggerType>
+    std::shared_ptr<IObservable<T>> TakeUntil(std::shared_ptr<IObservable<T>> observable, std::shared_ptr<Subject<TriggerType>> trigger_subject)
+    {
+        return TakeUntil(observable, std::static_pointer_cast<IObservable<TriggerType>>(trigger_subject));
+    }
+
+    template <typename T, typename TriggerType>
+    std::shared_ptr<IObservable<T>> TakeUntil(std::shared_ptr<Subject<T>> subject, std::shared_ptr<Subject<TriggerType>> trigger_subject)
+    {
+        return TakeUntil(std::static_pointer_cast<IObservable<T>>(subject), std::static_pointer_cast<IObservable<TriggerType>>(trigger_subject));
+    }
+
     // =============================================================================
     // SKIPUNTIL OPERATOR - Skips items until a trigger observable emits
     // =============================================================================
@@ -948,1009 +999,33 @@ namespace rx
         }
     };
 
-    // =============================================================================
-    // ALL OPERATOR - Emits true if all items satisfy the predicate
-    // =============================================================================
-    template <typename T>
-    class AllOperator : public Operator<bool>
-    {
-        class AllObserver : public IObserver<T>
-        {
-        private:
-            Operator<bool> *operator_;
-            std::function<bool(const T &)> predicate_;
-            bool all_satisfied_;
-
-        public:
-            AllObserver(Operator<bool> *op, std::function<bool(const T &)> predicate)
-                : operator_(op), predicate_(predicate), all_satisfied_(true)
-            {
-            }
-
-            void OnNext(const T &value) override
-            {
-                if (all_satisfied_ && !predicate_(value))
-                {
-                    all_satisfied_ = false;
-                    operator_->NotifyOnNext(false);
-                    operator_->NotifyOnCompleted();
-                }
-            }
-
-            void OnCompleted() override
-            {
-                if (all_satisfied_)
-                {
-                    operator_->NotifyOnNext(true);
-                }
-                operator_->NotifyOnCompleted();
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<AllObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        AllOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-            : observable_(observable)
-        {
-            observer_ = std::make_shared<AllObserver>(this, predicate);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<bool>> observer) override
-        {
-            auto subscription = Operator<bool>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<AllOperator<T>>(
-                std::static_pointer_cast<AllOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<bool>> observer) override
-        {
-            Operator<bool>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // =============================================================================
-    // ANY OPERATOR - Emits true if any item satisfies the predicate
-    // =============================================================================
-    template <typename T>
-    class AnyOperator : public Operator<bool>
-    {
-        class AnyObserver : public IObserver<T>
-        {
-        private:
-            Operator<bool> *operator_;
-            std::function<bool(const T &)> predicate_;
-            bool any_satisfied_;
-
-        public:
-            AnyObserver(Operator<bool> *op, std::function<bool(const T &)> predicate)
-                : operator_(op), predicate_(predicate), any_satisfied_(false)
-            {
-            }
-
-            void OnNext(const T &value) override
-            {
-                if (!any_satisfied_ && predicate_(value))
-                {
-                    any_satisfied_ = true;
-                    operator_->NotifyOnNext(true);
-                    operator_->NotifyOnCompleted();
-                }
-            }
-
-            void OnCompleted() override
-            {
-                if (!any_satisfied_)
-                {
-                    operator_->NotifyOnNext(false);
-                }
-                operator_->NotifyOnCompleted();
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<AnyObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        AnyOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-            : observable_(observable)
-        {
-            observer_ = std::make_shared<AnyObserver>(this, predicate);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<bool>> observer) override
-        {
-            auto subscription = Operator<bool>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<AnyOperator<T>>(
-                std::static_pointer_cast<AnyOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<bool>> observer) override
-        {
-            Operator<bool>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // =============================================================================
-    // SCAN OPERATOR - Accumulate over time, emitting intermediate results
-    // =============================================================================
-    template <typename T, typename TAcc>
-    class ScanOperator : public Operator<TAcc>
-    {
-        class ScanObserver : public IObserver<T>
-        {
-        private:
-            Operator<TAcc> *operator_;
-            TAcc accumulator_;
-            std::function<TAcc(const TAcc &, const T &)> accumulatorFunc_;
-            bool first_;
-
-        public:
-            ScanObserver(Operator<TAcc> *op, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulatorFunc)
-                : operator_(op), accumulator_(seed), accumulatorFunc_(accumulatorFunc), first_(true) {}
-
-            void OnNext(const T &value) override
-            {
-                accumulator_ = accumulatorFunc_(accumulator_, value);
-                operator_->NotifyOnNext(accumulator_);
-            }
-
-            void OnCompleted() override
-            {
-                operator_->NotifyOnCompleted();
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<ScanObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        ScanOperator(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
-            : observable_(observable)
-        {
-            observer_ = std::make_shared<ScanObserver>(this, seed, accumulator);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<TAcc>> observer) override
-        {
-            auto subscription = Operator<TAcc>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<ScanOperator<T, TAcc>>(
-                std::static_pointer_cast<ScanOperator<T, TAcc>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<TAcc>> observer) override
-        {
-            Operator<TAcc>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // =============================================================================
-    // REDUCE OPERATOR - Accumulate over time, emitting only the final result
-    // =============================================================================
-    template <typename T, typename TAcc>
-    class ReduceOperator : public Operator<TAcc>
-    {
-        class ReduceObserver : public IObserver<T>
-        {
-        private:
-            Operator<TAcc> *operator_;
-            TAcc accumulator_;
-            std::function<TAcc(const TAcc &, const T &)> accumulatorFunc_;
-
-        public:
-            ReduceObserver(Operator<TAcc> *op, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulatorFunc)
-                : operator_(op), accumulator_(seed), accumulatorFunc_(accumulatorFunc) {}
-
-            void OnNext(const T &value) override
-            {
-                accumulator_ = accumulatorFunc_(accumulator_, value);
-            }
-
-            void OnCompleted() override
-            {
-                operator_->NotifyOnNext(accumulator_);
-                operator_->NotifyOnCompleted();
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<ReduceObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        ReduceOperator(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
-            : observable_(observable)
-        {
-            observer_ = std::make_shared<ReduceObserver>(this, seed, accumulator);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<TAcc>> observer) override
-        {
-            auto subscription = Operator<TAcc>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<ReduceOperator<T, TAcc>>(
-                std::static_pointer_cast<ReduceOperator<T, TAcc>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<TAcc>> observer) override
-        {
-            Operator<TAcc>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // =============================================================================
-    // THROTTLE OPERATOR - Emits items only after a specified time period has passed
-    // =============================================================================
-    template <typename T>
-    class ThrottleOperator : public Operator<T>
-    {
-        class ThrottleObserver : public IObserver<T>
-        {
-        private:
-            Operator<T> *operator_;
-            size_t interval_;
-            std::atomic<size_t> count_;
-
-        public:
-            ThrottleObserver(Operator<T> *op, size_t interval)
-                : operator_(op), interval_(interval), count_(0) {}
-
-            void OnNext(const T &value) override
-            {
-                size_t current_count = count_.fetch_add(1) + 1;
-                if (current_count % interval_ == 0)
-                {
-                    operator_->NotifyOnNext(value);
-                }
-            }
-
-            void OnCompleted() override
-            {
-                operator_->NotifyOnCompleted();
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<ThrottleObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        ThrottleOperator(std::shared_ptr<IObservable<T>> observable, size_t interval) : observable_(observable)
-        {
-            observer_ = std::make_shared<ThrottleObserver>(this, interval);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            auto subscription = Operator<T>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<ThrottleOperator<T>>(
-                std::static_pointer_cast<ThrottleOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            Operator<T>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // =============================================================================
-    // FIRST OPERATOR - Emits only the first item
-    // =============================================================================
-    template <typename T>
-    class FirstOperator : public Operator<T>
-    {
-        class FirstObserver : public IObserver<T>
-        {
-        private:
-            Operator<T> *operator_;
-            std::atomic<bool> emitted_;
-
-        public:
-            FirstObserver(Operator<T> *op) : operator_(op), emitted_(false) {}
-
-            void OnNext(const T &value) override
-            {
-                if (!emitted_.exchange(true))
-                {
-                    operator_->NotifyOnNext(value);
-                    operator_->NotifyOnCompleted();
-                }
-            }
-
-            void OnCompleted() override
-            {
-                if (!emitted_.load())
-                {
-                    operator_->NotifyOnError(std::runtime_error("Sequence contains no elements"));
-                }
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<FirstObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        FirstOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
-        {
-            observer_ = std::make_shared<FirstObserver>(this);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            auto subscription = Operator<T>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<FirstOperator<T>>(
-                std::static_pointer_cast<FirstOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            Operator<T>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // =============================================================================
-    // LAST OPERATOR - Emits only the last item
-    // =============================================================================
-    template <typename T>
-    class LastOperator : public Operator<T>
-    {
-        class LastObserver : public IObserver<T>
-        {
-        private:
-            Operator<T> *operator_;
-            T lastValue_;
-            bool hasValue_;
-
-        public:
-            LastObserver(Operator<T> *op) : operator_(op), hasValue_(false) {}
-
-            void OnNext(const T &value) override
-            {
-                lastValue_ = value;
-                hasValue_ = true;
-            }
-
-            void OnCompleted() override
-            {
-                if (hasValue_)
-                {
-                    operator_->NotifyOnNext(lastValue_);
-                    operator_->NotifyOnCompleted();
-                }
-                else
-                {
-                    operator_->NotifyOnError(std::runtime_error("Sequence contains no elements"));
-                }
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<LastObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        LastOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
-        {
-            observer_ = std::make_shared<LastObserver>(this);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            auto subscription = Operator<T>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<LastOperator<T>>(
-                std::static_pointer_cast<LastOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            Operator<T>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // =============================================================================
-    // FACTORY FUNCTIONS
-    // =============================================================================
-
-    // Factory functions for Do/Tap
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> action)
-    {
-        return std::make_shared<DoOperator<T>>(observable, action);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> action)
-    {
-        return Do(std::static_pointer_cast<IObservable<T>>(subject), action);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Tap(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> action)
-    {
-        return Do(observable, action);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Tap(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> action)
-    {
-        return Do(std::static_pointer_cast<IObservable<T>>(subject), action);
-    }
-
-    // Factory functions for Contains
-    template <typename T>
-    std::shared_ptr<IObservable<bool>> Contains(std::shared_ptr<IObservable<T>> observable, const T &value)
-    {
-        return std::make_shared<ContainsOperator<T>>(observable, value);
-    }
-
-    template <typename T>
-    std::shared_ptr<IObservable<bool>> Contains(std::shared_ptr<Subject<T>> subject, const T &value)
-    {
-        return Contains(std::static_pointer_cast<IObservable<T>>(subject), value);
-    }
-
-    // Factory functions for TakeUntil
+    // Factory function for SkipUntil operator
     template <typename T, typename TriggerType>
-    std::shared_ptr<TakeUntilOperator<T, TriggerType>> TakeUntil(std::shared_ptr<IObservable<T>> source, std::shared_ptr<IObservable<TriggerType>> trigger)
+    std::shared_ptr<IObservable<T>> SkipUntil(std::shared_ptr<IObservable<T>> observable, std::shared_ptr<IObservable<TriggerType>> trigger)
     {
-        return std::make_shared<TakeUntilOperator<T, TriggerType>>(source, trigger);
+        return std::make_shared<SkipUntilOperator<T, TriggerType>>(observable, trigger);
     }
 
     template <typename T, typename TriggerType>
-    std::shared_ptr<TakeUntilOperator<T, TriggerType>> TakeUntil(std::shared_ptr<Subject<T>> source, std::shared_ptr<IObservable<TriggerType>> trigger)
+    std::shared_ptr<IObservable<T>> SkipUntil(std::shared_ptr<Subject<T>> subject, std::shared_ptr<IObservable<TriggerType>> trigger)
     {
-        return TakeUntil(std::static_pointer_cast<IObservable<T>>(source), trigger);
+        return SkipUntil(std::static_pointer_cast<IObservable<T>>(subject), trigger);
     }
 
     template <typename T, typename TriggerType>
-    std::shared_ptr<TakeUntilOperator<T, TriggerType>> TakeUntil(std::shared_ptr<IObservable<T>> source, std::shared_ptr<Subject<TriggerType>> trigger)
+    std::shared_ptr<IObservable<T>> SkipUntil(std::shared_ptr<IObservable<T>> observable, std::shared_ptr<Subject<TriggerType>> trigger_subject)
     {
-        return TakeUntil(source, std::static_pointer_cast<IObservable<TriggerType>>(trigger));
+        return SkipUntil(observable, std::static_pointer_cast<IObservable<TriggerType>>(trigger_subject));
     }
 
     template <typename T, typename TriggerType>
-    std::shared_ptr<TakeUntilOperator<T, TriggerType>> TakeUntil(std::shared_ptr<Subject<T>> source, std::shared_ptr<Subject<TriggerType>> trigger)
+    std::shared_ptr<IObservable<T>> SkipUntil(std::shared_ptr<Subject<T>> subject, std::shared_ptr<Subject<TriggerType>> trigger_subject)
     {
-        return TakeUntil(std::static_pointer_cast<IObservable<T>>(source), std::static_pointer_cast<IObservable<TriggerType>>(trigger));
-    }
-
-    // Factory functions for SkipUntil
-    template <typename T, typename TriggerType>
-    std::shared_ptr<SkipUntilOperator<T, TriggerType>> SkipUntil(std::shared_ptr<IObservable<T>> source, std::shared_ptr<IObservable<TriggerType>> trigger)
-    {
-        return std::make_shared<SkipUntilOperator<T, TriggerType>>(source, trigger);
-    }
-
-    template <typename T, typename TriggerType>
-    std::shared_ptr<SkipUntilOperator<T, TriggerType>> SkipUntil(std::shared_ptr<Subject<T>> source, std::shared_ptr<IObservable<TriggerType>> trigger)
-    {
-        return SkipUntil(std::static_pointer_cast<IObservable<T>>(source), trigger);
-    }
-
-    template <typename T, typename TriggerType>
-    std::shared_ptr<SkipUntilOperator<T, TriggerType>> SkipUntil(std::shared_ptr<IObservable<T>> source, std::shared_ptr<Subject<TriggerType>> trigger)
-    {
-        return SkipUntil(source, std::static_pointer_cast<IObservable<TriggerType>>(trigger));
-    }
-
-    template <typename T, typename TriggerType>
-    std::shared_ptr<SkipUntilOperator<T, TriggerType>> SkipUntil(std::shared_ptr<Subject<T>> source, std::shared_ptr<Subject<TriggerType>> trigger)
-    {
-        return SkipUntil(std::static_pointer_cast<IObservable<T>>(source), std::static_pointer_cast<IObservable<TriggerType>>(trigger));
-    }
-
-    // Factory functions for All
-    template <typename T>
-    std::shared_ptr<AllOperator<T>> All(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-    {
-        return std::make_shared<AllOperator<T>>(observable, predicate);
-    }
-
-    template <typename T>
-    std::shared_ptr<AllOperator<T>> All(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
-    {
-        return All(std::static_pointer_cast<IObservable<T>>(subject), predicate);
-    }
-
-    // Factory functions for Any
-    template <typename T>
-    std::shared_ptr<AnyOperator<T>> Any(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-    {
-        return std::make_shared<AnyOperator<T>>(observable, predicate);
-    }
-
-    template <typename T>
-    std::shared_ptr<AnyOperator<T>> Any(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
-    {
-        return Any(std::static_pointer_cast<IObservable<T>>(subject), predicate);
-    }
-
-    // Factory functions for Scan
-    template <typename T, typename TAcc>
-    std::shared_ptr<ScanOperator<T, TAcc>> Scan(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
-    {
-        return std::make_shared<ScanOperator<T, TAcc>>(observable, seed, accumulator);
-    }
-
-    // Factory functions for Reduce
-    template <typename T, typename TAcc>
-    std::shared_ptr<ReduceOperator<T, TAcc>> Reduce(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
-    {
-        return std::make_shared<ReduceOperator<T, TAcc>>(observable, seed, accumulator);
-    }
-
-    // Factory functions for Throttle
-    template <typename T>
-    std::shared_ptr<ThrottleOperator<T>> Throttle(std::shared_ptr<IObservable<T>> observable, size_t interval)
-    {
-        return std::make_shared<ThrottleOperator<T>>(observable, interval);
-    }
-
-    // Factory functions for First
-    template <typename T>
-    std::shared_ptr<FirstOperator<T>> First(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<FirstOperator<T>>(observable);
-    }
-
-    // Factory functions for Last
-    template <typename T>
-    std::shared_ptr<LastOperator<T>> Last(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<LastOperator<T>>(observable);
-    }
-
-    // Aliases for commonly used functions
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Where(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-    {
-        return Filter(observable, predicate);
-    }
-
-    template <typename Tsrc, typename Tdest>
-    std::shared_ptr<IObservable<Tdest>> Select(std::shared_ptr<IObservable<Tsrc>> observable, std::function<Tdest(const Tsrc &)> transform)
-    {
-        return Map(observable, transform);
+        return SkipUntil(std::static_pointer_cast<IObservable<T>>(subject), std::static_pointer_cast<IObservable<TriggerType>>(trigger_subject));
     }
 
     // =============================================================================
-    // TAKEWHILE OPERATOR - Takes items while a condition is true
-    // =============================================================================
-    template <typename T>
-    class TakeWhileOperator : public Operator<T>
-    {
-        class TakeWhileObserver : public IObserver<T>
-        {
-        private:
-            Operator<T> *operator_;
-            std::function<bool(const T &)> predicate_;
-            std::atomic<bool> completed_{false};
-
-        public:
-            TakeWhileObserver(Operator<T> *op, std::function<bool(const T &)> predicate)
-                : operator_(op), predicate_(predicate)
-            {
-            }
-
-            void OnNext(const T &value) override
-            {
-                if (!completed_.load() && predicate_(value))
-                {
-                    operator_->NotifyOnNext(value);
-                }
-                else if (!completed_.exchange(true))
-                {
-                    operator_->NotifyOnCompleted();
-                }
-            }
-
-            void OnCompleted() override
-            {
-                if (!completed_.exchange(true))
-                {
-                    operator_->NotifyOnCompleted();
-                }
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<TakeWhileObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        TakeWhileOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-            : observable_(observable)
-        {
-            observer_ = std::make_shared<TakeWhileObserver>(this, predicate);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            auto subscription = Operator<T>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<TakeWhileOperator<T>>(
-                std::static_pointer_cast<TakeWhileOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            Operator<T>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // Factory functions for TakeWhile operator
-    template <typename T>
-    std::shared_ptr<TakeWhileOperator<T>> TakeWhile(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-    {
-        return std::make_shared<TakeWhileOperator<T>>(observable, predicate);
-    }
-
-    template <typename T>
-    std::shared_ptr<TakeWhileOperator<T>> TakeWhile(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
-    {
-        return TakeWhile(std::static_pointer_cast<IObservable<T>>(subject), predicate);
-    }
-
-    // =============================================================================
-    // SKIPWHILE OPERATOR - Skips items while a condition is true
-    // =============================================================================
-    template <typename T>
-    class SkipWhileOperator : public Operator<T>
-    {
-        class SkipWhileObserver : public IObserver<T>
-        {
-        private:
-            Operator<T> *operator_;
-            std::function<bool(const T &)> predicate_;
-            std::atomic<bool> skipping_{true};
-
-        public:
-            SkipWhileObserver(Operator<T> *op, std::function<bool(const T &)> predicate)
-                : operator_(op), predicate_(predicate)
-            {
-            }
-
-            void OnNext(const T &value) override
-            {
-                if (skipping_.load() && predicate_(value))
-                {
-                    // Continue skipping
-                    return;
-                }
-                else
-                {
-                    skipping_.store(false);
-                    operator_->NotifyOnNext(value);
-                }
-            }
-
-            void OnCompleted() override
-            {
-                operator_->NotifyOnCompleted();
-            }
-
-            void OnError(const std::exception &e) override
-            {
-                operator_->NotifyOnError(e);
-            }
-        };
-
-        std::shared_ptr<IObservable<T>> observable_;
-        std::shared_ptr<SkipWhileObserver> observer_;
-        std::shared_ptr<Subscription> source_subscription_;
-        mutable std::mutex subscription_mutex_;
-
-    public:
-        SkipWhileOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-            : observable_(observable)
-        {
-            observer_ = std::make_shared<SkipWhileObserver>(this, predicate);
-        }
-
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            auto subscription = Operator<T>::Subscribe(observer);
-
-            {
-                std::lock_guard<std::mutex> lock(subscription_mutex_);
-                if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
-                    source_subscription_ = observable_->Subscribe(observer_);
-                }
-            }
-
-            auto weak_self = std::weak_ptr<SkipWhileOperator<T>>(
-                std::static_pointer_cast<SkipWhileOperator<T>>(this->shared_from_this()));
-            return std::make_shared<Subscription>([weak_self, subscription, observer]()
-                                                  {
-            if (auto self = weak_self.lock()) {
-                subscription->Dispose();
-                std::lock_guard<std::mutex> lock(self->subscription_mutex_);
-                if (self->child_observers_.empty() && self->source_subscription_) {
-                    self->source_subscription_->Dispose();
-                    self->source_subscription_.reset();
-                }
-            } });
-        }
-
-        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
-        {
-            Operator<T>::UnSubscribe(observer);
-            std::lock_guard<std::mutex> lock(subscription_mutex_);
-            if (this->child_observers_.empty() && source_subscription_)
-            {
-                source_subscription_->Dispose();
-                source_subscription_.reset();
-            }
-        }
-    };
-
-    // Factory functions for SkipWhile operator
-    template <typename T>
-    std::shared_ptr<SkipWhileOperator<T>> SkipWhile(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
-    {
-        return std::make_shared<SkipWhileOperator<T>>(observable, predicate);
-    }
-
-    template <typename T>
-    std::shared_ptr<SkipWhileOperator<T>> SkipWhile(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
-    {
-        return SkipWhile(std::static_pointer_cast<IObservable<T>>(subject), predicate);
-    }
-
-    // =============================================================================
-    // DISTINCTUNTILCHANGED OPERATOR - Only emit items when they differ from the previous item
+    // DISTINCT UNTIL CHANGED OPERATOR - Only emit items when they differ from the previous item
     // =============================================================================
     template <typename T>
     class DistinctUntilChangedOperator : public Operator<T>
@@ -2038,6 +1113,19 @@ namespace rx
             }
         }
     };
+
+    // Factory function for DistinctUntilChanged operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> DistinctUntilChanged(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<DistinctUntilChangedOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> DistinctUntilChanged(std::shared_ptr<Subject<T>> subject)
+    {
+        return DistinctUntilChanged(std::static_pointer_cast<IObservable<T>>(subject));
+    }
 
     // =============================================================================
     // PAIRWISE OPERATOR - Emits the previous and current value as a pair
@@ -2128,6 +1216,19 @@ namespace rx
             }
         }
     };
+
+    // Factory function for Pairwise operator
+    template <typename T>
+    std::shared_ptr<IObservable<std::pair<T, T>>> Pairwise(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<PairwiseOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<std::pair<T, T>>> Pairwise(std::shared_ptr<Subject<T>> subject)
+    {
+        return Pairwise(std::static_pointer_cast<IObservable<T>>(subject));
+    }
 
     // =============================================================================
     // RACE OPERATOR - Emits values from the first observable to emit
@@ -2246,36 +1347,610 @@ namespace rx
         }
     };
 
-    // Factory functions for the final three operators
+    // Factory function for Race operator
     template <typename T>
-    std::shared_ptr<DistinctUntilChangedOperator<T>> DistinctUntilChanged(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<DistinctUntilChangedOperator<T>>(observable);
-    }
-
-    template <typename T>
-    std::shared_ptr<DistinctUntilChangedOperator<T>> DistinctUntilChanged(std::shared_ptr<Subject<T>> subject)
-    {
-        return DistinctUntilChanged(std::static_pointer_cast<IObservable<T>>(subject));
-    }
-
-    template <typename T>
-    std::shared_ptr<PairwiseOperator<T>> Pairwise(std::shared_ptr<IObservable<T>> observable)
-    {
-        return std::make_shared<PairwiseOperator<T>>(observable);
-    }
-
-    template <typename T>
-    std::shared_ptr<PairwiseOperator<T>> Pairwise(std::shared_ptr<Subject<T>> subject)
-    {
-        return Pairwise(std::static_pointer_cast<IObservable<T>>(subject));
-    }
-
-    template <typename T>
-    std::shared_ptr<RaceOperator<T>> Race(std::vector<std::shared_ptr<IObservable<T>>> observables)
+    std::shared_ptr<IObservable<T>> Race(std::vector<std::shared_ptr<IObservable<T>>> observables)
     {
         return std::make_shared<RaceOperator<T>>(observables);
     }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Race(std::initializer_list<std::shared_ptr<IObservable<T>>> observables)
+    {
+        return Race(std::vector<std::shared_ptr<IObservable<T>>>(observables));
+    }
+
+    // =============================================================================
+    // AGGREGATION OPERATORS
+    // =============================================================================
+
+    // Count operator - counts the number of emitted items
+    template <typename T>
+    class CountOperator : public Operator<size_t>
+    {
+        class CountObserver : public IObserver<T>
+        {
+        private:
+            Operator<size_t> *operator_;
+            size_t count_;
+
+        public:
+            CountObserver(Operator<size_t> *op) : operator_(op), count_(0) {}
+
+            void OnNext(const T &value) override
+            {
+                count_++;
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnNext(count_);
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<CountObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        CountOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
+        {
+            observer_ = std::make_shared<CountObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<size_t>> observer) override
+        {
+            auto subscription = Operator<size_t>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<CountOperator<T>>(
+                std::static_pointer_cast<CountOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<size_t>> observer) override
+        {
+            Operator<size_t>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Sum operator - sums all emitted numeric values
+    template <typename T>
+    class SumOperator : public Operator<T>
+    {
+        class SumObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            T sum_;
+
+        public:
+            SumObserver(Operator<T> *op) : operator_(op), sum_(T{}) {}
+
+            void OnNext(const T &value) override
+            {
+                sum_ += value;
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnNext(sum_);
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<SumObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        SumOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
+        {
+            observer_ = std::make_shared<SumObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<SumOperator<T>>(
+                std::static_pointer_cast<SumOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Min operator - finds minimum value
+    template <typename T>
+    class MinOperator : public Operator<T>
+    {
+        class MinObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            T min_value_;
+            bool has_value_;
+
+        public:
+            MinObserver(Operator<T> *op) : operator_(op), has_value_(false) {}
+
+            void OnNext(const T &value) override
+            {
+                if (!has_value_ || value < min_value_)
+                {
+                    min_value_ = value;
+                    has_value_ = true;
+                }
+            }
+
+            void OnCompleted() override
+            {
+                if (has_value_)
+                {
+                    operator_->NotifyOnNext(min_value_);
+                }
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<MinObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        MinOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
+        {
+            observer_ = std::make_shared<MinObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<MinOperator<T>>(
+                std::static_pointer_cast<MinOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Max operator - finds maximum value
+    template <typename T>
+    class MaxOperator : public Operator<T>
+    {
+        class MaxObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            T max_value_;
+            bool has_value_;
+
+        public:
+            MaxObserver(Operator<T> *op) : operator_(op), has_value_(false) {}
+
+            void OnNext(const T &value) override
+            {
+                if (!has_value_ || value > max_value_)
+                {
+                    max_value_ = value;
+                    has_value_ = true;
+                }
+            }
+
+            void OnCompleted() override
+            {
+                if (has_value_)
+                {
+                    operator_->NotifyOnNext(max_value_);
+                }
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<MaxObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        MaxOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
+        {
+            observer_ = std::make_shared<MaxObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<MaxOperator<T>>(
+                std::static_pointer_cast<MaxOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Average operator - calculates average of numeric values
+    template <typename T>
+    class AverageOperator : public Operator<T>
+    {
+        class AverageObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            T sum_;
+            size_t count_;
+
+        public:
+            AverageObserver(Operator<T> *op) : operator_(op), sum_(T{}), count_(0) {}
+
+            void OnNext(const T &value) override
+            {
+                sum_ += value;
+                count_++;
+            }
+
+            void OnCompleted() override
+            {
+                if (count_ > 0)
+                {
+                    T average = sum_ / static_cast<T>(count_);
+                    operator_->NotifyOnNext(average);
+                }
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<AverageObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        AverageOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
+        {
+            observer_ = std::make_shared<AverageObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<AverageOperator<T>>(
+                std::static_pointer_cast<AverageOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // DefaultIfEmpty operator - emits a default value if source is empty
+    template <typename T>
+    class DefaultIfEmptyOperator : public Operator<T>
+    {
+        class DefaultIfEmptyObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            T default_value_;
+            bool has_emitted_;
+
+        public:
+            DefaultIfEmptyObserver(Operator<T> *op, const T& default_value) 
+                : operator_(op), default_value_(default_value), has_emitted_(false) {}
+
+            void OnNext(const T &value) override
+            {
+                has_emitted_ = true;
+                operator_->NotifyOnNext(value);
+            }
+
+            void OnCompleted() override
+            {
+                if (!has_emitted_)
+                {
+                    operator_->NotifyOnNext(default_value_);
+                }
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<DefaultIfEmptyObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        DefaultIfEmptyOperator(std::shared_ptr<IObservable<T>> observable, const T& default_value) 
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<DefaultIfEmptyObserver>(this, default_value);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<DefaultIfEmptyOperator<T>>(
+                std::static_pointer_cast<DefaultIfEmptyOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // StartWith operator - prepends values to the beginning of the stream
+    template <typename T>
+    class StartWithOperator : public Operator<T>
+    {
+        class StartWithObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+
+        public:
+            StartWithObserver(Operator<T> *op) : operator_(op) {}
+
+            void OnNext(const T &value) override
+            {
+                operator_->NotifyOnNext(value);
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::vector<T> start_values_;
+        std::shared_ptr<StartWithObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        StartWithOperator(std::shared_ptr<IObservable<T>> observable, const std::vector<T>& start_values) 
+            : observable_(observable), start_values_(start_values)
+        {
+            observer_ = std::make_shared<StartWithObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            // Emit start values first
+            for (const auto& value : start_values_)
+            {
+                this->NotifyOnNext(value);
+            }
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<StartWithOperator<T>>(
+                std::static_pointer_cast<StartWithOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
 
     // =============================================================================
     // DEBUG OPERATOR - Passes through all values while collecting metrics
@@ -2367,6 +2042,999 @@ namespace rx
         return Debug(std::static_pointer_cast<IObservable<T>>(subject), name);
     }
 
-} // namespace rx
+    // =============================================================================
+    // AGGREGATION OPERATOR FACTORY FUNCTIONS
+    // =============================================================================
+
+    // Factory function for Count operator
+    template <typename T>
+    std::shared_ptr<CountOperator<T>> Count(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<CountOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<CountOperator<T>> Count(std::shared_ptr<Subject<T>> subject)
+    {
+        return Count(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Sum operator
+    template <typename T>
+    std::shared_ptr<SumOperator<T>> Sum(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<SumOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<SumOperator<T>> Sum(std::shared_ptr<Subject<T>> subject)
+    {
+        return Sum(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Min operator
+    template <typename T>
+    std::shared_ptr<MinOperator<T>> Min(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<MinOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<MinOperator<T>> Min(std::shared_ptr<Subject<T>> subject)
+    {
+        return Min(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Max operator
+    template <typename T>
+    std::shared_ptr<MaxOperator<T>> Max(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<MaxOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<MaxOperator<T>> Max(std::shared_ptr<Subject<T>> subject)
+    {
+        return Max(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for Average operator
+    template <typename T>
+    std::shared_ptr<AverageOperator<T>> Average(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<AverageOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<AverageOperator<T>> Average(std::shared_ptr<Subject<T>> subject)
+    {
+        return Average(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Factory function for DefaultIfEmpty operator
+    template <typename T>
+    std::shared_ptr<DefaultIfEmptyOperator<T>> DefaultIfEmpty(std::shared_ptr<IObservable<T>> observable, const T& default_value)
+    {
+        return std::make_shared<DefaultIfEmptyOperator<T>>(observable, default_value);
+    }
+
+    template <typename T>
+    std::shared_ptr<DefaultIfEmptyOperator<T>> DefaultIfEmpty(std::shared_ptr<Subject<T>> subject, const T& default_value)
+    {
+        return DefaultIfEmpty(std::static_pointer_cast<IObservable<T>>(subject), default_value);
+    }
+
+    // Factory function for StartWith operator
+    template <typename T>
+    std::shared_ptr<StartWithOperator<T>> StartWith(std::shared_ptr<IObservable<T>> observable, const std::vector<T>& start_values)
+    {
+        return std::make_shared<StartWithOperator<T>>(observable, start_values);
+    }
+
+    template <typename T>
+    std::shared_ptr<StartWithOperator<T>> StartWith(std::shared_ptr<Subject<T>> subject, const std::vector<T>& start_values)
+    {
+        return StartWith(std::static_pointer_cast<IObservable<T>>(subject), start_values);
+    }
+
+    // =============================================================================
+    // UTILITY AND CONDITIONAL OPERATORS  
+    // =============================================================================
+
+    // Scan operator - emits accumulated values
+    template <typename T, typename TAcc>
+    class ScanOperator : public Operator<TAcc>
+    {
+        class ScanObserver : public IObserver<T>
+        {
+        private:
+            Operator<TAcc> *operator_;
+            TAcc accumulator_;
+            std::function<TAcc(const TAcc &, const T &)> accumulatorFunc_;
+
+        public:
+            ScanObserver(Operator<TAcc> *op, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulatorFunc)
+                : operator_(op), accumulator_(seed), accumulatorFunc_(accumulatorFunc) {}
+
+            void OnNext(const T &value) override
+            {
+                accumulator_ = accumulatorFunc_(accumulator_, value);
+                operator_->NotifyOnNext(accumulator_);
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<ScanObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        ScanOperator(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<ScanObserver>(this, seed, accumulator);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<TAcc>> observer) override
+        {
+            auto subscription = Operator<TAcc>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<ScanOperator<T, TAcc>>(
+                std::static_pointer_cast<ScanOperator<T, TAcc>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<TAcc>> observer) override
+        {
+            Operator<TAcc>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for Scan operator
+    template <typename T, typename TAcc>
+    std::shared_ptr<IObservable<TAcc>> Scan(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
+    {
+        return std::make_shared<ScanOperator<T, TAcc>>(observable, seed, accumulator);
+    }
+
+    template <typename T, typename TAcc>
+    std::shared_ptr<IObservable<TAcc>> Scan(std::shared_ptr<Subject<T>> subject, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
+    {
+        return Scan(std::static_pointer_cast<IObservable<T>>(subject), seed, accumulator);
+    }
+
+    // =============================================================================
+    // REDUCE OPERATOR - Emits single accumulated result
+    // =============================================================================
+    template <typename T, typename TAcc>
+    class ReduceOperator : public Operator<TAcc>
+    {
+        class ReduceObserver : public IObserver<T>
+        {
+        private:
+            Operator<TAcc> *operator_;
+            TAcc accumulator_;
+            std::function<TAcc(const TAcc &, const T &)> accumulatorFunc_;
+
+        public:
+            ReduceObserver(Operator<TAcc> *op, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulatorFunc)
+                : operator_(op), accumulator_(seed), accumulatorFunc_(accumulatorFunc) {}
+
+            void OnNext(const T &value) override
+            {
+                accumulator_ = accumulatorFunc_(accumulator_, value);
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnNext(accumulator_);
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<ReduceObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        ReduceOperator(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<ReduceObserver>(this, seed, accumulator);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<TAcc>> observer) override
+        {
+            auto subscription = Operator<TAcc>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<ReduceOperator<T, TAcc>>(
+                std::static_pointer_cast<ReduceOperator<T, TAcc>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<TAcc>> observer) override
+        {
+            Operator<TAcc>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for Reduce operator
+    template <typename T, typename TAcc>
+    std::shared_ptr<IObservable<TAcc>> Reduce(std::shared_ptr<IObservable<T>> observable, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
+    {
+        return std::make_shared<ReduceOperator<T, TAcc>>(observable, seed, accumulator);
+    }
+
+    template <typename T, typename TAcc>
+    std::shared_ptr<IObservable<TAcc>> Reduce(std::shared_ptr<Subject<T>> subject, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
+    {
+        return Reduce(std::static_pointer_cast<IObservable<T>>(subject), seed, accumulator);
+    }
+
+    // Throttle operator - emits every nth item
+    template <typename T>
+    class ThrottleOperator : public Operator<T>
+    {
+        class ThrottleObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            size_t interval_;
+            size_t count_;
+
+        public:
+            ThrottleObserver(Operator<T> *op, size_t interval) : operator_(op), interval_(interval), count_(0) {}
+
+            void OnNext(const T &value) override
+            {
+                count_++;
+                if (count_ % interval_ == 0)
+                {
+                    operator_->NotifyOnNext(value);
+                }
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<ThrottleObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        ThrottleOperator(std::shared_ptr<IObservable<T>> observable, size_t interval) : observable_(observable)
+        {
+            observer_ = std::make_shared<ThrottleObserver>(this, interval);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<ThrottleOperator<T>>(
+                std::static_pointer_cast<ThrottleOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for Throttle operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Throttle(std::shared_ptr<IObservable<T>> observable, size_t interval)
+    {
+        return std::make_shared<ThrottleOperator<T>>(observable, interval);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Throttle(std::shared_ptr<Subject<T>> subject, size_t interval)
+    {
+        return Throttle(std::static_pointer_cast<IObservable<T>>(subject), interval);
+    }
+
+    // First operator - emits only the first item
+    template <typename T>
+    class FirstOperator : public Operator<T>
+    {
+        class FirstObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            bool has_emitted_;
+
+        public:
+            FirstObserver(Operator<T> *op) : operator_(op), has_emitted_(false) {}
+
+            void OnNext(const T &value) override
+            {
+                if (!has_emitted_)
+                {
+                    has_emitted_ = true;
+                    operator_->NotifyOnNext(value);
+                    operator_->NotifyOnCompleted();
+                }
+            }
+
+            void OnCompleted() override
+            {
+                if (!has_emitted_)
+                {
+                    operator_->NotifyOnCompleted();
+                }
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<FirstObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        FirstOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
+        {
+            observer_ = std::make_shared<FirstObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<FirstOperator<T>>(
+                std::static_pointer_cast<FirstOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for First operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> First(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<FirstOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> First(std::shared_ptr<Subject<T>> subject)
+    {
+        return First(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // Last operator - emits only the last item  
+    template <typename T>
+    class LastOperator : public Operator<T>
+    {
+        class LastObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            T last_value_;
+            bool has_value_;
+
+        public:
+            LastObserver(Operator<T> *op) : operator_(op), has_value_(false) {}
+
+            void OnNext(const T &value) override
+            {
+
+                last_value_ = value;
+                has_value_ = true;
+            }
+
+            void OnCompleted() override
+            {
+                if (has_value_)
+                {
+                    operator_->NotifyOnNext(last_value_);
+                }
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<LastObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        LastOperator(std::shared_ptr<IObservable<T>> observable) : observable_(observable)
+        {
+            observer_ = std::make_shared<LastObserver>(this);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<LastOperator<T>>(
+                std::static_pointer_cast<LastOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for Last operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Last(std::shared_ptr<IObservable<T>> observable)
+    {
+        return std::make_shared<LastOperator<T>>(observable);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> Last(std::shared_ptr<Subject<T>> subject)
+    {
+        return Last(std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    // TakeWhile operator - emits items while predicate is true
+    template <typename T>
+    class TakeWhileOperator : public Operator<T>
+    {
+        class TakeWhileObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            std::function<bool(const T &)> predicate_;
+
+        public:
+            TakeWhileObserver(Operator<T> *op, std::function<bool(const T &)> predicate)
+                : operator_(op), predicate_(predicate) {}
+
+            void OnNext(const T &value) override
+            {
+                if (predicate_(value))
+                {
+                    operator_->NotifyOnNext(value);
+                }
+                else
+                {
+                    operator_->NotifyOnCompleted();
+                }
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<TakeWhileObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        TakeWhileOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<TakeWhileObserver>(this, predicate);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<TakeWhileOperator<T>>(
+                std::static_pointer_cast<TakeWhileOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for TakeWhile operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> TakeWhile(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+    {
+        return std::make_shared<TakeWhileOperator<T>>(observable, predicate);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> TakeWhile(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
+    {
+        return TakeWhile(std::static_pointer_cast<IObservable<T>>(subject), predicate);
+    }
+
+    // SkipWhile operator - skips items while predicate is true
+    template <typename T>
+    class SkipWhileOperator : public Operator<T>
+    {
+        class SkipWhileObserver : public IObserver<T>
+        {
+        private:
+            Operator<T> *operator_;
+            std::function<bool(const T &)> predicate_;
+            bool should_skip_;
+
+        public:
+            SkipWhileObserver(Operator<T> *op, std::function<bool(const T &)> predicate)
+                : operator_(op), predicate_(predicate), should_skip_(true) {}
+
+            void OnNext(const T &value) override
+            {
+                if (should_skip_ && predicate_(value))
+                {
+                    return; // Skip this value
+                }
+                else
+                {
+                    should_skip_ = false;
+                    operator_->NotifyOnNext(value);
+                }
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<SkipWhileObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        SkipWhileOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<SkipWhileObserver>(this, predicate);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            auto subscription = Operator<T>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<SkipWhileOperator<T>>(
+                std::static_pointer_cast<SkipWhileOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<T>> observer) override
+        {
+            Operator<T>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for SkipWhile operator
+    template <typename T>
+    std::shared_ptr<IObservable<T>> SkipWhile(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+    {
+        return std::make_shared<SkipWhileOperator<T>>(observable, predicate);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<T>> SkipWhile(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
+    {
+        return SkipWhile(std::static_pointer_cast<IObservable<T>>(subject), predicate);
+    }
+
+    // All operator - checks if all items satisfy predicate
+    template <typename T>
+    class AllOperator : public Operator<bool>
+    {
+        class AllObserver : public IObserver<T>
+        {
+        private:
+            Operator<bool> *operator_;
+            std::function<bool(const T &)> predicate_;
+            bool all_true_;
+
+        public:
+            AllObserver(Operator<bool> *op, std::function<bool(const T &)> predicate)
+                : operator_(op), predicate_(predicate), all_true_(true) {}
+
+            void OnNext(const T &value) override
+            {
+                if (all_true_ && !predicate_(value))
+                {
+                    all_true_ = false;
+                    operator_->NotifyOnNext(false);
+                    operator_->NotifyOnCompleted();
+                }
+            }
+
+            void OnCompleted() override
+            {
+                if (all_true_)
+                {
+                    operator_->NotifyOnNext(true);
+                }
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<AllObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        AllOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<AllObserver>(this, predicate);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<bool>> observer) override
+        {
+            auto subscription = Operator<bool>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<AllOperator<T>>(
+                std::static_pointer_cast<AllOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<bool>> observer) override
+        {
+            Operator<bool>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for All operator
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> All(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+    {
+        return std::make_shared<AllOperator<T>>(observable, predicate);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> All(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
+    {
+        return All(std::static_pointer_cast<IObservable<T>>(subject), predicate);
+    }
+
+    // Any operator - checks if any item satisfies predicate
+    template <typename T>
+    class AnyOperator : public Operator<bool>
+    {
+        class AnyObserver : public IObserver<T>
+        {
+        private:
+            Operator<bool> *operator_;
+            std::function<bool(const T &)> predicate_;
+            bool found_;
+
+        public:
+            AnyObserver(Operator<bool> *op, std::function<bool(const T &)> predicate)
+                : operator_(op), predicate_(predicate), found_(false) {}
+
+            void OnNext(const T &value) override
+            {
+                if (!found_ && predicate_(value))
+                {
+                    found_ = true;
+                    operator_->NotifyOnNext(true);
+                    operator_->NotifyOnCompleted();
+                }
+            }
+
+            void OnCompleted() override
+            {
+                if (!found_)
+                {
+                    operator_->NotifyOnNext(false);
+                }
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<AnyObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        AnyOperator(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<AnyObserver>(this, predicate);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<bool>> observer) override
+        {
+            auto subscription = Operator<bool>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<AnyOperator<T>>(
+                std::static_pointer_cast<AnyOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<bool>> observer) override
+        {
+            Operator<bool>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for Any operator
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> Any(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+    {
+        return std::make_shared<AnyOperator<T>>(observable, predicate);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> Any(std::shared_ptr<Subject<T>> subject, std::function<bool(const T &)> predicate)
+    {
+        return Any(std::static_pointer_cast<IObservable<T>>(subject), predicate);
+    }
+
+    // =============================================================================
+}
 
 #endif // MICRO_REACTIVE_OPERATORS_H

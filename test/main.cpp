@@ -343,8 +343,7 @@ void test_last_operator() {
     subscription->Dispose();
 }
 
-// These operators are commented out because they are not implemented yet
-/*
+// These operators are now implemented
 void test_count_operator() {
     auto range = Range(1, 5);
     auto count_op = Count(range);
@@ -409,7 +408,7 @@ void test_max_operator() {
     auto subscription = max_op->Subscribe(observer);
     
     // Wait for completion
-    delay(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_EQUAL(1, observer->GetCount());
@@ -427,7 +426,7 @@ void test_default_if_empty_operator() {
     auto subscription = default_op->Subscribe(observer);
     
     // Wait for completion
-    delay(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_EQUAL(1, observer->GetCount());
@@ -445,7 +444,7 @@ void test_start_with_operator() {
     auto subscription = start_with_op->Subscribe(observer);
     
     // Wait for completion
-    delay(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     
     TEST_ASSERT_TRUE(observer->HasValue());
     TEST_ASSERT_EQUAL(4, observer->GetCount());
@@ -455,7 +454,6 @@ void test_start_with_operator() {
     
     subscription->Dispose();
 }
-*/
 
 // Test TakeWhile operator - RE-ENABLED (TakeWhile operator is implemented)
 void test_take_while_operator() {
@@ -1664,8 +1662,7 @@ void test_distinct_operator() {
     TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
 
-// Test average operator - COMMENTED OUT (Average operator not implemented)
-/*
+// Test average operator - NOW IMPLEMENTED
 void test_average_operator() {
     auto range = Range(1, 5); // 1, 2, 3, 4, 5
     auto average_op = Average(range);
@@ -1674,7 +1671,7 @@ void test_average_operator() {
     auto subscription = average_op->Subscribe(observer);
     
     // Wait for completion
-    delay(10);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
     
     // Should emit average: (1+2+3+4+5)/5 = 15/5 = 3
     TEST_ASSERT_EQUAL(3, observer->GetLastValue()); // Average is 3
@@ -1682,7 +1679,6 @@ void test_average_operator() {
     TEST_ASSERT_TRUE(observer->IsCompleted());
     TEST_ASSERT_FALSE(subscription->IsDisposed());
 }
-*/
 
 // Test runner for PlatformIO
 void setup() {
@@ -1716,13 +1712,13 @@ void setup() {
     // Utility operator tests
     RUN_TEST(test_first_operator);
     RUN_TEST(test_last_operator);
-    // RUN_TEST(test_count_operator);  // Count operator not implemented
-    // RUN_TEST(test_sum_operator);     // Sum operator not implemented
-    // RUN_TEST(test_average_operator); // Average operator not implemented
-    // RUN_TEST(test_min_operator);     // Min operator not implemented
-    // RUN_TEST(test_max_operator);     // Max operator not implemented
-    // RUN_TEST(test_default_if_empty_operator); // DefaultIfEmpty operator not implemented
-    // RUN_TEST(test_start_with_operator);       // StartWith operator not implemented
+    RUN_TEST(test_count_operator);  // Count operator now implemented
+    RUN_TEST(test_sum_operator);     // Sum operator now implemented
+    RUN_TEST(test_average_operator); // Average operator now implemented
+    RUN_TEST(test_min_operator);     // Min operator now implemented
+    RUN_TEST(test_max_operator);     // Max operator now implemented
+    RUN_TEST(test_default_if_empty_operator); // DefaultIfEmpty operator now implemented
+    RUN_TEST(test_start_with_operator);       // StartWith operator now implemented
     RUN_TEST(test_take_while_operator);       // TakeWhile operator is implemented
     RUN_TEST(test_skip_while_operator);       // SkipWhile operator is implemented
     RUN_TEST(test_distinct_operator);
