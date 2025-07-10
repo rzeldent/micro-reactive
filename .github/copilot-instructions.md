@@ -3,7 +3,7 @@
 - Ensure that the code is modular and easy to extend with new operators in the future.
 - For each operator, provide a brief description of its purpose and functionality
 - Ensure that the code is compatible with embedded systems, particularly for the ESP32 platform
-- Use modern C++ features where appropriate, but ensure compatibility with C++11
+- Use modern C++ features where appropriate
 - Maintain a clean and readable code style, following best practices for C++ development
 - Do not to break lines longer than 80 characters
 - if there is just one statement in a block, do not use curly braces
@@ -18,4 +18,8 @@
 - Ensure that the code is well-documented, with clear comments explaining the purpose and functionality of each operator
 - Use `std::function` for callbacks and transformations to maintain flexibility in operator implementations
 - Ensure that all operators are implemented in a way that they can be used in both traditional and fluent styles
-- Split the test/main.cpp file into smaller, more manageable test files, each focusing on a specific operator or functionality
+- Split the `test/main.cpp` file into smaller, more manageable test files, each focusing on a specific operator or functionality
+- Ensure compatibility with C++11
+- In the `include` directory, create a new file `operators/fluent.h` that contains the fluent interface implementation
+- The `include` directory should only have include files, no implementation files
+- The `src` directory should contain the implementation files for the operators, schedulers, sources, and subjects
