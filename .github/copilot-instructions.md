@@ -18,3 +18,4 @@
 - Ensure that the code is well-documented, with clear comments explaining the purpose and functionality of each operator
 - Use `std::function` for callbacks and transformations to maintain flexibility in operator implementations
 - Ensure that all operators are implemented in a way that they can be used in both traditional and fluent styles
+- Split the test/main.cpp file into smaller, more manageable test files, each focusing on a specific operator or functionality

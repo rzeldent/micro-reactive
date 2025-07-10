@@ -1666,15 +1666,15 @@ void test_distinct_operator() {
 void test_average_operator() {
     auto range = Range(1, 5); // 1, 2, 3, 4, 5
     auto average_op = Average(range);
-    auto observer = std::make_shared<SimpleTestObserver<int>>();
+    auto observer = std::make_shared<SimpleTestObserver<double>>();
     
     auto subscription = average_op->Subscribe(observer);
     
     // Wait for completion
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
     
-    // Should emit average: (1+2+3+4+5)/5 = 15/5 = 3
-    TEST_ASSERT_EQUAL(3, observer->GetLastValue()); // Average is 3
+    // Should emit average: (1+2+3+4+5)/5 = 15/5 = 3.0
+    TEST_ASSERT_EQUAL(3.0, observer->GetLastValue()); // Average is 3.0
     TEST_ASSERT_EQUAL(1, observer->GetCount()); // Should emit only final average
     TEST_ASSERT_TRUE(observer->IsCompleted());
     TEST_ASSERT_FALSE(subscription->IsDisposed());
