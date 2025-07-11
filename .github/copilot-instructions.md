@@ -13,7 +13,7 @@
 - Use `std::shared_ptr` for managing operator instances to ensure proper memory management and avoid memory leaks
 - Implement all operators as factory functions that return `std::shared_ptr<IObservable<T>>`
 - When implementing new operators, ensure they are well-documented and include unit tests
-- Make sure there is an example for each operator/scheduler/source and subject in the direcotry `examples/operators`. Each operator should have its own example file with a traditional and fluent example
+- Create an example for each operator/scheduler/source and subject in the direcotry `examples`. Each operator should have its own example file with a traditional and fluent example
 - Never use `pio run` but only `pio test` to run the tests and see if code compiles and passes all tests
 - Ensure that the code is well-documented, with clear comments explaining the purpose and functionality of each operator
 - Use `std::function` for callbacks and transformations to maintain flexibility in operator implementations

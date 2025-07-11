@@ -86,11 +86,10 @@ void test_observable_metrics_summary();
 
 // Test runner for PlatformIO
 void setup() {
+    // Initialize Serial for debugging
      Serial.begin(115200);
      while (!Serial)
          delay(10);
-
-    Serial.println("Starting RxCpp Unit Tests...");
 
     UNITY_BEGIN();
     
