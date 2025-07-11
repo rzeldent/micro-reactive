@@ -74,6 +74,9 @@ void take_with_vector_example() {
         },
         []() { 
             std::cout << "Traditional take fruits completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional take fruits error: " << e.what() << std::endl; 
         }
     ));
     
@@ -88,6 +91,9 @@ void take_with_vector_example() {
             },
             []() { 
                 std::cout << "Fluent take fruits completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent take fruits error: " << e.what() << std::endl; 
             }
         );
     
@@ -107,6 +113,12 @@ void take_with_transformation_example() {
     mapped_obs->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
             std::cout << "Traditional - " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Traditional take+map completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional take+map error: " << e.what() << std::endl; 
         }
     ));
     
@@ -118,9 +130,17 @@ void take_with_transformation_example() {
         .Map<std::string>([](int x) { 
             return "Selected " + std::to_string(x) + " cubed = " + std::to_string(x * x * x); 
         })
-        .Subscribe([](const std::string& value) { 
-            std::cout << "Fluent - " << value << std::endl; 
-        });
+        .Subscribe(
+            [](const std::string& value) { 
+                std::cout << "Fluent - " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent take+map completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent take+map error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }
@@ -132,9 +152,17 @@ void take_with_filter_example() {
     Observable(Range(1, 20))
         .Filter([](int x) { return x % 2 == 0; })
         .Take(3)
-        .Subscribe([](int value) {
-            std::cout << "First 3 even numbers: " << value << std::endl;
-        });
+        .Subscribe(
+            [](int value) {
+                std::cout << "First 3 even numbers: " << value << std::endl;
+            },
+            []() { 
+                std::cout << "Filter then take completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Filter then take error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
     
@@ -142,9 +170,17 @@ void take_with_filter_example() {
     Observable(Range(1, 20))
         .Take(6)  // Take first 6 numbers (1,2,3,4,5,6)
         .Filter([](int x) { return x % 2 == 0; })  // Then filter even (2,4,6)
-        .Subscribe([](int value) {
-            std::cout << "Even numbers from first 6: " << value << std::endl;
-        });
+        .Subscribe(
+            [](int value) {
+                std::cout << "Even numbers from first 6: " << value << std::endl;
+            },
+            []() { 
+                std::cout << "Take then filter completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Take then filter error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }
@@ -163,18 +199,26 @@ void take_with_subject_example() {
         },
         []() { 
             std::cout << "Traditional take from subject completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional take from subject error: " << e.what() << std::endl; 
         }
     ));
     
     // Fluent approach
     Observable(subject)
         .Take(2)
-        .Subscribe([](int value) { 
-            std::cout << "Fluent - Taken from subject: " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Fluent take from subject completed" << std::endl; 
-        });
+        .Subscribe(
+            [](int value) { 
+                std::cout << "Fluent - Taken from subject: " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent take from subject completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent take from subject error: " << e.what() << std::endl; 
+            }
+        );
     
     // Push values through subject
     std::cout << "Pushing values to subject..." << std::endl;
@@ -200,6 +244,9 @@ void take_zero_example() {
             },
             []() { 
                 std::cout << "Take 0 completed immediately" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Take 0 error: " << e.what() << std::endl; 
             }
         );
     
@@ -220,6 +267,9 @@ void take_more_than_available_example() {
             },
             []() { 
                 std::cout << "Take completed (only 3 values available)" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Take more than available error: " << e.what() << std::endl; 
             }
         );
     
@@ -233,12 +283,17 @@ void take_chaining_example() {
     Observable(Range(1, 100))
         .Take(10)   // First, take 10
         .Take(5)    // Then, take 5 from those 10
-        .Subscribe([](int value) {
-            std::cout << "Chained take result: " << value << std::endl;
-        },
-        []() {
-            std::cout << "Chained take completed (should have 5 values)" << std::endl;
-        });
+        .Subscribe(
+            [](int value) {
+                std::cout << "Chained take result: " << value << std::endl;
+            },
+            []() {
+                std::cout << "Chained take completed (should have 5 values)" << std::endl;
+            },
+            [](const std::exception& e) { 
+                std::cout << "Chained take error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }

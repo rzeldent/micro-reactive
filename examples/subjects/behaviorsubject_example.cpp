@@ -46,6 +46,9 @@ void traditional_behaviorsubject_example() {
         },
         []() { 
             std::cout << "Observer 2 completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Observer 2 error: " << e.what() << std::endl; 
         }
     );
     
@@ -78,6 +81,9 @@ void fluent_behaviorsubject_example() {
             },
             []() { 
                 std::cout << "Fluent observer completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent observer error: " << e.what() << std::endl; 
             }
         );
     
@@ -110,6 +116,9 @@ void behaviorsubject_late_subscription_example() {
         },
         []() { 
             std::cout << "Late subscriber completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Late subscriber error: " << e.what() << std::endl; 
         }
     ));
     
@@ -122,6 +131,12 @@ void behaviorsubject_late_subscription_example() {
     behavior_subject->Subscribe(CreateObserver<int>(
         [](int value) { 
             std::cout << "Second late subscriber received: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Second late subscriber completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Second late subscriber error: " << e.what() << std::endl; 
         }
     ));
     
@@ -152,6 +167,12 @@ void behaviorsubject_vs_subject_example() {
     regular_subject->Subscribe(CreateObserver<int>(
         [](int value) { 
             std::cout << "Regular subject: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Regular subject completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Regular subject error: " << e.what() << std::endl; 
         }
     ));
     
@@ -159,6 +180,12 @@ void behaviorsubject_vs_subject_example() {
     behavior_subject->Subscribe(CreateObserver<int>(
         [](int value) { 
             std::cout << "Behavior subject: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Behavior subject completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Behavior subject error: " << e.what() << std::endl; 
         }
     ));
     
@@ -183,6 +210,12 @@ void behaviorsubject_state_tracking_example() {
     state_subject->Subscribe(CreateObserver<std::string>(
         [](const std::string& state) { 
             std::cout << "Application state: " << state << std::endl; 
+        },
+        []() { 
+            std::cout << "State tracking completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "State tracking error: " << e.what() << std::endl; 
         }
     ));
     
@@ -194,6 +227,12 @@ void behaviorsubject_state_tracking_example() {
     state_subject->Subscribe(CreateObserver<std::string>(
         [](const std::string& state) { 
             std::cout << "New component sees state: " << state << std::endl; 
+        },
+        []() { 
+            std::cout << "New component state tracking completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "New component state tracking error: " << e.what() << std::endl; 
         }
     ));
     
@@ -219,6 +258,12 @@ void behaviorsubject_with_operators_example() {
     mapped->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
             std::cout << "Traditional - " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Traditional behavior subject operators completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional behavior subject operators error: " << e.what() << std::endl; 
         }
     ));
     
@@ -228,9 +273,17 @@ void behaviorsubject_with_operators_example() {
         .Map<std::string>([](int x) { 
             return "Small value: " + std::to_string(x); 
         })
-        .Subscribe([](const std::string& value) { 
-            std::cout << "Fluent - " << value << std::endl; 
-        });
+        .Subscribe(
+            [](const std::string& value) { 
+                std::cout << "Fluent - " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent behavior subject operators completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent behavior subject operators error: " << e.what() << std::endl; 
+            }
+        );
     
     // Emit test values
     behavior_subject->OnNext(3);   // Should trigger small value output

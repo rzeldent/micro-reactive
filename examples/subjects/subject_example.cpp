@@ -74,6 +74,9 @@ void fluent_subject_example() {
             },
             []() { 
                 std::cout << "Fluent observer completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent observer error: " << e.what() << std::endl; 
             }
         );
     
@@ -101,6 +104,9 @@ void subject_multicast_example() {
         },
         []() { 
             std::cout << "Observer A completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Observer A error: " << e.what() << std::endl; 
         }
     ));
     
@@ -116,6 +122,9 @@ void subject_multicast_example() {
         },
         []() { 
             std::cout << "Observer B completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Observer B error: " << e.what() << std::endl; 
         }
     ));
     

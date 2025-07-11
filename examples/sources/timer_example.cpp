@@ -85,6 +85,9 @@ void timer_with_operators_example() {
         },
         []() { 
             std::cout << "Traditional timer chain completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional timer chain error: " << e.what() << std::endl; 
         }
     ));
     
@@ -102,6 +105,9 @@ void timer_with_operators_example() {
             },
             []() { 
                 std::cout << "Fluent timer chain completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent timer chain error: " << e.what() << std::endl; 
             }
         );
     
@@ -126,6 +132,12 @@ void multiple_timers_example() {
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - start_time).count();
             std::cout << "Timer 1 fired at " << elapsed << "ms" << std::endl;
+        },
+        []() {
+            std::cout << "Timer 1 completed" << std::endl;
+        },
+        [](const std::exception& e) {
+            std::cout << "Timer 1 error: " << e.what() << std::endl;
         }
     ));
     
@@ -134,6 +146,12 @@ void multiple_timers_example() {
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - start_time).count();
             std::cout << "Timer 2 fired at " << elapsed << "ms" << std::endl;
+        },
+        []() {
+            std::cout << "Timer 2 completed" << std::endl;
+        },
+        [](const std::exception& e) {
+            std::cout << "Timer 2 error: " << e.what() << std::endl;
         }
     ));
     
@@ -142,6 +160,12 @@ void multiple_timers_example() {
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::steady_clock::now() - start_time).count();
             std::cout << "Timer 3 fired at " << elapsed << "ms" << std::endl;
+        },
+        []() {
+            std::cout << "Timer 3 completed" << std::endl;
+        },
+        [](const std::exception& e) {
+            std::cout << "Timer 3 error: " << e.what() << std::endl;
         }
     ));
     
@@ -162,6 +186,9 @@ void timer_cancellation_example() {
         },
         []() {
             std::cout << "Timer completed (unexpected)" << std::endl;
+        },
+        [](const std::exception& e) {
+            std::cout << "Timer cancellation error: " << e.what() << std::endl;
         }
     ));
     

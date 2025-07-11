@@ -86,6 +86,9 @@ void interval_with_operators_example() {
         },
         []() { 
             std::cout << "Traditional interval chain completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional interval chain error: " << e.what() << std::endl; 
         }
     ));
     
@@ -104,6 +107,9 @@ void interval_with_operators_example() {
             },
             []() { 
                 std::cout << "Fluent interval chain completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent interval chain error: " << e.what() << std::endl; 
             }
         );
     
@@ -125,6 +131,9 @@ void interval_throttle_example() {
             },
             []() { 
                 std::cout << "Throttled interval completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Throttled interval error: " << e.what() << std::endl; 
             }
         );
     
@@ -146,6 +155,9 @@ void interval_take_example() {
             },
             []() { 
                 std::cout << "Take completed early" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Take interval error: " << e.what() << std::endl; 
             }
         );
     
@@ -166,6 +178,9 @@ void interval_cancellation_example() {
         },
         []() {
             std::cout << "Interval completed (unexpected)" << std::endl;
+        },
+        [](const std::exception& e) {
+            std::cout << "Interval cancellation error: " << e.what() << std::endl;
         }
     ));
     

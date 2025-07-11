@@ -69,6 +69,9 @@ void range_with_operators_example() {
         },
         []() { 
             std::cout << "Traditional chain completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional chain error: " << e.what() << std::endl; 
         }
     ));
     
@@ -84,6 +87,9 @@ void range_with_operators_example() {
             },
             []() { 
                 std::cout << "Fluent chain completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent chain error: " << e.what() << std::endl; 
             }
         );
     

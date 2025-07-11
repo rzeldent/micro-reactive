@@ -79,6 +79,9 @@ void fromvector_with_operators_example() {
         },
         []() { 
             std::cout << "Traditional processing completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional processing error: " << e.what() << std::endl; 
         }
     ));
     
@@ -94,6 +97,9 @@ void fromvector_with_operators_example() {
             },
             []() { 
                 std::cout << "Fluent processing completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent processing error: " << e.what() << std::endl; 
             }
         );
     
@@ -110,15 +116,29 @@ void fromvector_aggregation_example() {
     sum_obs->Subscribe(CreateObserver<int>(
         [](int value) { 
             std::cout << "Traditional - Sum: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Traditional sum completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional sum error: " << e.what() << std::endl; 
         }
     ));
     
     // Fluent sum
     Observable(FromVector(values))
         .Sum()
-        .Subscribe([](int value) { 
-            std::cout << "Fluent - Sum: " << value << std::endl; 
-        });
+        .Subscribe(
+            [](int value) { 
+                std::cout << "Fluent - Sum: " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent sum completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent sum error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }

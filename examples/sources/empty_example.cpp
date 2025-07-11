@@ -68,6 +68,9 @@ void empty_with_default_example() {
         },
         []() { 
             std::cout << "Traditional - DefaultIfEmpty completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional - DefaultIfEmpty error: " << e.what() << std::endl; 
         }
     ));
     
@@ -82,6 +85,9 @@ void empty_with_default_example() {
             },
             []() { 
                 std::cout << "Fluent - DefaultIfEmpty completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent - DefaultIfEmpty error: " << e.what() << std::endl; 
             }
         );
     
@@ -99,6 +105,9 @@ void empty_vs_never_example() {
             },
             []() { 
                 std::cout << "Empty - Completed immediately" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Empty - Error: " << e.what() << std::endl; 
             }
         );
     
@@ -110,6 +119,9 @@ void empty_vs_never_example() {
             },
             []() { 
                 std::cout << "Never - This will never be called" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Never - Error: " << e.what() << std::endl; 
             }
         );
     
@@ -132,6 +144,9 @@ void empty_error_handling_example() {
             },
             []() { 
                 std::cout << "Empty with error handling completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Empty with error handling error: " << e.what() << std::endl; 
             }
         );
     

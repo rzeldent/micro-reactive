@@ -204,6 +204,9 @@ void observable_with_scheduler_example() {
         },
         []() {
             std::cout << "Custom observable completed" << std::endl;
+        },
+        [](const std::exception& e) {
+            std::cout << "Custom observable error: " << e.what() << std::endl;
         }
     ));
     

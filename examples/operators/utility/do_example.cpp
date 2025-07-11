@@ -84,6 +84,9 @@ void do_for_logging_example() {
         },
         []() { 
             std::cout << "Traditional logging completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional logging error: " << e.what() << std::endl; 
         }
     ));
     
@@ -98,9 +101,17 @@ void do_for_logging_example() {
         .Do([](const std::string& word) {
             std::cout << "  FLUENT LOG: '" << word << "' passed filter" << std::endl;
         })
-        .Subscribe([](const std::string& value) { 
-            std::cout << "Fluent - Short word: " << value << std::endl; 
-        });
+        .Subscribe(
+            [](const std::string& value) { 
+                std::cout << "Fluent - Short word: " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent logging completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent logging error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }
@@ -123,6 +134,12 @@ void do_with_transformation_example() {
     debug2_obs->Subscribe(CreateObserver<int>(
         [](int value) { 
             std::cout << "Traditional - Final squared: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Traditional transformation debugging completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional transformation debugging error: " << e.what() << std::endl; 
         }
     ));
     
@@ -137,9 +154,17 @@ void do_with_transformation_example() {
         .Do([](int x) {
             std::cout << "  Fluent after: " << x << std::endl;
         })
-        .Subscribe([](int value) { 
-            std::cout << "Fluent - Final cubed: " << value << std::endl; 
-        });
+        .Subscribe(
+            [](int value) { 
+                std::cout << "Fluent - Final cubed: " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent transformation debugging completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent transformation debugging error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }
@@ -175,6 +200,9 @@ void do_for_metrics_example() {
                 std::cout << "Total processed: " << total_processed << std::endl;
                 std::cout << "Even numbers: " << even_count << std::endl;
                 std::cout << "Odd numbers: " << odd_count << std::endl;
+            },
+            [](const std::exception& e) { 
+                std::cout << "Metrics collection error: " << e.what() << std::endl; 
             }
         );
     
@@ -196,6 +224,12 @@ void do_with_subject_example() {
     do_obs->Subscribe(CreateObserver<int>(
         [](int value) { 
             std::cout << "Traditional - Subject value: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Traditional subject do completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional subject do error: " << e.what() << std::endl; 
         }
     ));
     
@@ -204,9 +238,17 @@ void do_with_subject_example() {
         .Do([](int value) {
             std::cout << "  Fluent side effect: Observed " << value << std::endl;
         })
-        .Subscribe([](int value) { 
-            std::cout << "Fluent - Subject value: " << value << std::endl; 
-        });
+        .Subscribe(
+            [](int value) { 
+                std::cout << "Fluent - Subject value: " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent subject do completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent subject do error: " << e.what() << std::endl; 
+            }
+        );
     
     // Push values through subject
     std::cout << "Pushing values: 100, 200, 300..." << std::endl;
@@ -238,10 +280,18 @@ void do_multiple_side_effects_example() {
         .Do([](int x) {
             std::cout << "  Side effect 3: Is " << (x % 2 == 0 ? "even" : "odd") << std::endl;
         })
-        .Subscribe([](int value) {
-            std::cout << "Final processing: " << value << std::endl;
-            std::cout << "  ---" << std::endl;
-        });
+        .Subscribe(
+            [](int value) {
+                std::cout << "Final processing: " << value << std::endl;
+                std::cout << "  ---" << std::endl;
+            },
+            []() { 
+                std::cout << "Multiple side effects completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Multiple side effects error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }

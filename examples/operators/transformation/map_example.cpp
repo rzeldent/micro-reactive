@@ -81,6 +81,9 @@ void map_type_conversion_example() {
         },
         []() { 
             std::cout << "Traditional scaling completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional scaling error: " << e.what() << std::endl; 
         }
     ));
     
@@ -97,6 +100,9 @@ void map_type_conversion_example() {
             },
             []() { 
                 std::cout << "Fluent percentage conversion completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent percentage conversion error: " << e.what() << std::endl; 
             }
         );
     
@@ -121,6 +127,12 @@ void map_chaining_example() {
     upper_obs->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
             std::cout << "Traditional chain: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Traditional chain completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional chain error: " << e.what() << std::endl; 
         }
     ));
     
@@ -135,9 +147,17 @@ void map_chaining_example() {
             std::transform(result.begin(), result.end(), result.begin(), ::tolower);
             return result;
         })
-        .Subscribe([](const std::string& value) { 
-            std::cout << "Fluent chain: " << value << std::endl; 
-        });
+        .Subscribe(
+            [](const std::string& value) { 
+                std::cout << "Fluent chain: " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent chain completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent chain error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }
@@ -157,6 +177,12 @@ void map_with_subject_example() {
     mapped_subject->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
             std::cout << "Traditional subject map: " << value << std::endl; 
+        },
+        []() { 
+            std::cout << "Traditional subject map completed" << std::endl; 
+        },
+        [](const std::exception& e) { 
+            std::cout << "Traditional subject map error: " << e.what() << std::endl; 
         }
     ));
     
@@ -165,9 +191,17 @@ void map_with_subject_example() {
         .Map<std::string>([](int x) {
             return "Absolute: " + std::to_string(std::abs(x));
         })
-        .Subscribe([](const std::string& value) { 
-            std::cout << "Fluent subject map: " << value << std::endl; 
-        });
+        .Subscribe(
+            [](const std::string& value) { 
+                std::cout << "Fluent subject map: " << value << std::endl; 
+            },
+            []() { 
+                std::cout << "Fluent subject map completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Fluent subject map error: " << e.what() << std::endl; 
+            }
+        );
     
     // Push values through subject
     subject->OnNext(-5);
@@ -198,9 +232,17 @@ void map_complex_transformation_example() {
             
             return "Score: " + std::to_string(score) + " -> Grade: " + grade;
         })
-        .Subscribe([](const std::string& result) {
-            std::cout << result << std::endl;
-        });
+        .Subscribe(
+            [](const std::string& result) {
+                std::cout << result << std::endl;
+            },
+            []() { 
+                std::cout << "Complex transformation completed" << std::endl; 
+            },
+            [](const std::exception& e) { 
+                std::cout << "Complex transformation error: " << e.what() << std::endl; 
+            }
+        );
     
     std::cout << std::endl;
 }
