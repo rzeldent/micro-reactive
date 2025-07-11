@@ -21,5 +21,3 @@
 - Split the `test/main.cpp` file into smaller, more manageable test files, each focusing on a specific operator or functionality
 - Ensure compatibility with C++11
 - In the `include` directory, create a new file `operators/fluent.h` that contains the fluent interface implementation
-- The `include` directory should only have include files, no implementation files
-- The `src` directory should contain the implementation files for the operators, schedulers, sources, and subjects

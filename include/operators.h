@@ -22,4 +22,7 @@
 // Combination operators (Race)
 #include "operators/combination.h"
 
+// Fluent interface for method chaining
+#include "operators/fluent.h"
+
 #endif // MICRO_REACTIVE_OPERATORS_H

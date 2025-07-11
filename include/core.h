@@ -164,46 +164,6 @@ namespace rx
         }
     };
 
-    // =============================================================================
-    // FLUENT INTERFACE DEMONSTRATION
-    // =============================================================================
-    
-    // Simple fluent wrapper for method chaining (demonstration purposes)
-    template <typename T>
-    class Observable {
-    private:
-        std::shared_ptr<IObservable<T>> impl_;
-        
-    public:
-        Observable(std::shared_ptr<IObservable<T>> impl) : impl_(impl) {}
-        
-        // Get the underlying implementation
-        std::shared_ptr<IObservable<T>> Get() const { return impl_; }
-        
-        // Delegate subscription
-        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) {
-            return impl_->Subscribe(observer);
-        }
-        
-        // Fluent operators that return Observable for chaining
-        template<typename U>
-        Observable<U> Map(std::function<U(const T&)> transform) const;
-        
-        Observable<T> Filter(std::function<bool(const T&)> predicate) const;
-        Observable<T> Take(size_t count) const;
-        Observable<T> Skip(size_t count) const;
-        Observable<T> Do(std::function<void(const T&)> action) const;
-        
-        // Implicit conversion to shared_ptr for compatibility
-        operator std::shared_ptr<IObservable<T>>() const { return impl_; }
-    };
-    
-    // Helper function to wrap any IObservable into fluent Observable
-    template<typename T>
-    Observable<T> From(std::shared_ptr<IObservable<T>> observable) {
-        return Observable<T>(observable);
-    }
-
 } // namespace rx
 
 #endif // MICRO_REACTIVE_CORE_H

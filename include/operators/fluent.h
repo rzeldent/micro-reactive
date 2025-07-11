@@ -1,0 +1,227 @@
+#ifndef MICRO_REACTIVE_OPERATORS_FLUENT_H
+#define MICRO_REACTIVE_OPERATORS_FLUENT_H
+
+#include "../core.h"
+#include "../sources.h"
+#include "../subjects.h"
+#include "transformation.h"
+#include "filtering.h"
+#include "basic.h"
+#include "aggregation.h"
+#include "utility.h"
+#include "combination.h"
+
+namespace rx
+{
+    // =============================================================================
+    // FLUENT INTERFACE IMPLEMENTATION
+    // =============================================================================
+    
+    // Forward declarations
+    template <typename T> class Observable;
+    
+    // Fluent Observable wrapper for method chaining
+    template <typename T>
+    class Observable {
+    private:
+        std::shared_ptr<IObservable<T>> impl_;
+        
+    public:
+        // Constructor
+        Observable(std::shared_ptr<IObservable<T>> impl) : impl_(impl) {}
+        
+        // Get the underlying implementation
+        std::shared_ptr<IObservable<T>> Get() const { return impl_; }
+        
+        // Delegate subscription
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) {
+            return impl_->Subscribe(observer);
+        }
+        
+        // Implicit conversion to shared_ptr for compatibility
+        operator std::shared_ptr<IObservable<T>>() const { return impl_; }
+        
+        // =============================================================================
+        // TRANSFORMATION OPERATORS (Fluent)
+        // =============================================================================
+        
+        template<typename U>
+        Observable<U> Map(std::function<U(const T&)> transform) const {
+            return Observable<U>(rx::Map<T, U>(impl_, transform));
+        }
+        
+        template<typename TAcc>
+        Observable<TAcc> Scan(TAcc seed, std::function<TAcc(const TAcc&, const T&)> accumulator) const {
+            return Observable<TAcc>(rx::Scan<T, TAcc>(impl_, seed, accumulator));
+        }
+        
+        // =============================================================================
+        // FILTERING OPERATORS (Fluent)
+        // =============================================================================
+        
+        Observable<T> Filter(std::function<bool(const T&)> predicate) const {
+            return Observable<T>(rx::Filter<T>(impl_, predicate));
+        }
+        
+        Observable<T> Take(size_t count) const {
+            return Observable<T>(rx::Take<T>(impl_, count));
+        }
+        
+        Observable<T> Skip(size_t count) const {
+            return Observable<T>(rx::Skip<T>(impl_, count));
+        }
+        
+        Observable<T> TakeWhile(std::function<bool(const T&)> predicate) const {
+            return Observable<T>(rx::TakeWhile<T>(impl_, predicate));
+        }
+        
+        Observable<T> SkipWhile(std::function<bool(const T&)> predicate) const {
+            return Observable<T>(rx::SkipWhile<T>(impl_, predicate));
+        }
+        
+        Observable<T> First() const {
+            return Observable<T>(rx::First<T>(impl_));
+        }
+        
+        Observable<T> Last() const {
+            return Observable<T>(rx::Last<T>(impl_));
+        }
+        
+        Observable<T> Distinct() const {
+            return Observable<T>(rx::Distinct<T>(impl_));
+        }
+        
+        // =============================================================================
+        // AGGREGATION OPERATORS (Fluent)
+        // =============================================================================
+        
+        template<typename TAcc>
+        Observable<TAcc> Reduce(TAcc seed, std::function<TAcc(const TAcc&, const T&)> accumulator) const {
+            return Observable<TAcc>(rx::Reduce<T, TAcc>(impl_, seed, accumulator));
+        }
+        
+        Observable<size_t> Count() const {
+            return Observable<size_t>(rx::Count<T>(impl_));
+        }
+        
+        Observable<T> Sum() const {
+            return Observable<T>(rx::Sum<T>(impl_));
+        }
+        
+        Observable<double> Average() const {
+            return Observable<double>(rx::Average<T>(impl_));
+        }
+        
+        Observable<T> Min() const {
+            return Observable<T>(rx::Min<T>(impl_));
+        }
+        
+        Observable<T> Max() const {
+            return Observable<T>(rx::Max<T>(impl_));
+        }
+        
+        Observable<bool> All(std::function<bool(const T&)> predicate) const {
+            return Observable<bool>(rx::All<T>(impl_, predicate));
+        }
+        
+        Observable<bool> Any(std::function<bool(const T&)> predicate) const {
+            return Observable<bool>(rx::Any<T>(impl_, predicate));
+        }
+        
+        // =============================================================================
+        // UTILITY OPERATORS (Fluent)
+        // =============================================================================
+        
+        Observable<T> Throttle(std::chrono::milliseconds duration) const {
+            return Observable<T>(rx::Throttle<T>(impl_, duration));
+        }
+        
+        Observable<T> DefaultIfEmpty(const T& default_value) const {
+            return Observable<T>(rx::DefaultIfEmpty<T>(impl_, default_value));
+        }
+        
+        Observable<T> StartWith(const std::vector<T>& start_values) const {
+            return Observable<T>(rx::StartWith<T>(impl_, start_values));
+        }
+        
+        Observable<T> Do(std::function<void(const T&)> action) const {
+            return Observable<T>(rx::Do<T>(impl_, action));
+        }
+        
+        Observable<T> TakeUntil(std::shared_ptr<IObservable<T>> other) const {
+            return Observable<T>(rx::TakeUntil<T>(impl_, other));
+        }
+        
+        Observable<T> SkipUntil(std::shared_ptr<IObservable<T>> other) const {
+            return Observable<T>(rx::SkipUntil<T>(impl_, other));
+        }
+        
+        Observable<bool> Contains(const T& value) const {
+            return Observable<bool>(rx::Contains<T>(impl_, value));
+        }
+        
+        Observable<T> DistinctUntilChanged() const {
+            return Observable<T>(rx::DistinctUntilChanged<T>(impl_));
+        }
+        
+        Observable<std::pair<T, T>> Pairwise() const {
+            return Observable<std::pair<T, T>>(rx::Pairwise<T>(impl_));
+        }
+        
+        Observable<T> Debug(const std::string& name) const {
+            return Observable<T>(rx::Debug<T>(impl_, name));
+        }
+        
+        // =============================================================================
+        // COMBINATION OPERATORS (Fluent)
+        // =============================================================================
+        
+        Observable<T> Race(std::shared_ptr<IObservable<T>> other) const {
+            return Observable<T>(rx::Race<T>(impl_, other));
+        }
+    };
+    
+    // =============================================================================
+    // FLUENT HELPER FUNCTIONS
+    // =============================================================================
+    
+    // Helper function to wrap any IObservable into fluent Observable
+    template<typename T>
+    Observable<T> From(std::shared_ptr<IObservable<T>> observable) {
+        return Observable<T>(observable);
+    }
+    
+    // Fluent source creation functions
+    template<typename T>
+    Observable<T> FluentEmpty() {
+        return Observable<T>(Empty<T>());
+    }
+    
+    template<typename T>
+    Observable<T> FluentNever() {
+        return Observable<T>(Never<T>());
+    }
+    
+    template<typename T>
+    Observable<T> FluentRange(T start, T end) {
+        return Observable<T>(Range<T>(start, end));
+    }
+    
+    template<typename T>
+    Observable<T> FluentFromVector(const std::vector<T>& values) {
+        return Observable<T>(FromVector<T>(values));
+    }
+    
+    template<typename T = int>
+    Observable<T> FluentTimer(std::chrono::milliseconds delay) {
+        return Observable<T>(Timer<T>(delay));
+    }
+    
+    template<typename T = int>
+    Observable<T> FluentInterval(std::chrono::milliseconds interval, int count = 5) {
+        return Observable<T>(Interval<T>(interval, count));
+    }
+
+} // namespace rx
+
+#endif // MICRO_REACTIVE_OPERATORS_FLUENT_H
