@@ -3,7 +3,6 @@
 #include "../include/sources.h"
 #include "../include/subjects.h"
 #include "../include/operators.h"
-#include "../include/performance.h"
 
 // Test ThrottleOperator with new subscription pattern
 void test_throttle_operator() {
@@ -222,7 +221,7 @@ void test_debug_operator() {
     auto subscription = debug_op->Subscribe(observer);
     
     // Wait for completion
-    delay(10);
+    testSleepForMilliseconds(10);
     
     // Verify the observable works normally
     TEST_ASSERT_TRUE(observer->HasValue());

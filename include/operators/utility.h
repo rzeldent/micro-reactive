@@ -13,6 +13,8 @@
 #include <atomic>
 #include <string>
 #include <map>
+#include <mutex>
+#include <sstream>
 
 namespace rx
 {
@@ -833,6 +835,114 @@ namespace rx
     {
         return Pairwise(std::static_pointer_cast<IObservable<T>>(subject));
     }
+
+    // Thread-safe counters and timing used by the Debug operator.
+    class ObservableMetrics
+    {
+    private:
+        mutable std::mutex mutex_;
+        std::size_t emissions_ = 0;
+        std::size_t subscriptions_ = 0;
+        std::size_t errors_ = 0;
+        std::size_t completions_ = 0;
+        std::chrono::steady_clock::time_point started_ =
+            std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point last_emission_ = started_;
+
+    public:
+        void RecordEmission()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            ++emissions_;
+            last_emission_ = std::chrono::steady_clock::now();
+        }
+
+        void RecordSubscription()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            ++subscriptions_;
+        }
+
+        void RecordError()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            ++errors_;
+        }
+
+        void RecordCompletion()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            ++completions_;
+        }
+
+        std::size_t GetEmissionsCount() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return emissions_;
+        }
+
+        std::size_t GetSubscriptionsCount() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return subscriptions_;
+        }
+
+        std::size_t GetErrorsCount() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return errors_;
+        }
+
+        std::size_t GetCompletionsCount() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return completions_;
+        }
+
+        std::chrono::milliseconds GetElapsedTime() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - started_);
+        }
+
+        std::chrono::milliseconds GetTimeSinceLastEmission() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            return std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - last_emission_);
+        }
+
+        double GetEmissionRate() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            const double elapsed = std::chrono::duration<double>(
+                std::chrono::steady_clock::now() - started_).count();
+            return elapsed > 0.0 ? emissions_ / elapsed : 0.0;
+        }
+
+        std::string GetSummary() const
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            std::ostringstream summary;
+            summary << "Emissions: " << emissions_
+                    << ", Subscriptions: " << subscriptions_
+                    << ", Errors: " << errors_
+                    << ", Completions: " << completions_;
+            return summary.str();
+        }
+
+        void Reset()
+        {
+            std::lock_guard<std::mutex> lock(mutex_);
+            emissions_ = 0;
+            subscriptions_ = 0;
+            errors_ = 0;
+            completions_ = 0;
+            started_ = std::chrono::steady_clock::now();
+            last_emission_ = started_;
+        }
+    };
 
     // =============================================================================
     // DEBUG OPERATOR - Passes through all values while collecting metrics

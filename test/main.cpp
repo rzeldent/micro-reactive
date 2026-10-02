@@ -6,6 +6,10 @@
 #include "../include/error_handling.h"
 #include "../include/scheduler.h"
 
+#if defined(ARDUINO)
+#include <Arduino.h>
+#endif
+
 // Forward declarations for all test functions
 // Sources tests
 void test_range_basic();
@@ -77,20 +81,13 @@ void test_test_scheduler_delayed();
 void test_test_scheduler_multiple_actions();
 void test_test_scheduler_advance_to();
 
-// Performance tests
-void test_memory_monitoring();
-void test_circular_buffer();
+// Metrics tests
 void test_observable_metrics_basic();
 void test_observable_metrics_timing();
 void test_observable_metrics_summary();
 
-// Test runner for PlatformIO
-void setup() {
-    // Initialize Serial for debugging
-     Serial.begin(115200);
-     while (!Serial)
-         delay(10);
-
+int run_unit_tests()
+{
     UNITY_BEGIN();
     
     // Core functionality tests
@@ -161,16 +158,29 @@ void setup() {
     RUN_TEST(test_test_scheduler_multiple_actions);
     RUN_TEST(test_test_scheduler_advance_to);
     
-    // Performance tests
-    RUN_TEST(test_memory_monitoring);
-    RUN_TEST(test_circular_buffer);
+    // Metrics tests
     RUN_TEST(test_observable_metrics_basic);
     RUN_TEST(test_observable_metrics_timing);
     RUN_TEST(test_observable_metrics_summary);
     
-    UNITY_END();
+    return UNITY_END();
+}
+
+#if defined(ARDUINO)
+void setup()
+{
+    Serial.begin(115200);
+    while (!Serial)
+        delay(10);
+    run_unit_tests();
 }
 
 void loop() {
     // Nothing to do here
 }
+#else
+int main()
+{
+    return run_unit_tests();
+}
+#endif

@@ -254,6 +254,12 @@ The library includes comprehensive unit tests using Unity framework:
 pio test
 ```
 
+Run the tests on the host with the Native environment:
+
+```bash
+pio test -e native
+```
+
 ## Examples
 
 See `src/main.cpp` for comprehensive examples of all implemented features.

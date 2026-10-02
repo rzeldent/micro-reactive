@@ -1,15 +1,17 @@
 #pragma once
 
-#include <Arduino.h>
 #include <unity.h>
-
-// Forward declarations to avoid multiple definition issues
-namespace rx {
-    template<typename T>
-    class IObserver;
-}
+#include <chrono>
+#include <exception>
+#include <thread>
+#include "../include/core.h"
 
 using namespace rx;
+
+inline void testSleepForMilliseconds(unsigned int milliseconds)
+{
+    std::this_thread::sleep_for(std::chrono::milliseconds(milliseconds));
+}
 
 // Simple test observer for basic functionality testing
 template<typename T>
