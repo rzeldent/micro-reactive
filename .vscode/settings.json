@@ -55,5 +55,6 @@
         "typeinfo": "cpp",
         "set": "cpp",
         "iostream": "cpp"
-    }
+    },
+    "python-envs.defaultEnvManager": "ms-python.python:system"
 }

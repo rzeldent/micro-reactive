@@ -83,13 +83,6 @@ A comprehensive, lightweight reactive programming library for embedded systems, 
 - **ImmediateScheduler**: Executes work immediately on current thread
 - **ThreadPoolScheduler**: Background execution with delayed and periodic scheduling
 
-### Performance & Memory Management
-
-- **ObjectPool**: Memory pooling for better performance
-- **CircularBuffer**: Efficient buffer for large data streams
-- **MemoryMonitor**: Memory usage tracking and monitoring
-- **OptimizedBuffer**: High-performance buffering operator
-
 ## Usage Examples
 
 ### Basic Observable with New Subscription Pattern
@@ -227,13 +220,6 @@ This library provides comprehensive thread safety and automatic resource managem
 - **Resource Management**: RAII pattern ensures proper cleanup of threads and resources
 - **Memory Safety**: Weak pointers prevent circular dependencies
 
-## Performance Optimizations
-
-- **Object Pooling**: Reduces memory allocation overhead
-- **Circular Buffers**: Efficient memory usage for streaming data
-- **Memory Monitoring**: Track allocation patterns and optimize usage
-- **Scheduler Control**: Choose appropriate execution context for operations
-
 ## Platform Support
 
 - ESP32 (all variants)
@@ -283,7 +269,6 @@ This library represents a modern, production-ready reactive programming solution
 - Comprehensive operator set (25+ operators)
 - Advanced error handling and recovery
 - Thread safety and resource management
-- Performance optimizations
 - Extensive test coverage
 
 Perfect for IoT applications, sensor data processing, and real-time embedded systems requiring reactive patterns.

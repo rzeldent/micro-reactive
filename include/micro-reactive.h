@@ -11,7 +11,6 @@
  * - Subjects (Subject, BehaviorSubject, ReplaySubject, SynchronizedSubject, AsyncSubject)
  * - Error Handling (Catch, Retry, Finally, OnErrorResumeNext)
  * - Schedulers (Immediate, ThreadPool, Single, Computation)
- * - Performance Optimizations (Object pooling, Circular buffers, Lazy evaluation)
  * - Memory-safe shared_ptr based design
  * - Exception handling and error recovery
  * - Thread-safe components with proper resource management
@@ -24,19 +23,16 @@
 // Source observables - create reactive streams
 #include "sources.h"
 
-// Transform operators - modify reactive streams (now includes advanced operators)
-#include "operators.h"
-
 // Subjects - both observer and observable
 #include "subjects.h"
+
+// Transform operators - modify reactive streams (now includes advanced operators)
+#include "operators.h"
 
 // Error handling operators and utilities
 #include "error_handling.h"
 
 // Scheduler interfaces for execution control
 #include "scheduler.h"
-
-// Performance optimizations and memory management
-#include "performance.h"
 
 #endif // MICRO_REACTIVE_H

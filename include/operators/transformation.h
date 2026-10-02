@@ -3,7 +3,6 @@
 
 #include "../core.h"
 #include "../scheduler.h"
-#include "../performance.h"
 #include <functional>
 #include <memory>
 #include <vector>
