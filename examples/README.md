@@ -113,6 +113,14 @@ Each example is a standalone Arduino/PlatformIO sketch that can be compiled and 
 3. Compile and upload to your target device
 4. Monitor serial output to see the results
 
+## CI Builds
+
+The GitHub Actions workflow discovers every `.cpp` file under `examples/`
+and builds each file separately for both configured ESP32 environments:
+`lolin_s2_mini` and `esp32-c3-devkitm-1`. Each example is staged as the
+PlatformIO project entry point, so its source and relative includes remain
+unchanged. Newly added `.cpp` examples are included automatically.
+
 ## Example Features Demonstrated
 
 ### Basic Concepts

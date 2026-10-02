@@ -12,7 +12,6 @@
 
 namespace rx
 {
-
     // Forward declarations
     class IScheduler;
     class IScheduledWork;

@@ -3,7 +3,6 @@
 
 #include "../core.h"
 #include "../scheduler.h"
-#include "../performance.h"
 #include <functional>
 #include <memory>
 #include <vector>
@@ -17,7 +16,6 @@
 
 namespace rx
 {
-
     // DefaultIfEmpty operator - emits a default value if source is empty
     template <typename T>
     class DefaultIfEmptyOperator : public Operator<T>

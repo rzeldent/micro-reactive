@@ -7,7 +7,6 @@
 
 namespace rx
 {
-
     // Custom exception types for reactive operations
     class ReactiveException : public std::exception
     {

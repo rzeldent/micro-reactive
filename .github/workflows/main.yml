@@ -1,9 +1,33 @@
 name: Platform IO CI
 on: [push]
 jobs:
-  build:
-    name: Build
+  discover-examples:
+    name: Discover examples
     runs-on: ubuntu-latest
+    outputs:
+      examples: ${{ steps.set-matrix.outputs.examples }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+      - id: set-matrix
+        name: Create example matrix
+        run: |
+          examples="$(find examples -type f -name '*.cpp' | sort \
+            | jq -R -s -c 'split("\n") | map(select(length > 0))')"
+          echo "examples=$examples" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.example }} (${{ matrix.environment }})
+    needs: discover-examples
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        example: ${{ fromJSON(needs.discover-examples.outputs.examples) }}
+        environment:
+          - lolin_s2_mini
+          - esp32-c3-devkitm-1
     steps:
       - uses: actions/checkout@v7
         with:
@@ -14,5 +38,11 @@ jobs:
           python-version: '3.x'
       - name: Install PlatformIO
         run: python -m pip install platformio
-      - name: Build
-        run: pio run
+      - name: Stage example
+        env:
+          EXAMPLE: ${{ matrix.example }}
+        run: |
+          mkdir -p src
+          printf '#include "../%s"\n' "$EXAMPLE" > src/main.cpp
+      - name: Build example
+        run: pio run --environment "${{ matrix.environment }}"

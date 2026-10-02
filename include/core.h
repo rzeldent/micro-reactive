@@ -10,7 +10,6 @@
 
 namespace rx
 {
-
     // Forward declaration for disposable pattern
     class IDisposable
     {
