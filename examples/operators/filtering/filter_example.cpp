@@ -5,6 +5,7 @@
  * that satisfy a predicate function.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <string>

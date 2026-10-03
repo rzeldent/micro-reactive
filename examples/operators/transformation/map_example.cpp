@@ -5,6 +5,7 @@
  * using a provided function.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <string>

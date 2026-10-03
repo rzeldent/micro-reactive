@@ -5,6 +5,7 @@
  * and immediately emits it to new subscribers.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <string>

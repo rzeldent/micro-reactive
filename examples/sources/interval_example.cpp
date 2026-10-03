@@ -5,6 +5,7 @@
  * regular intervals for a specified count.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <chrono>

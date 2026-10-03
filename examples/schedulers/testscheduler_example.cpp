@@ -5,6 +5,7 @@
  * for testing reactive code with time-based operations.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <vector>

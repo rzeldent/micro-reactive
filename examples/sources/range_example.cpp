@@ -5,6 +5,7 @@
  * within a specified range with an optional step value.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 

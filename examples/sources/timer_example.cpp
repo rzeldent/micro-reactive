@@ -5,6 +5,7 @@
  * after a specified delay.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <chrono>

@@ -5,6 +5,7 @@
  * It can multicast values to multiple subscribers.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <string>

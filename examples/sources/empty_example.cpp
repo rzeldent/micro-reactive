@@ -5,6 +5,7 @@
  * without emitting any values.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 

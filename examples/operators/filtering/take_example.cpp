@@ -5,6 +5,7 @@
  * from the source observable and then completes.
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <vector>

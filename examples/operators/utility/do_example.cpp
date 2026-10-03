@@ -5,6 +5,7 @@
  * without modifying the emitted values (like tap in RxJS).
  */
 
+#include <Arduino.h>
 #include "../../include/micro-reactive.h"
 #include <iostream>
 #include <vector>
