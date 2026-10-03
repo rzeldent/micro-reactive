@@ -794,4 +794,132 @@ namespace rx
         return Last(std::static_pointer_cast<IObservable<T>>(subject));
     }
 
+    // =============================================================================
+    // HYSTERESIS OPERATOR - Prevents rapid switching around a threshold
+    // =============================================================================
+    template <typename T>
+    class HysteresisOperator : public Operator<bool>
+    {
+        class HysteresisObserver : public IObserver<T>
+        {
+        private:
+            Operator<bool> *operator_;
+            double threshold_;
+            double hysteresis_;
+            bool state_;
+            bool initialized_;
+
+        public:
+            HysteresisObserver(Operator<bool> *op, double threshold, double hysteresis)
+                : operator_(op), threshold_(threshold), hysteresis_(hysteresis),
+                  state_(false), initialized_(false)
+            {
+            }
+
+            void OnNext(const T &value) override
+            {
+                double val = static_cast<double>(value);
+                double upper = threshold_ + hysteresis_;
+                double lower = threshold_ - hysteresis_;
+
+                if (!initialized_)
+                {
+                    // Initialize state based on first value
+                    state_ = val > threshold_;
+                    initialized_ = true;
+                    operator_->NotifyOnNext(state_);
+                }
+                else if (state_ && val < lower)
+                {
+                    // Was ON, now below lower threshold -> turn OFF
+                    state_ = false;
+                    operator_->NotifyOnNext(state_);
+                }
+                else if (!state_ && val > upper)
+                {
+                    // Was OFF, now above upper threshold -> turn ON
+                    state_ = true;
+                    operator_->NotifyOnNext(state_);
+                }
+                // If within hysteresis band, keep current state (no output)
+            }
+
+            void OnCompleted() override
+            {
+                operator_->NotifyOnCompleted();
+            }
+
+            void OnError(const std::exception &e) override
+            {
+                operator_->NotifyOnError(e);
+            }
+        };
+
+        std::shared_ptr<IObservable<T>> observable_;
+        std::shared_ptr<HysteresisObserver> observer_;
+        std::shared_ptr<Subscription> source_subscription_;
+        mutable std::mutex subscription_mutex_;
+
+    public:
+        HysteresisOperator(std::shared_ptr<IObservable<T>> observable, double threshold, double hysteresis)
+            : observable_(observable)
+        {
+            observer_ = std::make_shared<HysteresisObserver>(this, threshold, hysteresis);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<bool>> observer) override
+        {
+            auto subscription = Operator<bool>::Subscribe(observer);
+
+            {
+                std::lock_guard<std::mutex> lock(subscription_mutex_);
+                if (this->child_observers_.size() == 1 && !source_subscription_)
+                {
+                    source_subscription_ = observable_->Subscribe(observer_);
+                }
+            }
+
+            auto weak_self = std::weak_ptr<HysteresisOperator<T>>(
+                std::static_pointer_cast<HysteresisOperator<T>>(this->shared_from_this()));
+            return std::make_shared<Subscription>([weak_self, subscription, observer]()
+                                                  {
+                if (auto self = weak_self.lock()) {
+                    subscription->Dispose();
+                    std::lock_guard<std::mutex> lock(self->subscription_mutex_);
+                    if (self->child_observers_.empty() && self->source_subscription_) {
+                        self->source_subscription_->Dispose();
+                        self->source_subscription_.reset();
+                    }
+                } });
+        }
+
+        void UnSubscribe(std::shared_ptr<IObserver<bool>> observer) override
+        {
+            Operator<bool>::UnSubscribe(observer);
+            std::lock_guard<std::mutex> lock(subscription_mutex_);
+            if (this->child_observers_.empty() && source_subscription_)
+            {
+                source_subscription_->Dispose();
+                source_subscription_.reset();
+            }
+        }
+    };
+
+    // Factory function for Hysteresis operator
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> Hysteresis(std::shared_ptr<IObservable<T>> observable, double threshold, double hysteresis)
+    {
+        static_assert(std::is_arithmetic<T>::value, "Hysteresis requires an arithmetic sample type");
+        if (!observable || !std::isfinite(threshold) || !std::isfinite(hysteresis) || hysteresis < 0.0)
+            throw std::invalid_argument("Invalid Hysteresis parameters");
+        return std::make_shared<HysteresisOperator<T>>(observable, threshold, hysteresis);
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<bool>> Hysteresis(std::shared_ptr<Subject<T>> source, double threshold, double hysteresis)
+    {
+        return Hysteresis<T>(
+            std::static_pointer_cast<IObservable<T>>(source), threshold, hysteresis);
+    }
+
 } // namespace rx

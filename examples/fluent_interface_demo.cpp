@@ -1,4 +1,4 @@
-#include <Arduino.h>
+#include "arduino_mock.h"
 #include <micro-reactive.h>
 
 using namespace rx;

@@ -129,6 +129,11 @@ namespace rx
             return Observable<T>(rx::Last<T>(impl_));
         }
 
+        Observable<bool> Hysteresis(double threshold, double hysteresis) const
+        {
+            return Observable<bool>(rx::Hysteresis<T>(impl_, threshold, hysteresis));
+        }
+
         Observable<T> Distinct() const
         {
             return Observable<T>(rx::Distinct<T>(impl_));

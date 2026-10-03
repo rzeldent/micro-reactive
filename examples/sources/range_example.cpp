@@ -5,7 +5,7 @@
  * within a specified range with an optional step value.
  */
 
-#include <Arduino.h>
+#include "../arduino_mock.h"
 #include <micro-reactive.h>
 #include <iostream>
 
@@ -112,3 +112,15 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
+
+// For native testing, provide a main that calls setup/loop
+#ifndef ARDUINO
+int main() {
+    setup();
+    while (true) {
+        loop();
+    }
+    return 0;
+}
+#endif
+

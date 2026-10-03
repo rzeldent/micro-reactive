@@ -1,7 +1,8 @@
 /**
- * Real-life Example: Temperature PID Heating Control (Fluent Style)
+ * Real-life Example: Temperature PID Heating Control (Fluent API)
  * 
  * Same as temperature_pid_heating.cpp but using the fluent API.
+ * With hysteresis to prevent rapid switching.
  * 
  * Hardware: ESP32/Arduino compatible
  * Library: Micro-Reactive
@@ -36,7 +37,7 @@ public:
     T GetLastValue() const { return last_value_; }
     bool HasValue() const { return has_value_; }
     int GetCount() const { return count_; }
-};
+};  // <-- missing semicolon
 
 // Simulated temperature sensor that produces noisy readings
 class TemperatureSensor {
@@ -79,26 +80,23 @@ public:
     }
 
     double getCurrentTemp() const { return current_temp_; }
-};
+};  // <-- missing semicolon
 
-// Binary heating output observer
-class HeatingController : public IObserver<double> {
+// Hysteresis heating controller - observes boolean hysteresis output
+class HysteresisHeatingController : public IObserver<bool> {
 private:
-    double threshold_;
     bool heating_on_;
     std::function<void(bool)> on_change_;
 
 public:
-    HeatingController(double threshold = 0.5, std::function<void(bool)> callback = nullptr)
-        : threshold_(threshold), heating_on_(false), on_change_(callback) {}
+    HysteresisHeatingController(std::function<void(bool)> callback = nullptr)
+        : heating_on_(false), on_change_(callback) {}
 
-    void OnNext(const double& pid_output) override {
-        bool new_state = pid_output > threshold_;
-        if (new_state != heating_on_) {
-            heating_on_ = new_state;
+    void OnNext(const bool& heating_state) override {
+        if (heating_state != heating_on_) {
+            heating_on_ = heating_state;
             if (on_change_) on_change_(heating_on_);
-            std::cout << "[HEATING] " << (heating_on_ ? "ON" : "OFF")
-                      << " (PID output: " << pid_output << ")" << std::endl;
+            std::cout << "[HEATING] " << (heating_on_ ? "ON" : "OFF") << std::endl;
         }
     }
 
@@ -111,70 +109,109 @@ public:
     }
 
     bool isHeating() const { return heating_on_; }
-};
+};  // <-- missing semicolon
 
-int main() {
+// Global objects for Arduino setup/loop
+std::shared_ptr<Subject<double>> temp_subject;
+std::shared_ptr<Observable<double>> temp_observable;
+std::shared_ptr<Observable<double>> pid_output;
+std::shared_ptr<Observable<bool>> hysteresis_output;
+std::shared_ptr<SimpleLogger<double>> temp_logger;
+std::shared_ptr<SimpleLogger<double>> pid_logger;
+std::shared_ptr<SimpleLogger<bool>> hysteresis_logger;
+std::shared_ptr<Subscription> heating_sub;
+std::shared_ptr<Subscription> temp_sub;
+std::shared_ptr<Subscription> pid_sub;
+std::shared_ptr<Subscription> hysteresis_sub;
+
+TemperatureSensor sensor(18.0, 15.0);
+HysteresisHeatingController heating_ctrl;
+
+const double dt = 1.0;
+int step_count = 0;
+
+void setup() {
     std::cout << "=== Temperature PID Heating Control Demo (Fluent API) ===" << std::endl;
     std::cout << "Target: 21.0°C | PID: Kp=2.0, Ki=0.1, Kd=0.5 | dt=1.0s" << std::endl;
-    std::cout << "Heating ON when PID output > 0.5" << std::endl;
+    std::cout << "Hysteresis: threshold=0.5, band=0.15 (ON at 0.65, OFF at 0.35)" << std::endl;
     std::cout << "----------------------------------------" << std::endl;
 
-    // Create simulated sensor
-    TemperatureSensor sensor(18.0, 15.0);
     sensor.setTarget(21.0);
 
     // Create a subject to feed temperature readings
-    auto temp_subject = std::make_shared<Subject<double>>();
+    temp_subject = std::make_shared<Subject<double>>();
+    temp_observable = std::make_shared<Observable<double>>(temp_subject);
 
     // PID parameters - tuned for the simulation
     const double setpoint = 21.0;
     const double kp = 2.0;
     const double ki = 0.1;
     const double kd = 0.5;
-    const double dt = 1.0;
     const double min_output = 0.0;
     const double max_output = 1.0;
 
-    // Create PID controller (FLUENT STYLE) - wrap subject in Observable first
-    auto temp_observable = Observable<double>(temp_subject);
-    auto pid_output = temp_observable.PID(setpoint, kp, ki, kd, dt, min_output, max_output);
+    // Hysteresis parameters - prevent rapid switching around 0.5 threshold
+    const double hysteresis_threshold = 0.5;
+    const double hysteresis_band = 0.15;  // Switch ON at 0.65, OFF at 0.35
 
-    // Create heating controller (binary output)
-    HeatingController heating_ctrl(0.5, [&](bool on) {
+    // Create PID controller (FLUENT STYLE)
+    pid_output = std::make_shared<Observable<double>>(temp_observable->PID(setpoint, kp, ki, kd, dt, min_output, max_output));
+
+    // Apply hysteresis to prevent rapid ON/OFF switching (fluent)
+    hysteresis_output = std::make_shared<Observable<bool>>(pid_output->Hysteresis(hysteresis_threshold, hysteresis_band));
+
+    // Create heating controller (binary output) - observes hysteresis output (bool)
+    heating_ctrl = HysteresisHeatingController([&](bool on) {
         sensor.setHeating(on);
     });
 
-    // Subscribe heating controller to PID output (fluent)
-    pid_output.Get()->Subscribe(std::make_shared<HeatingController>(heating_ctrl));
+    // Subscribe heating controller to hysteresis output (fluent, store subscription)
+    heating_sub = hysteresis_output->Get()->Subscribe(std::make_shared<HysteresisHeatingController>(heating_ctrl));
 
-    // Also log temperature and PID output for monitoring
-    auto temp_logger = std::make_shared<SimpleLogger<double>>();
-    auto pid_logger = std::make_shared<SimpleLogger<double>>();
+    // Also log temperature and PID output for monitoring (store subscriptions)
+    temp_logger = std::make_shared<SimpleLogger<double>>();
+    pid_logger = std::make_shared<SimpleLogger<double>>();
+    hysteresis_logger = std::make_shared<SimpleLogger<bool>>();
 
-    temp_subject->Subscribe(temp_logger);
-    pid_output.Get()->Subscribe(pid_logger);
+    temp_sub = temp_subject->Subscribe(temp_logger);
+    pid_sub = pid_output->Get()->Subscribe(pid_logger);
+    hysteresis_sub = hysteresis_output->Get()->Subscribe(hysteresis_logger);
+}
 
-    // Simulation loop
-    const int steps = 60;  // 60 seconds
-    for (int i = 0; i < steps; ++i) {
-        double reading = sensor.step(dt);
-        temp_subject->OnNext(reading);
-
-        // Print status every 5 seconds
-        if (i % 5 == 0) {
-            std::cout << "t=" << i << "s | Temp: " << reading
-                      << "°C | PID: " << pid_logger->GetLastValue()
-                      << " | Heat: " << (heating_ctrl.isHeating() ? "ON" : "OFF") << std::endl;
+void loop() {
+    if (step_count >= 60) {
+        temp_subject->OnCompleted();
+        std::cout << "----------------------------------------" << std::endl;
+        std::cout << "Simulation complete." << std::endl;
+        std::cout << "Final temperature: " << sensor.getCurrentTemp() << "°C" << std::endl;
+        // In real Arduino, you'd stop here or enter deep sleep
+        while (true) {
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Speed up demo
     }
 
-    temp_subject->OnCompleted();
+    double reading = sensor.step(dt);
+    temp_subject->OnNext(reading);
 
-    std::cout << "----------------------------------------" << std::endl;
-    std::cout << "Simulation complete." << std::endl;
-    std::cout << "Final temperature: " << sensor.getCurrentTemp() << "°C" << std::endl;
+    // Print status every 5 seconds
+    if (step_count % 5 == 0) {
+        std::cout << "t=" << step_count << "s | Temp: " << reading
+                  << "°C | PID: " << pid_logger->GetLastValue()
+                  << " | Hysteresis: " << (hysteresis_logger->GetLastValue() ? "ON" : "OFF")
+                  << " | Heat: " << (heating_ctrl.isHeating() ? "ON" : "OFF") << std::endl;
+    }
 
+    step_count++;
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Speed up demo
+}
+
+// For native testing, provide a main that calls setup/loop
+#ifndef ARDUINO
+int main() {
+    setup();
+    while (true) {
+        loop();
+    }
     return 0;
 }
+#endif

@@ -5,7 +5,7 @@
  * from the source observable and then completes.
  */
 
-#include <Arduino.h>
+#include "../../arduino_mock.h"
 #include <micro-reactive.h>
 #include <iostream>
 #include <vector>
@@ -320,3 +320,15 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
+
+// For native testing, provide a main that calls setup/loop
+#ifndef ARDUINO
+int main() {
+    setup();
+    while (true) {
+        loop();
+    }
+    return 0;
+}
+#endif
+
