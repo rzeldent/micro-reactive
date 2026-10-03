@@ -17,7 +17,9 @@ examples/
 │   └── behaviorsubject_example.cpp # BehaviorSubject - stores latest value
 ├── operators/
 │   ├── transformation/         # Value transformation operators
-│   │   └── map_example.cpp      # Map operator - transform values
+│   │   ├── map_example.cpp      # Map operator - transform values
+│   │   ├── pid_example.cpp      # PID operator - control numeric samples
+│   │   └── kalman_example.cpp   # Kalman operator - smooth measurements
 │   ├── filtering/              # Filtering operators
 │   │   ├── filter_example.cpp   # Filter operator - conditional emission
 │   │   └── take_example.cpp     # Take operator - limit emission count
@@ -63,6 +65,8 @@ Subjects are both Observable and Observer - they can emit values and be subscrib
 Transform emitted values into new forms.
 
 - **Map** (`transformation/map_example.cpp`) - Transform each value using a function
+- **PID** (`transformation/pid_example.cpp`) - Apply bounded PID control to numeric samples
+- **Kalman** (`transformation/kalman_example.cpp`) - Smooth scalar measurements
 
 #### Filtering Operators
 Control which values are emitted based on conditions.

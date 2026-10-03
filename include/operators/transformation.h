@@ -3,6 +3,7 @@
 
 #include "../core.h"
 #include "../scheduler.h"
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -13,6 +14,9 @@
 #include <atomic>
 #include <string>
 #include <map>
+#include <cmath>
+#include <stdexcept>
+#include <type_traits>
 
 namespace rx
 {
@@ -200,6 +204,116 @@ namespace rx
     std::shared_ptr<IObservable<TAcc>> Scan(std::shared_ptr<Subject<T>> subject, TAcc seed, std::function<TAcc(const TAcc &, const T &)> accumulator)
     {
         return Scan(std::static_pointer_cast<IObservable<T>>(subject), seed, accumulator);
+    }
+
+    // PID transforms numeric samples into bounded output; dt is the
+    // fixed interval between samples.
+    template <typename T>
+    std::shared_ptr<IObservable<double>> PID(std::shared_ptr<IObservable<T>> source, double setpoint,
+                                             double kp, double ki, double kd, double dt,
+                                             double min_output, double max_output)
+    {
+        static_assert(std::is_arithmetic<T>::value, "PID requires an arithmetic sample type");
+        if (!source || !std::isfinite(setpoint) || !std::isfinite(kp) ||
+            !std::isfinite(ki) || !std::isfinite(kd) ||
+            !std::isfinite(dt) || dt <= 0.0 ||
+            !std::isfinite(min_output) || !std::isfinite(max_output) ||
+            min_output > max_output)
+            throw std::invalid_argument("Invalid PID parameters");
+
+        struct State
+        {
+            double integral;
+            double previous_error;
+            bool has_previous_error;
+            std::mutex mutex;
+
+            State()
+                : integral(0.0), previous_error(0.0),
+                  has_previous_error(false)
+            {
+            }
+        };
+        auto state = std::make_shared<State>();
+        return Map<T, double>(source, [=](const T &sample)
+                              {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            const double error = setpoint - static_cast<double>(sample);
+            state->integral += error * dt;
+            const double derivative = state->has_previous_error
+                ? (error - state->previous_error) / dt
+                : 0.0;
+            const double output = kp * error + ki * state->integral +
+                kd * derivative;
+            state->previous_error = error;
+            state->has_previous_error = true;
+            return std::max(min_output, std::min(max_output, output)); });
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<double>> PID(
+        std::shared_ptr<Subject<T>> source, double setpoint,
+        double kp, double ki, double kd, double dt,
+        double min_output, double max_output)
+    {
+        return PID<T>(
+            std::static_pointer_cast<IObservable<T>>(source), setpoint,
+            kp, ki, kd, dt, min_output, max_output);
+    }
+
+    // Kalman smooths numeric measurements using process and measurement
+    // noise variances with optional initial estimate and covariance.
+    template <typename T>
+    std::shared_ptr<IObservable<double>> Kalman(
+        std::shared_ptr<IObservable<T>> source, double process_noise,
+        double measurement_noise, double initial_estimate = 0.0,
+        double initial_covariance = 1.0)
+    {
+        static_assert(std::is_arithmetic<T>::value,
+                      "Kalman requires an arithmetic sample type");
+        if (!source || !std::isfinite(process_noise) ||
+            process_noise < 0.0 || !std::isfinite(measurement_noise) ||
+            measurement_noise <= 0.0 ||
+            !std::isfinite(initial_estimate) ||
+            !std::isfinite(initial_covariance) ||
+            initial_covariance < 0.0)
+            throw std::invalid_argument("Invalid Kalman parameters");
+
+        struct State
+        {
+            double estimate;
+            double covariance;
+            std::mutex mutex;
+
+            State(double initial_value, double initial_variance)
+                : estimate(initial_value), covariance(initial_variance)
+            {
+            }
+        };
+        auto state = std::make_shared<State>(
+            initial_estimate, initial_covariance);
+        return Map<T, double>(source, [=](const T &measurement)
+                              {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            state->covariance += process_noise;
+            const double gain = state->covariance /
+                (state->covariance + measurement_noise);
+            state->estimate += gain *
+                (static_cast<double>(measurement) - state->estimate);
+            state->covariance *= 1.0 - gain;
+            return state->estimate; });
+    }
+
+    template <typename T>
+    std::shared_ptr<IObservable<double>> Kalman(
+        std::shared_ptr<Subject<T>> source, double process_noise,
+        double measurement_noise, double initial_estimate = 0.0,
+        double initial_covariance = 1.0)
+    {
+        return Kalman<T>(
+            std::static_pointer_cast<IObservable<T>>(source),
+            process_noise, measurement_noise, initial_estimate,
+            initial_covariance);
     }
 
 } // namespace rx

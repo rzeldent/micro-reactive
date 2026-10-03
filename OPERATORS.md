@@ -24,6 +24,8 @@ method.
 | --- | --- | --- |
 | `Map` | Transforms each value using a mapping function. | `include/operators/transformation.h` |
 | `Scan` | Emits each intermediate accumulator result. | `include/operators/transformation.h` |
+| `PID` | Transforms numeric samples into bounded PID controller outputs. | `include/operators/transformation.h` |
+| `Kalman` | Smooths numeric samples with a scalar Kalman filter. | `include/operators/transformation.h` |
 
 ## Aggregation
 

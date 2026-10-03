@@ -44,6 +44,8 @@ A comprehensive, lightweight reactive programming library for embedded systems, 
 - **Take**: Takes only the first n items
 - **Skip**: Skips the first n items
 - **Scan**: Applies an accumulator function and emits intermediate results
+- **PID**: Applies a discrete PID controller to numeric samples
+- **Kalman**: Smooths numeric samples with a scalar Kalman filter
 - **Reduce**: Applies an accumulator function and emits final result
 - **TakeWhile / SkipWhile**: Take or skip values while a predicate is true
 
