@@ -36,7 +36,7 @@ public:
     T GetLastValue() const { return last_value_; }
     bool HasValue() const { return has_value_; }
     int GetCount() const { return count_; }
-};  // <-- missing semicolon
+};
 
 // Simulated temperature sensor that produces noisy readings
 class TemperatureSensor {
@@ -144,15 +144,15 @@ int main() {
         sensor.setHeating(on);
     });
 
-    // Subscribe heating controller to PID output (fluent, store subscription)
-    auto heating_sub = pid_output.Get()->Subscribe(std::make_shared<HeatingController>(heating_ctrl));
+    // Subscribe heating controller to PID output (fluent)
+    pid_output.Get()->Subscribe(std::make_shared<HeatingController>(heating_ctrl));
 
-    // Also log temperature and PID output for monitoring (store subscriptions)
+    // Also log temperature and PID output for monitoring
     auto temp_logger = std::make_shared<SimpleLogger<double>>();
     auto pid_logger = std::make_shared<SimpleLogger<double>>();
 
-    auto temp_sub = temp_subject->Subscribe(temp_logger);
-    auto pid_sub = pid_output.Get()->Subscribe(pid_logger);
+    temp_subject->Subscribe(temp_logger);
+    pid_output.Get()->Subscribe(pid_logger);
 
     // Simulation loop
     const int steps = 60;  // 60 seconds
