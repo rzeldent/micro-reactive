@@ -2,6 +2,12 @@
 
 A comprehensive, lightweight reactive programming library for embedded systems, specifically designed for ESP32 and Arduino platforms using C++11.
 
+[![PlatformIO CI](https://github.com/rzeldent/micro-reactive/actions/workflows/main.yml/badge.svg)](https://github.com/rzeldent/micro-reactive/actions/workflows/main.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Language: C++](https://img.shields.io/badge/Language-C%2B%2B-00599C)](https://isocpp.org/)
+[![Release](https://img.shields.io/github/v/release/rzeldent/micro-reactive)](https://github.com/rzeldent/micro-reactive/releases)
+
+
 ## Features
 
 ### Core Components
