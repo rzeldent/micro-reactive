@@ -65,7 +65,7 @@ void fluent_subject_example() {
     auto subject = CreateSubject<std::string>();
     
     // Subscribe using fluent interface
-    Observable(subject)
+    From(subject)
         .Map<std::string>([](const std::string& s) { 
             return "Processed: " + s; 
         })
@@ -230,7 +230,7 @@ void subject_with_operators_example() {
     ));
     
     // Fluent approach
-    Observable(subject)
+    From(subject)
         .Filter([](int x) { return x <= 15; })
         .Map<std::string>([](int x) { 
             return "Small value: " + std::to_string(x); 

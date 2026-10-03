@@ -95,7 +95,7 @@ mapped_obs->Subscribe(CreateObserver<string>(
 ### Fluent Pattern
 ```cpp
 // Chain operations fluently
-Observable(Range(1, 5))
+From(Range(1, 5))
     .Filter([](int x) { return x % 2 == 0; })
     .Map<string>([](int x) { return to_string(x); })
     .Subscribe(

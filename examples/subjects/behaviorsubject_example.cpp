@@ -72,7 +72,7 @@ void fluent_behaviorsubject_example() {
     auto behavior_subject = CreateBehaviorSubject<std::string>("Initial");
     
     // Subscribe using fluent interface
-    Observable(behavior_subject)
+    From(behavior_subject)
         .Map<std::string>([](const std::string& s) { 
             return "Processed: " + s; 
         })
@@ -269,7 +269,7 @@ void behaviorsubject_with_operators_example() {
     ));
     
     // Fluent approach
-    Observable(behavior_subject)
+    From(behavior_subject)
         .Filter([](int x) { return x <= 10; })
         .Map<std::string>([](int x) { 
             return "Small value: " + std::to_string(x); 

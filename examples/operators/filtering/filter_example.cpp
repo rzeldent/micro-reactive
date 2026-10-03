@@ -46,7 +46,7 @@ void fluent_filter_example() {
     std::cout << "=== Fluent Filter Example ===" << std::endl;
     
     // Use fluent interface to filter numbers greater than 5
-    Observable(Range(1, 10))
+    From(Range(1, 10))
         .Filter([](int x) {
             return x > 5;
         })
@@ -91,7 +91,7 @@ void filter_with_strings_example() {
     std::cout << std::endl;
     
     // Fluent approach - filter words starting with 'r'
-    Observable(FromVector(words))
+    From(FromVector(words))
         .Filter([](const std::string& word) {
             return !word.empty() && word[0] == 'r';
         })
@@ -135,7 +135,7 @@ void filter_with_map_example() {
     std::cout << std::endl;
     
     // Fluent approach - much cleaner
-    Observable(Range(1, 20))
+    From(Range(1, 20))
         .Filter([](int x) { return x % 5 == 0; })
         .Map<std::string>([](int x) { 
             return "Multiple of 5: " + std::to_string(x); 
@@ -161,7 +161,7 @@ void filter_complex_predicate_example() {
     std::vector<int> numbers = {1, 4, 9, 16, 25, 36, 49, 64, 81, 100};
     
     // Filter perfect squares that are also divisible by 4
-    Observable(FromVector(numbers))
+    From(FromVector(numbers))
         .Filter([](int x) {
             // Check if it's a perfect square divisible by 4
             int root = static_cast<int>(std::sqrt(x));
@@ -205,7 +205,7 @@ void filter_with_subject_example() {
     ));
     
     // Fluent approach
-    Observable(subject)
+    From(subject)
         .Filter([](int x) { return x < 0; })
         .Subscribe(
             [](int value) { 
@@ -236,7 +236,7 @@ void filter_no_matches_example() {
     std::cout << "=== Filter No Matches Example ===" << std::endl;
     
     // Filter that matches nothing
-    Observable(Range(1, 5))
+    From(Range(1, 5))
         .Filter([](int x) {
             return x > 100; // No numbers 1-5 are > 100
         })
@@ -259,7 +259,7 @@ void filter_all_matches_example() {
     std::cout << "=== Filter All Matches Example ===" << std::endl;
     
     // Filter that matches everything
-    Observable(Range(1, 5))
+    From(Range(1, 5))
         .Filter([](int x) {
             return true; // All numbers match
         })
@@ -282,7 +282,7 @@ void filter_chaining_example() {
     std::cout << "=== Filter Chaining Example ===" << std::endl;
     
     // Chain multiple filters
-    Observable(Range(1, 50))
+    From(Range(1, 50))
         .Filter([](int x) { return x % 2 == 0; })     // Even numbers
         .Filter([](int x) { return x % 3 == 0; })     // Divisible by 3
         .Filter([](int x) { return x > 10; })         // Greater than 10

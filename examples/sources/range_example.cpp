@@ -40,7 +40,7 @@ void fluent_range_example() {
     std::cout << "=== Fluent Range Example ===" << std::endl;
     
     // Create a range with step value using fluent interface
-    Observable(Range(2, 10, 2))
+    From(Range(2, 10, 2))
         .Subscribe(
             [](int value) { 
                 std::cout << "Even number: " << value << std::endl; 
@@ -79,7 +79,7 @@ void range_with_operators_example() {
     std::cout << std::endl;
     
     // Fluent approach
-    Observable(Range(1, 10))
+    From(Range(1, 10))
         .Filter([](int x) { return x % 2 == 0; })
         .Map<int>([](int x) { return x * x; })
         .Subscribe(

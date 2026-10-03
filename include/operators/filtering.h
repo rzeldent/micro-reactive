@@ -104,10 +104,12 @@ namespace rx
     };
 
     // Factory function for Filter operator
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Filter(std::shared_ptr<IObservable<T>> observable, std::function<bool(const T &)> predicate)
+    template <typename T, typename Predicate>
+    std::shared_ptr<IObservable<T>> Filter(
+        std::shared_ptr<IObservable<T>> observable, Predicate predicate)
     {
-        return std::make_shared<FilterOperator<T>>(observable, predicate);
+        return std::make_shared<FilterOperator<T>>(
+            observable, std::function<bool(const T &)>(predicate));
     }
 
     // =============================================================================

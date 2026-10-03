@@ -46,7 +46,7 @@ void fluent_do_example() {
     std::cout << "=== Fluent Do Example ===" << std::endl;
     
     // Use fluent interface with Do operator
-    Observable(Range(10, 13))
+    From(Range(10, 13))
         .Do([](int value) {
             std::cout << "  Fluent side effect: Saw " << value << std::endl;
         })
@@ -94,7 +94,7 @@ void do_for_logging_example() {
     std::cout << std::endl;
     
     // Fluent approach - much cleaner
-    Observable(FromVector(words))
+    From(FromVector(words))
         .Do([](const std::string& word) {
             std::cout << "  FLUENT LOG: Checking '" << word << "'" << std::endl;
         })
@@ -147,7 +147,7 @@ void do_with_transformation_example() {
     std::cout << std::endl;
     
     // Fluent approach - easier to read pipeline
-    Observable(Range(1, 5))
+    From(Range(1, 5))
         .Do([](int x) {
             std::cout << "  Fluent before: " << x << std::endl;
         })
@@ -177,7 +177,7 @@ void do_for_metrics_example() {
     int even_count = 0;
     int odd_count = 0;
     
-    Observable(Range(1, 10))
+    From(Range(1, 10))
         .Do([&total_processed](int x) {
             total_processed++;
             std::cout << "  Metrics: Processed item #" << total_processed << " (value: " << x << ")" << std::endl;
@@ -235,7 +235,7 @@ void do_with_subject_example() {
     ));
     
     // Fluent approach
-    Observable(subject)
+    From(subject)
         .Do([](int value) {
             std::cout << "  Fluent side effect: Observed " << value << std::endl;
         })
@@ -271,7 +271,7 @@ void do_with_subject_example() {
 void do_multiple_side_effects_example() {
     std::cout << "=== Multiple Do Side Effects Example ===" << std::endl;
     
-    Observable(Range(1, 4))
+    From(Range(1, 4))
         .Do([](int x) {
             std::cout << "  Side effect 1: Value is " << x << std::endl;
         })
@@ -302,7 +302,7 @@ void do_with_error_handling_example() {
     
     std::vector<int> values = {1, 2, 0, 4, 5};  // 0 will cause division by zero
     
-    Observable(FromVector(values))
+    From(FromVector(values))
         .Do([](int x) {
             std::cout << "  Processing value: " << x << std::endl;
         })

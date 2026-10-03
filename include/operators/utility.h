@@ -101,14 +101,17 @@ namespace rx
     };
 
     // Factory function for Do operator
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<IObservable<T>> observable, std::function<void(const T &)> side_effect)
+    template <typename T, typename Action>
+    std::shared_ptr<IObservable<T>> Do(
+        std::shared_ptr<IObservable<T>> observable, Action side_effect)
     {
-        return std::make_shared<DoOperator<T>>(observable, side_effect);
+        return std::make_shared<DoOperator<T>>(
+            observable, std::function<void(const T &)>(side_effect));
     }
 
-    template <typename T>
-    std::shared_ptr<IObservable<T>> Do(std::shared_ptr<Subject<T>> subject, std::function<void(const T &)> side_effect)
+    template <typename T, typename Action>
+    std::shared_ptr<IObservable<T>> Do(
+        std::shared_ptr<Subject<T>> subject, Action side_effect)
     {
         return Do(std::static_pointer_cast<IObservable<T>>(subject), side_effect);
     }

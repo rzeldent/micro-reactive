@@ -50,7 +50,7 @@ void fluent_timer_example() {
     auto start_time = std::chrono::steady_clock::now();
     
     // Use fluent interface with timer
-    Observable(Timer<int>(std::chrono::milliseconds(500)))
+    From(Timer<int>(std::chrono::milliseconds(500)))
         .Subscribe(
             [start_time](int value) { 
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -96,7 +96,7 @@ void timer_with_operators_example() {
     std::this_thread::sleep_for(std::chrono::milliseconds(400));
     
     // Fluent approach
-    Observable(Timer<int>(std::chrono::milliseconds(300)))
+    From(Timer<int>(std::chrono::milliseconds(300)))
         .Map<std::string>([](int x) { 
             return "Fluent timer result: " + std::to_string(x * 200); 
         })

@@ -4,6 +4,7 @@
 #include "../core.h"
 #include "../sources.h"
 #include "../subjects.h"
+#include "../error_handling.h"
 #include "transformation.h"
 #include "filtering.h"
 #include "basic.h"
@@ -36,6 +37,16 @@ namespace rx
         // Delegate subscription
         std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer) {
             return impl_->Subscribe(observer);
+        }
+
+        std::shared_ptr<Subscription> Subscribe(
+            std::function<void(const T &)> on_next,
+            std::function<void()> on_completed = nullptr,
+            std::function<void(const std::exception &)> on_error = nullptr) {
+            return impl_->Subscribe(CreateObserver<T>(
+                std::move(on_next),
+                std::move(on_completed),
+                std::move(on_error)));
         }
         
         // Implicit conversion to shared_ptr for compatibility
@@ -132,8 +143,14 @@ namespace rx
         // UTILITY OPERATORS (Fluent)
         // =============================================================================
         
-        Observable<T> Throttle(std::chrono::milliseconds duration) const {
-            return Observable<T>(rx::Throttle<T>(impl_, duration));
+        Observable<T> Throttle(size_t interval) const {
+            return Observable<T>(rx::Throttle<T>(impl_, interval));
+        }
+
+        Observable<T> Catch(
+            std::function<std::shared_ptr<IObservable<T>>(
+                const std::exception &)> error_handler) const {
+            return Observable<T>(rx::Catch<T>(impl_, error_handler));
         }
         
         Observable<T> DefaultIfEmpty(const T& default_value) const {
@@ -189,6 +206,18 @@ namespace rx
     template<typename T>
     Observable<T> From(std::shared_ptr<IObservable<T>> observable) {
         return Observable<T>(observable);
+    }
+
+    template<typename T>
+    Observable<T> From(std::shared_ptr<Subject<T>> subject) {
+        return Observable<T>(
+            std::static_pointer_cast<IObservable<T>>(subject));
+    }
+
+    template<typename T>
+    Observable<T> From(std::shared_ptr<BehaviorSubject<T>> subject) {
+        return Observable<T>(
+            std::static_pointer_cast<IObservable<T>>(subject));
     }
     
     // Fluent source creation functions

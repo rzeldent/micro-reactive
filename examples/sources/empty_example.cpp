@@ -40,7 +40,7 @@ void fluent_empty_example() {
     std::cout << "=== Fluent Empty Example ===" << std::endl;
     
     // Use fluent interface with empty observable
-    Observable(Empty<std::string>())
+    From(Empty<std::string>())
         .Subscribe(
             [](const std::string& value) { 
                 std::cout << "This should never be called! Received: " << value << std::endl; 
@@ -78,7 +78,7 @@ void empty_with_default_example() {
     std::cout << std::endl;
     
     // Fluent approach
-    Observable(Empty<int>())
+    From(Empty<int>())
         .DefaultIfEmpty(99)
         .Subscribe(
             [](int value) { 
@@ -99,7 +99,7 @@ void empty_vs_never_example() {
     std::cout << "=== Empty vs Never Example ===" << std::endl;
     
     std::cout << "Empty observable:" << std::endl;
-    Observable(Empty<int>())
+    From(Empty<int>())
         .Subscribe(
             [](int value) { 
                 std::cout << "Empty - Value: " << value << std::endl; 
@@ -113,7 +113,7 @@ void empty_vs_never_example() {
         );
     
     std::cout << "Never observable (will not complete in this example):" << std::endl;
-    Observable(Never<int>())
+    From(Never<int>())
         .Subscribe(
             [](int value) { 
                 std::cout << "Never - Value: " << value << std::endl; 
@@ -134,7 +134,7 @@ void empty_error_handling_example() {
     std::cout << "=== Empty Error Handling Example ===" << std::endl;
     
     // Empty observables don't emit errors, they just complete
-    Observable(Empty<int>())
+    From(Empty<int>())
         .Catch([](const std::exception& e) -> std::shared_ptr<IObservable<int>> {
             std::cout << "This catch block should not be called" << std::endl;
             return Range(1, 3);

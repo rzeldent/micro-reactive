@@ -46,7 +46,7 @@ void fluent_map_example() {
     std::cout << "=== Fluent Map Example ===" << std::endl;
     
     // Use fluent interface to map numbers to strings
-    Observable(Range(1, 5))
+    From(Range(1, 5))
         .Map<std::string>([](int x) {
             return "Number: " + std::to_string(x);
         })
@@ -91,7 +91,7 @@ void map_type_conversion_example() {
     std::cout << std::endl;
     
     // Fluent approach - convert to percentage strings
-    Observable(FromVector(numbers))
+    From(FromVector(numbers))
         .Map<std::string>([](int x) {
             return std::to_string(x) + "%";
         })
@@ -140,7 +140,7 @@ void map_chaining_example() {
     std::cout << std::endl;
     
     // Fluent approach - much cleaner chaining
-    Observable(Range(1, 5))
+    From(Range(1, 5))
         .Map<int>([](int x) { return x * 3; })
         .Map<std::string>([](int x) { return "Tripled: " + std::to_string(x); })
         .Map<std::string>([](const std::string& s) {
@@ -171,7 +171,7 @@ void map_with_subject_example() {
     // Traditional approach
     auto mapped_subject = Map<int, std::string>(subject->AsObservable(), [](int x) {
         if (x < 0) return "Negative: " + std::to_string(x);
-        else if (x == 0) return "Zero";
+        else if (x == 0) return std::string("Zero");
         else return "Positive: " + std::to_string(x);
     });
     
@@ -188,7 +188,7 @@ void map_with_subject_example() {
     ));
     
     // Fluent approach
-    Observable(subject)
+    From(subject)
         .Map<std::string>([](int x) {
             return "Absolute: " + std::to_string(std::abs(x));
         })
@@ -222,7 +222,7 @@ void map_complex_transformation_example() {
     std::vector<int> scores = {85, 92, 78, 95, 88, 73, 91};
     
     // Complex transformation: score to grade with additional info
-    Observable(FromVector(scores))
+    From(FromVector(scores))
         .Map<std::string>([](int score) {
             std::string grade;
             if (score >= 90) grade = "A";
@@ -254,7 +254,7 @@ void map_error_handling_example() {
     std::vector<int> numbers = {1, 2, 0, 4, 5};
     
     // Map with potential division by zero
-    Observable(FromVector(numbers))
+    From(FromVector(numbers))
         .Map<std::string>([](int x) -> std::string {
             if (x == 0) {
                 throw std::runtime_error("Division by zero!");

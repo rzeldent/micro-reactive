@@ -12,6 +12,7 @@
 
 // Forward declarations for all test functions
 // Sources tests
+void test_create_observer();
 void test_range_basic();
 void test_fromvector_basic();
 void test_empty_basic();
@@ -91,6 +92,7 @@ int run_unit_tests()
     UNITY_BEGIN();
     
     // Core functionality tests
+    RUN_TEST(test_create_observer);
     RUN_TEST(test_range_basic);
     RUN_TEST(test_fromvector_basic);
     RUN_TEST(test_empty_basic);

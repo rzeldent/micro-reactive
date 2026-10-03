@@ -48,7 +48,7 @@ void fluent_fromvector_example() {
     std::vector<int> numbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
     
     // Use fluent interface
-    Observable(FromVector(numbers))
+    From(FromVector(numbers))
         .Subscribe(
             [](int value) { 
                 std::cout << "Number: " << value << std::endl; 
@@ -89,7 +89,7 @@ void fromvector_with_operators_example() {
     std::cout << std::endl;
     
     // Fluent approach
-    Observable(FromVector(data))
+    From(FromVector(data))
         .Filter([](int x) { return x > 25; })
         .Map<double>([](int x) { return x / 10.0; })
         .Subscribe(
@@ -127,7 +127,7 @@ void fromvector_aggregation_example() {
     ));
     
     // Fluent sum
-    Observable(FromVector(values))
+    From(FromVector(values))
         .Sum()
         .Subscribe(
             [](int value) { 

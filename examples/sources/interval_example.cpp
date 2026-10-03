@@ -50,7 +50,7 @@ void fluent_interval_example() {
     auto start_time = std::chrono::steady_clock::now();
     
     // Use fluent interface with interval
-    Observable(Interval<int>(std::chrono::milliseconds(150), 3))
+    From(Interval<int>(std::chrono::milliseconds(150), 3))
         .Subscribe(
             [start_time](int value) { 
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -97,7 +97,7 @@ void interval_with_operators_example() {
     std::this_thread::sleep_for(std::chrono::milliseconds(1200));
     
     // Fluent approach
-    Observable(Interval<int>(std::chrono::milliseconds(100), 6))
+    From(Interval<int>(std::chrono::milliseconds(100), 6))
         .Filter([](int x) { return x % 2 == 1; })
         .Map<std::string>([](int x) { 
             return "Odd tick: " + std::to_string(x); 
@@ -124,7 +124,7 @@ void interval_throttle_example() {
     std::cout << "=== Interval with Throttle Example ===" << std::endl;
     
     // Fast interval with throttling
-    Observable(Interval<int>(std::chrono::milliseconds(50), 20))
+    From(Interval<int>(std::chrono::milliseconds(50), 20))
         .Throttle(3)  // Only emit every 3rd value
         .Subscribe(
             [](int value) { 
@@ -148,7 +148,7 @@ void interval_take_example() {
     std::cout << "=== Interval with Take Example ===" << std::endl;
     
     // Long interval but take only first 3 values
-    Observable(Interval<int>(std::chrono::milliseconds(200), 10))
+    From(Interval<int>(std::chrono::milliseconds(200), 10))
         .Take(3)
         .Subscribe(
             [](int value) { 

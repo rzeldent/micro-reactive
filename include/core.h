@@ -75,6 +75,56 @@ namespace rx
         virtual ~IObserver() = default;
     };
 
+    template <typename T>
+    class CallbackObserver : public IObserver<T>
+    {
+    private:
+        std::function<void(const T &)> on_next_;
+        std::function<void()> on_completed_;
+        std::function<void(const std::exception &)> on_error_;
+
+    public:
+        CallbackObserver(
+            std::function<void(const T &)> on_next,
+            std::function<void()> on_completed,
+            std::function<void(const std::exception &)> on_error)
+            : on_next_(std::move(on_next)),
+              on_completed_(std::move(on_completed)),
+              on_error_(std::move(on_error))
+        {
+        }
+
+        void OnNext(const T &value) override
+        {
+            if (on_next_)
+                on_next_(value);
+        }
+
+        void OnCompleted() override
+        {
+            if (on_completed_)
+                on_completed_();
+        }
+
+        void OnError(const std::exception &error) override
+        {
+            if (on_error_)
+                on_error_(error);
+        }
+    };
+
+    template <typename T>
+    std::shared_ptr<IObserver<T>> CreateObserver(
+        std::function<void(const T &)> on_next,
+        std::function<void()> on_completed = nullptr,
+        std::function<void(const std::exception &)> on_error = nullptr)
+    {
+        return std::make_shared<CallbackObserver<T>>(
+            std::move(on_next),
+            std::move(on_completed),
+            std::move(on_error));
+    }
+
     // Core Observable Interface - Source of values
     template <typename T>
     class IObservable

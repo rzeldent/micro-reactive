@@ -65,7 +65,7 @@ void fluent_sum_example() {
     std::cout << "=== Fluent Sum Example ===" << std::endl;
     
     // Use fluent interface to sum numbers
-    Observable(Range(10, 15))
+    From(Range(10, 15))
         .Sum()
         .Subscribe(
             [](int value) { 
@@ -106,7 +106,7 @@ void sum_with_vector_example() {
     std::cout << std::endl;
     
     // Fluent approach
-    Observable(FromVector(numbers))
+    From(FromVector(numbers))
         .Sum()
         .Subscribe(
             [](int value) { 
@@ -146,7 +146,7 @@ void sum_with_filter_example() {
     std::cout << std::endl;
     
     // Fluent approach - much cleaner
-    Observable(Range(1, 10))
+    From(Range(1, 10))
         .Filter([](int x) { return x % 2 == 1; })  // Odd numbers
         .Sum()
         .Subscribe(
@@ -168,7 +168,7 @@ void sum_with_transformation_example() {
     std::cout << "=== Sum with Transformation Example ===" << std::endl;
     
     // Sum of squares
-    Observable(Range(1, 5))
+    From(Range(1, 5))
         .Map<int>([](int x) { return x * x; })
         .Sum()
         .Subscribe(
@@ -186,7 +186,7 @@ void sum_with_transformation_example() {
     std::cout << std::endl;
     
     // Sum after doubling
-    Observable(Range(1, 4))
+    From(Range(1, 4))
         .Map<int>([](int x) { return x * 2; })
         .Sum()
         .Subscribe(
@@ -225,7 +225,7 @@ void sum_with_subject_example() {
     ));
     
     // Fluent approach
-    Observable(subject)
+    From(subject)
         .Sum()
         .Subscribe(
             [](int value) { 
@@ -255,7 +255,7 @@ void sum_empty_sequence_example() {
     std::cout << "=== Sum Empty Sequence Example ===" << std::endl;
     
     // Sum of empty sequence should be 0
-    Observable(Empty<int>())
+    From(Empty<int>())
         .Sum()
         .Subscribe(
             [](int value) { 
@@ -278,7 +278,7 @@ void sum_single_value_example() {
     std::vector<int> single_value = {42};
     
     // Sum of single value should be the value itself
-    Observable(FromVector(single_value))
+    From(FromVector(single_value))
         .Sum()
         .Subscribe(
             [](int value) {
@@ -299,7 +299,7 @@ void sum_with_take_example() {
     std::cout << "=== Sum with Take Example ===" << std::endl;
     
     // Sum only the first few values
-    Observable(Range(1, 100))
+    From(Range(1, 100))
         .Take(5)  // Take only first 5 values (1,2,3,4,5)
         .Sum()
         .Subscribe(
@@ -317,7 +317,7 @@ void sum_with_take_example() {
     std::cout << std::endl;
     
     // Compare with taking different amounts
-    Observable(Range(1, 100))
+    From(Range(1, 100))
         .Take(10)  // Take first 10 values
         .Sum()
         .Subscribe(
@@ -349,7 +349,7 @@ void sum_performance_example() {
     
     std::cout << "Calculating sum of numbers 1-" << sequence_size << " (ESP32 optimized)..." << std::endl;
     
-    Observable(FromVector(large_sequence))
+    From(FromVector(large_sequence))
         .Sum()
         .Subscribe(
             [sequence_size](int value) {
@@ -368,7 +368,7 @@ void sum_performance_example() {
     
     // Memory-efficient approach using Range instead of vector
     std::cout << "Memory-efficient approach using Range..." << std::endl;
-    Observable(Range(1, sequence_size))
+    From(Range(1, sequence_size))
         .Sum()
         .Subscribe(
             [sequence_size](int value) {
@@ -391,7 +391,7 @@ void sum_error_handling_example() {
     auto subject = CreateSubject<int>();
     
     // Sum should stop and propagate error when source errors
-    Observable(subject)
+    From(subject)
         .Sum()
         .Subscribe(
             [](int value) { 
@@ -423,7 +423,7 @@ void sum_error_propagation_example() {
     // Demonstrate how errors propagate through operator chains
     auto subject = CreateSubject<int>();
     
-    Observable(subject)
+    From(subject)
         .Map<int>([](int x) {
             if (x == 666) {
                 throw std::runtime_error("Evil number detected in Map!");
@@ -467,7 +467,7 @@ void sum_robust_error_handling_example() {
     // Example showing how to handle potential division by zero in calculations
     std::vector<int> data_with_potential_issues = {10, 20, 0, 30, 40};
     
-    Observable(FromVector(data_with_potential_issues))
+    From(FromVector(data_with_potential_issues))
         .Map<double>([](int x) -> double {
             if (x == 0) {
                 std::cout << "Warning: Zero value encountered, treating as 1 to avoid issues" << std::endl;
@@ -498,7 +498,7 @@ void sum_overflow_example() {
     std::vector<int> large_numbers = {2000000000, 1000000000, 500000000};
     
     std::cout << "Summing large numbers that might overflow..." << std::endl;
-    Observable(FromVector(large_numbers))
+    From(FromVector(large_numbers))
         .Sum()
         .Subscribe(
             [](int value) { 
@@ -520,7 +520,7 @@ void sum_negative_numbers_example() {
     
     std::vector<int> mixed_numbers = {-5, 10, -3, 8, -2};
     
-    Observable(FromVector(mixed_numbers))
+    From(FromVector(mixed_numbers))
         .Sum()
         .Subscribe(
             [](int value) {
@@ -539,7 +539,7 @@ void sum_negative_numbers_example() {
     // All negative numbers
     std::vector<int> negative_numbers = {-1, -2, -3, -4, -5};
     
-    Observable(FromVector(negative_numbers))
+    From(FromVector(negative_numbers))
         .Sum()
         .Subscribe(
             [](int value) {
@@ -561,7 +561,7 @@ void sum_zero_values_example() {
     
     std::vector<int> with_zeros = {0, 5, 0, 10, 0, 15};
     
-    Observable(FromVector(with_zeros))
+    From(FromVector(with_zeros))
         .Sum()
         .Subscribe(
             [](int value) {
@@ -580,7 +580,7 @@ void sum_zero_values_example() {
     // All zeros
     std::vector<int> all_zeros = {0, 0, 0, 0};
     
-    Observable(FromVector(all_zeros))
+    From(FromVector(all_zeros))
         .Sum()
         .Subscribe(
             [](int value) {
@@ -603,7 +603,7 @@ void sum_different_types_example() {
     // Float sum
     std::vector<float> float_numbers = {1.5f, 2.5f, 3.5f, 4.5f};
     
-    Observable(FromVector(float_numbers))
+    From(FromVector(float_numbers))
         .Sum()
         .Subscribe(
             [](float value) {
@@ -622,7 +622,7 @@ void sum_different_types_example() {
     // Double sum for higher precision
     std::vector<double> double_numbers = {0.1, 0.2, 0.3, 0.4, 0.5};
     
-    Observable(FromVector(double_numbers))
+    From(FromVector(double_numbers))
         .Sum()
         .Subscribe(
             [](double value) {
@@ -646,7 +646,7 @@ void sum_real_world_examples() {
     std::cout << "--- Sensor Reading Sum ---" << std::endl;
     std::vector<int> temperature_readings = {23, 24, 25, 23, 26, 24, 25};
     
-    Observable(FromVector(temperature_readings))
+    From(FromVector(temperature_readings))
         .Sum()
         .Subscribe(
             [](int total_temp) {
@@ -668,7 +668,7 @@ void sum_real_world_examples() {
     std::cout << "--- Battery Consumption Sum ---" << std::endl;
     std::vector<int> power_consumption_mah = {50, 45, 60, 55, 40, 52, 48};
     
-    Observable(FromVector(power_consumption_mah))
+    From(FromVector(power_consumption_mah))
         .Sum()
         .Subscribe(
             [](int total_consumption) {
@@ -691,7 +691,7 @@ void sum_real_world_examples() {
     std::cout << "--- Network Packet Size Sum ---" << std::endl;
     std::vector<int> packet_sizes = {128, 256, 64, 512, 128, 256};
     
-    Observable(FromVector(packet_sizes))
+    From(FromVector(packet_sizes))
         .Sum()
         .Subscribe(
             [](int total_bytes) {

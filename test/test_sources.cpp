@@ -1,6 +1,27 @@
 #include "test_utils.h"
 #include "../include/core.h"
 #include "../include/sources.h"
+#include <stdexcept>
+
+void test_create_observer()
+{
+    int value_received = 0;
+    bool completed = false;
+    bool errored = false;
+
+    auto observer = CreateObserver<int>(
+        [&value_received](const int &value) { value_received = value; },
+        [&completed]() { completed = true; },
+        [&errored](const std::exception &) { errored = true; });
+
+    observer->OnNext(42);
+    observer->OnCompleted();
+    observer->OnError(std::runtime_error("expected test error"));
+
+    TEST_ASSERT_EQUAL(42, value_received);
+    TEST_ASSERT_TRUE(completed);
+    TEST_ASSERT_TRUE(errored);
+}
 
 // Test Range source
 void test_range_basic() {
