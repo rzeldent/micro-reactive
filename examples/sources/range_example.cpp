@@ -6,7 +6,7 @@
  */
 
 #include <Arduino.h>
-#include "../../include/micro-reactive.h"
+#include <micro-reactive.h>
 #include <iostream>
 
 using namespace rx;
