@@ -23,8 +23,19 @@ examples/
 │   │   └── take_example.cpp     # Take operator - limit emission count
 │   ├── aggregation/            # Aggregation operators
 │   │   └── sum_example.cpp      # Sum operator - calculate totals
-│   └── utility/                # Utility operators
-│       └── do_example.cpp       # Do operator - side effects
+│   ├── utility/                # Utility operators
+│   │   └── do_example.cpp       # Do operator - side effects
+│   ├── combination/            # Operators that coordinate streams
+│   │   ├── concat_example.cpp
+│   │   ├── flatmap_example.cpp
+│   │   ├── merge_example.cpp
+│   │   ├── switch_example.cpp
+│   │   ├── with_latest_from_example.cpp
+│   │   └── zip_example.cpp
+│   └── timing/                 # Time-based operators
+│   │   ├── debounce_example.cpp
+│   │   ├── delay_example.cpp
+│   │   └── sample_example.cpp
 └── schedulers/                 # Scheduler implementations
     └── testscheduler_example.cpp # TestScheduler - deterministic testing
 ```
@@ -68,6 +79,23 @@ Combine multiple values into single results.
 Provide additional functionality without changing the core data flow.
 
 - **Do** (`utility/do_example.cpp`) - Perform side effects without modifying values
+
+#### Combination Operators
+Coordinate multiple observable streams.
+
+- **Concat** (`combination/concat_example.cpp`) - Subscribe to streams in order
+- **FlatMap** (`combination/flatmap_example.cpp`) - Map and flatten inner streams
+- **Merge** (`combination/merge_example.cpp`) - Forward values from multiple streams
+- **Switch** (`combination/switch_example.cpp`) - Forward from the newest inner stream
+- **WithLatestFrom** (`combination/with_latest_from_example.cpp`) - Pair with latest
+- **Zip** (`combination/zip_example.cpp`) - Pair values at matching positions
+
+#### Time-based Operators
+Schedule emissions against a specified interval.
+
+- **Debounce** (`timing/debounce_example.cpp`) - Wait for a quiet interval
+- **Delay** (`timing/delay_example.cpp`) - Defer values by an interval
+- **Sample** (`timing/sample_example.cpp`) - Emit the latest value periodically
 
 ### Schedulers
 Control the execution context and timing of operations.

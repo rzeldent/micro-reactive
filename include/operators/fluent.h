@@ -11,6 +11,7 @@
 #include "aggregation.h"
 #include "utility.h"
 #include "combination.h"
+#include "timing.h"
 
 namespace rx
 {
@@ -147,6 +148,30 @@ namespace rx
             return Observable<T>(rx::Throttle<T>(impl_, interval));
         }
 
+        Observable<T> Debounce(
+            std::chrono::milliseconds duration,
+            std::shared_ptr<IScheduler> scheduler =
+                detail::BackgroundSchedulerShared()) const {
+            return Observable<T>(rx::Debounce<T>(
+                impl_, duration, scheduler));
+        }
+
+        Observable<T> Delay(
+            std::chrono::milliseconds duration,
+            std::shared_ptr<IScheduler> scheduler =
+                detail::BackgroundSchedulerShared()) const {
+            return Observable<T>(rx::Delay<T>(
+                impl_, duration, scheduler));
+        }
+
+        Observable<T> Sample(
+            std::chrono::milliseconds period,
+            std::shared_ptr<IScheduler> scheduler =
+                detail::BackgroundSchedulerShared()) const {
+            return Observable<T>(rx::Sample<T>(
+                impl_, period, scheduler));
+        }
+
         Observable<T> Catch(
             std::function<std::shared_ptr<IObservable<T>>(
                 const std::exception &)> error_handler) const {
@@ -195,6 +220,68 @@ namespace rx
         
         Observable<T> Race(std::shared_ptr<IObservable<T>> other) const {
             return Observable<T>(rx::Race<T>(impl_, other));
+        }
+
+        Observable<T> Merge(std::shared_ptr<IObservable<T>> other) const {
+            return Observable<T>(rx::Merge<T>(impl_, other));
+        }
+
+        Observable<T> Merge(std::shared_ptr<Subject<T>> other) const {
+            return Merge(std::static_pointer_cast<IObservable<T>>(other));
+        }
+
+        Observable<T> Concat(std::shared_ptr<IObservable<T>> other) const {
+            return Observable<T>(rx::Concat<T>(impl_, other));
+        }
+
+        Observable<T> Concat(std::shared_ptr<Subject<T>> other) const {
+            return Concat(std::static_pointer_cast<IObservable<T>>(other));
+        }
+
+        template<typename U>
+        Observable<std::pair<T, U>> Zip(
+            std::shared_ptr<IObservable<U>> other) const {
+            return Observable<std::pair<T, U>>(
+                rx::Zip<T, U>(impl_, other));
+        }
+
+        template<typename U>
+        Observable<std::pair<T, U>> Zip(
+            std::shared_ptr<Subject<U>> other) const {
+            return Zip(std::static_pointer_cast<IObservable<U>>(other));
+        }
+
+        template<typename U>
+        Observable<U> FlatMap(
+            std::function<std::shared_ptr<IObservable<U>>(const T&)> mapper)
+            const {
+            return Observable<U>(rx::FlatMap<T, U>(impl_, mapper));
+        }
+
+        template<typename U>
+        Observable<std::pair<T, U>> WithLatestFrom(
+            std::shared_ptr<IObservable<U>> other) const {
+            return Observable<std::pair<T, U>>(
+                rx::WithLatestFrom<T, U>(impl_, other));
+        }
+
+        template<typename U>
+        Observable<std::pair<T, U>> WithLatestFrom(
+            std::shared_ptr<Subject<U>> other) const {
+            return WithLatestFrom(
+                std::static_pointer_cast<IObservable<U>>(other));
+        }
+
+        template<typename U>
+        Observable<std::pair<T, U>> WithLatestFrom(
+            std::shared_ptr<BehaviorSubject<U>> other) const {
+            return WithLatestFrom(
+                std::static_pointer_cast<IObservable<U>>(other));
+        }
+
+        template<typename U>
+        Observable<U> Switch() const {
+            return Observable<U>(rx::Switch<U>(impl_));
         }
     };
     

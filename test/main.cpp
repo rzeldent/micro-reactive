@@ -63,6 +63,16 @@ void test_debug_operator_with_error();
 
 // Combination operator tests
 void test_race_operator();
+void test_merge_operator();
+void test_merge_empty_sources();
+void test_zip_operator();
+void test_flat_map_operator();
+void test_concat_operator();
+void test_switch_operator();
+void test_with_latest_from_operator();
+void test_debounce_operator();
+void test_delay_operator();
+void test_sample_operator();
 
 // Error handling tests
 void test_retry_operator();
@@ -141,6 +151,16 @@ int run_unit_tests()
     
     // Combination operator tests
     RUN_TEST(test_race_operator);
+    RUN_TEST(test_merge_operator);
+    RUN_TEST(test_merge_empty_sources);
+    RUN_TEST(test_zip_operator);
+    RUN_TEST(test_flat_map_operator);
+    RUN_TEST(test_concat_operator);
+    RUN_TEST(test_switch_operator);
+    RUN_TEST(test_with_latest_from_operator);
+    RUN_TEST(test_debounce_operator);
+    RUN_TEST(test_delay_operator);
+    RUN_TEST(test_sample_operator);
     
     // Error handling tests
     RUN_TEST(test_retry_operator);

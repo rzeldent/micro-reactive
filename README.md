@@ -39,36 +39,44 @@ A comprehensive, lightweight reactive programming library for embedded systems, 
 - **Skip**: Skips the first n items
 - **Scan**: Applies an accumulator function and emits intermediate results
 - **Reduce**: Applies an accumulator function and emits final result
-- **Throttle**: Emits only the first item in each time window
-- **Buffer**: Buffers items into arrays of specified size
-- **Distinct**: Filters out duplicate consecutive values
+- **TakeWhile / SkipWhile**: Take or skip values while a predicate is true
+
+### Aggregation Operators
+
+- **Count**: Counts the number of emitted items
+- **Sum**: Calculates the sum of all numeric values
+- **Average**: Calculates the average of numeric values
+- **Min**: Finds the minimum value
+- **Max**: Finds the maximum value
+- **Reduce / All / Any**: Aggregate values or test predicates
 
 ### Utility Operators
 
-- **First**: Emits only the first value
-- **Last**: Emits only the last value
-- **Count**: Counts the number of emitted items
-- **Sum**: Calculates the sum of all numeric values
-- **Min**: Finds the minimum value
-- **Max**: Finds the maximum value
+- **First / Last**: Emit the first or last value
+- **Throttle**: Emits every Nth item
+- **Distinct / DistinctUntilChanged**: Filter duplicate values
+- **Do**: Run a side effect while passing values through
+- **Contains**: Emits whether a value occurs in the source
 - **DefaultIfEmpty**: Provides default value if source is empty
 - **StartWith**: Prepends values to the beginning
-- **TakeWhile**: Takes items while predicate is true
-- **SkipWhile**: Skips items while predicate is true
+- **TakeUntil / SkipUntil**: Gate a source using a trigger stream
+- **Pairwise**: Emits adjacent values as pairs
 
 ### Advanced Operators
 
-- **Debounce**: Emits only after a quiet period
-- **CombineLatest**: Combines latest values from multiple sources
-- **Merge**: Merges multiple observables into one
-- **Zip**: Pairs values from multiple sources in sequence
-- **Switch**: Switches to latest inner observable (flattens observables of observables)
-- **FlatMap/SelectMany**: Flattens inner observables into a single stream
-- **Concat**: Concatenates observables sequentially (waits for each to complete)
-- **Sample**: Samples the source at specified time intervals
-- **WindowTime**: Groups values into time-based windows
-- **Delay**: Delays emission of all values by specified duration
-- **StartWith**: Starts the sequence with specified initial values
+- **Debounce**: Emits the latest value after a quiet interval
+- **Delay**: Delays values and completion by the specified duration
+- **Sample**: Emits the latest value at regular intervals
+- **Merge**: Forwards values from multiple sources concurrently
+- **Zip**: Pairs corresponding values from two sources
+- **FlatMap**: Maps values to inner sources and merges their emissions
+- **Concat**: Subscribes to sources sequentially
+- **Switch**: Forwards values only from the latest inner source
+- **WithLatestFrom**: Pairs source values with the latest secondary value
+- **Race**: Forwards values from the first source to emit
+
+Time-based operators accept an `IScheduler`; they use the background scheduler
+by default and can use `TestScheduler` for deterministic tests.
 
 ### Error Handling
 
@@ -262,7 +270,12 @@ pio test -e native
 
 ## Examples
 
-See `src/main.cpp` for comprehensive examples of all implemented features.
+See the [`examples/`](examples/README.md) directory for standalone examples
+of operators, sources, schedulers, and subjects. Operator examples include
+traditional factory usage and the fluent interface.
+
+See [`OPERATORS.md`](OPERATORS.md) for the operator catalog and implementation
+locations.
 
 ## License
 

@@ -19,8 +19,11 @@
 // Aggregation operators (Reduce, All, Any, Count, Sum, Average, Min, Max)
 #include "operators/aggregation.h"
 
-// Combination operators (Race)
+// Operators that combine values from multiple sources
 #include "operators/combination.h"
+
+// Time-based operators (Debounce, Delay, Sample)
+#include "operators/timing.h"
 
 // Fluent interface for method chaining
 #include "operators/fluent.h"
