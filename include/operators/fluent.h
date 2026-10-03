@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../core.h"
-#include "../sources.h"
-#include "../subjects.h"
-#include "../error_handling.h"
+#include <core.h>
+#include <sources.h>
+#include <subjects.h>
+#include <error_handling.h>
 #include "transformation.h"
 #include "filtering.h"
 #include "basic.h"

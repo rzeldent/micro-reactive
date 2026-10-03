@@ -1,6 +1,6 @@
 #include "test_utils.h"
-#include "../include/core.h"
-#include "../include/sources.h"
+#include <core.h>
+#include <sources.h>
 #include <stdexcept>
 
 void test_create_observer()

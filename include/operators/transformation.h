@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../core.h"
-#include "../scheduler.h"
+#include <core.h>
+#include <scheduler.h>
 #include <algorithm>
 #include <functional>
 #include <memory>

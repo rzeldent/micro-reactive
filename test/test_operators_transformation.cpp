@@ -1,8 +1,8 @@
 #include "test_utils.h"
-#include "../include/core.h"
-#include "../include/sources.h"
-#include "../include/subjects.h"
-#include "../include/operators.h"
+#include <core.h>
+#include <sources.h>
+#include <subjects.h>
+#include <operators.h>
 #include <cmath>
 
 // Test MapOperator with new subscription pattern

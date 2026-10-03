@@ -1,6 +1,6 @@
 #include "test_utils.h"
-#include "../include/core.h"
-#include "../include/scheduler.h"
+#include <core.h>
+#include <scheduler.h>
 
 // Test scheduler functionality
 void test_scheduler_functionality() {

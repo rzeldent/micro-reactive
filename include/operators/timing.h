@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../core.h"
-#include "../scheduler.h"
-#include "../subjects.h"
+#include <core.h>
+#include <scheduler.h>
+#include <subjects.h>
 #include <chrono>
 #include <functional>
 #include <memory>

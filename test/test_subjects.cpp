@@ -1,6 +1,6 @@
 #include "test_utils.h"
-#include "../include/core.h"
-#include "../include/subjects.h"
+#include <core.h>
+#include <subjects.h>
 
 // Test Subject basic functionality
 void test_subject_basic() {

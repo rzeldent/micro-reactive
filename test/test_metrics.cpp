@@ -1,6 +1,6 @@
 #include "test_utils.h"
-#include "../include/subjects.h"
-#include "../include/operators.h"
+#include <subjects.h>
+#include <operators.h>
 
 void test_observable_metrics_basic()
 {

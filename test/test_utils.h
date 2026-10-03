@@ -4,7 +4,7 @@
 #include <chrono>
 #include <exception>
 #include <thread>
-#include "../include/core.h"
+#include <core.h>
 
 using namespace rx;
 

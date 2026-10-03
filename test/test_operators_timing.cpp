@@ -1,7 +1,7 @@
 #include "test_utils.h"
-#include "../include/sources.h"
-#include "../include/subjects.h"
-#include "../include/operators.h"
+#include <sources.h>
+#include <subjects.h>
+#include <operators.h>
 
 void test_debounce_operator() {
     auto source = std::make_shared<Subject<int>>();

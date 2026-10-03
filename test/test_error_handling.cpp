@@ -1,9 +1,9 @@
 #include "test_utils.h"
-#include "../include/core.h"
-#include "../include/subjects.h"
-#include "../include/operators.h"
-#include "../include/error_handling.h"
-#include "../include/scheduler.h"
+#include <core.h>
+#include <subjects.h>
+#include <operators.h>
+#include <error_handling.h>
+#include <scheduler.h>
 
 void test_retry_operator() {
     // Create a simpler test that doesn't depend on Subject restarting
