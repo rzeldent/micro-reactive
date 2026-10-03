@@ -1,210 +1,109 @@
 # Micro-Reactive Examples
 
-This directory contains comprehensive examples demonstrating all operators, schedulers, sources, and subjects in the micro-reactive library. Each example shows both traditional and fluent interface usage patterns.
+The examples are standalone Arduino sketches demonstrating the library's
+sources, subjects, operators, schedulers, and fluent API. They are included
+in the ESP32 example-build matrix.
 
-## Directory Structure
-
-```
-examples/
-├── sources/                     # Observable sources
-│   ├── range_example.cpp        # Range source - emit sequences of numbers
-│   ├── fromvector_example.cpp   # FromVector source - emit from collections
-│   ├── empty_example.cpp        # Empty source - completes immediately
-│   ├── timer_example.cpp        # Timer source - emit after delay
-│   └── interval_example.cpp     # Interval source - emit at intervals
-├── subjects/                    # Subject implementations
-│   ├── subject_example.cpp      # Basic Subject - multicast observable
-│   └── behaviorsubject_example.cpp # BehaviorSubject - stores latest value
-├── operators/
-│   ├── transformation/         # Value transformation operators
-│   │   ├── map_example.cpp      # Map operator - transform values
-│   │   ├── pid_example.cpp      # PID operator - control numeric samples
-│   │   └── kalman_example.cpp   # Kalman operator - smooth measurements
-│   ├── filtering/              # Filtering operators
-│   │   ├── filter_example.cpp   # Filter operator - conditional emission
-│   │   └── take_example.cpp     # Take operator - limit emission count
-│   ├── aggregation/            # Aggregation operators
-│   │   └── sum_example.cpp      # Sum operator - calculate totals
-│   ├── utility/                # Utility operators
-│   │   └── do_example.cpp       # Do operator - side effects
-│   ├── combination/            # Operators that coordinate streams
-│   │   ├── concat_example.cpp
-│   │   ├── flatmap_example.cpp
-│   │   ├── merge_example.cpp
-│   │   ├── switch_example.cpp
-│   │   ├── with_latest_from_example.cpp
-│   │   └── zip_example.cpp
-│   └── timing/                 # Time-based operators
-│   │   ├── debounce_example.cpp
-│   │   ├── delay_example.cpp
-│   │   └── sample_example.cpp
-└── schedulers/                 # Scheduler implementations
-    └── testscheduler_example.cpp # TestScheduler - deterministic testing
-```
-
-## Available Examples
+## Example files
 
 ### Sources
-Sources are the entry points that create observables and emit values.
 
-- **Range** (`range_example.cpp`) - Emits a sequence of integers within a specified range
-- **FromVector** (`fromvector_example.cpp`) - Emits all elements from a vector/collection
-- **Empty** (`empty_example.cpp`) - Completes immediately without emitting values
-- **Timer** (`timer_example.cpp`) - Emits a single value after a specified delay
-- **Interval** (`interval_example.cpp`) - Emits values at regular intervals
+- `sources/range_example.cpp` — emit a sequence of values.
+- `sources/fromvector_example.cpp` — emit values from a vector.
+- `sources/empty_example.cpp` — complete without emitting values.
+- `sources/timer_example.cpp` — emit a value after a delay.
+- `sources/interval_example.cpp` — emit values at regular intervals.
 
 ### Subjects
-Subjects are both Observable and Observer - they can emit values and be subscribed to.
 
-- **Subject** (`subject_example.cpp`) - Basic subject for multicasting
-- **BehaviorSubject** (`behaviorsubject_example.cpp`) - Stores and immediately emits the latest value to new subscribers
+- `subjects/subject_example.cpp` — multicast values to subscribers.
+- `subjects/behaviorsubject_example.cpp` — retain and replay the latest value.
 
-### Operators
+### Transformation operators
 
-#### Transformation Operators
-Transform emitted values into new forms.
+- `operators/transformation/map_example.cpp` — transform each value; includes traditional and fluent usage.
+- `operators/transformation/pid_example.cpp` — apply a bounded discrete PID controller to numeric samples; includes traditional and fluent usage.
+- `operators/transformation/kalman_example.cpp` — smooth scalar measurements with a Kalman estimate; includes traditional and fluent usage.
 
-- **Map** (`transformation/map_example.cpp`) - Transform each value using a function
-- **PID** (`transformation/pid_example.cpp`) - Apply bounded PID control to numeric samples
-- **Kalman** (`transformation/kalman_example.cpp`) - Smooth scalar measurements
+### Filtering operators
 
-#### Filtering Operators
-Control which values are emitted based on conditions.
+- `operators/filtering/filter_example.cpp` — emit values matching a predicate.
+- `operators/filtering/take_example.cpp` — limit the number of emitted values.
 
-- **Filter** (`filtering/filter_example.cpp`) - Emit only values that satisfy a predicate
-- **Take** (`filtering/take_example.cpp`) - Emit only the first N values
+### Aggregation operators
 
-#### Aggregation Operators
-Combine multiple values into single results.
+- `operators/aggregation/sum_example.cpp` — sum numeric values.
 
-- **Sum** (`aggregation/sum_example.cpp`) - Calculate the sum of all emitted numeric values
+### Utility operators
 
-#### Utility Operators
-Provide additional functionality without changing the core data flow.
+- `operators/utility/do_example.cpp` — perform side effects while forwarding
+  values.
 
-- **Do** (`utility/do_example.cpp`) - Perform side effects without modifying values
+### Combination operators
 
-#### Combination Operators
-Coordinate multiple observable streams.
+- `operators/combination/concat_example.cpp` — subscribe to sources in order.
+- `operators/combination/flatmap_example.cpp` — map values to inner sources and forward their values.
+- `operators/combination/merge_example.cpp` — forward values from multiple sources.
+- `operators/combination/switch_example.cpp` — forward from the latest inner source.
+- `operators/combination/with_latest_from_example.cpp` — pair source values with the latest value from another source.
+- `operators/combination/zip_example.cpp` — pair values from two sources by position.
 
-- **Concat** (`combination/concat_example.cpp`) - Subscribe to streams in order
-- **FlatMap** (`combination/flatmap_example.cpp`) - Map and flatten inner streams
-- **Merge** (`combination/merge_example.cpp`) - Forward values from multiple streams
-- **Switch** (`combination/switch_example.cpp`) - Forward from the newest inner stream
-- **WithLatestFrom** (`combination/with_latest_from_example.cpp`) - Pair with latest
-- **Zip** (`combination/zip_example.cpp`) - Pair values at matching positions
+### Time-based operators
 
-#### Time-based Operators
-Schedule emissions against a specified interval.
-
-- **Debounce** (`timing/debounce_example.cpp`) - Wait for a quiet interval
-- **Delay** (`timing/delay_example.cpp`) - Defer values by an interval
-- **Sample** (`timing/sample_example.cpp`) - Emit the latest value periodically
+- `operators/timing/debounce_example.cpp` — emit after a quiet period.
+- `operators/timing/delay_example.cpp` — delay values.
+- `operators/timing/sample_example.cpp` — periodically emit the latest value.
 
 ### Schedulers
-Control the execution context and timing of operations.
 
-- **TestScheduler** (`schedulers/testscheduler_example.cpp`) - Deterministic scheduler for testing time-based operations
+- `schedulers/testscheduler_example.cpp` — drive scheduled work deterministically.
 
-## Example Patterns
+### Fluent interface
 
-Each example demonstrates two main usage patterns:
+- `fluent_interface_demo.cpp` — demonstrate subscriptions and the fluent wrapper alongside traditional operator composition.
 
-### Traditional Pattern
+## Include and run
+
+Examples include the library with:
+
 ```cpp
-// Create observables
-auto range_obs = Range(1, 5);
-auto filtered_obs = Filter(range_obs, [](int x) { return x % 2 == 0; });
-auto mapped_obs = Map<int, string>(filtered_obs, [](int x) { return to_string(x); });
-
-// Subscribe
-mapped_obs->Subscribe(CreateObserver<string>(
-    [](const string& value) { cout << value << endl; },
-    []() { cout << "Completed" << endl; }
-));
+#include <micro-reactive.h>
 ```
 
-### Fluent Pattern
-```cpp
-// Chain operations fluently
-From(Range(1, 5))
-    .Filter([](int x) { return x % 2 == 0; })
-    .Map<string>([](int x) { return to_string(x); })
-    .Subscribe(
-        [](const string& value) { cout << value << endl; },
-        []() { cout << "Completed" << endl; }
-    );
+Each example has an Arduino `setup()` and `loop()` entry point. To run one,
+select it as the sketch entry point in a PlatformIO project, build for the
+target board, upload, and monitor the serial output. The repository CI builds
+each `.cpp` file under `examples/` separately for the configured ESP32 boards.
+The examples may show traditional factory calls, fluent calls, or both;
+consult the individual file for its exact coverage.
+
+Run the host-side unit tests with:
+
+```sh
+pio test -e native
 ```
 
-## Running Examples
+## PID and Kalman parameters
 
-Each example is a standalone Arduino/PlatformIO sketch that can be compiled and run:
+`PID(source, setpoint, kp, ki, kd, dt, min_output, max_output)` returns
+`double` controller outputs. It computes error as `setpoint - sample`, uses
+the supplied fixed sample interval `dt`, and clamps each output to the
+inclusive output limits. `dt` must be positive; all numeric parameters must
+be finite, and `min_output` must not exceed `max_output`.
 
-1. Copy the desired example to your main sketch file
-2. Include the micro-reactive library: `#include "micro-reactive.h"`
-3. Compile and upload to your target device
-4. Monitor serial output to see the results
+`Kalman(source, process_noise, measurement_noise, initial_estimate,
+initial_covariance)` returns `double` estimates. The initial estimate defaults
+to `0.0` and initial covariance to `1.0`. Process noise must be non-negative;
+measurement noise must be positive; initial covariance must be non-negative.
+Both operators accept arithmetic source sample types and also have fluent
+methods, `.PID(...)` and `.Kalman(...)`.
 
-## CI Builds
+The state belongs to the operator instance, so repeated subscriptions to the
+same operator instance share its accumulated filter state.
 
-The GitHub Actions workflow discovers every `.cpp` file under `examples/`
-and builds each file separately for both configured ESP32 environments:
-`lolin_s2_mini` and `esp32-c3-devkitm-1`. Each example is staged as the
-PlatformIO project entry point, so its source and relative includes remain
-unchanged. Newly added `.cpp` examples are included automatically.
+## Contributing examples
 
-Pushing a tag also creates a GitHub release after the Native unit tests and
-all example builds pass. The release includes GitHub-generated change notes
-and an `examples.zip` archive.
-
-## Example Features Demonstrated
-
-### Basic Concepts
-- Creating observables from various sources
-- Subscribing with observers
-- Handling completion and errors
-- Memory management with smart pointers
-
-### Advanced Patterns
-- Operator chaining and composition
-- Subject multicasting
-- Side effects and debugging
-- Time-based operations
-- Error handling and recovery
-- Performance considerations
-
-### Real-world Scenarios
-- Data processing pipelines
-- Event handling
-- State management
-- Asynchronous operations
-- Testing reactive code
-
-## ESP32 Compatibility
-
-All examples are designed to work on embedded systems, particularly ESP32:
-
-- Memory-efficient implementations
-- No dynamic allocation in hot paths
-- Thread-safe operations where needed
-- Reasonable resource usage
-
-## Additional Resources
-
-- See the main README.md for library overview
-- Check test files for comprehensive operator coverage
-- Review include/ directory for full API documentation
-- Explore src/ directory for implementation details
-
-## Contributing Examples
-
-When adding new examples:
-
-1. Follow the established naming convention: `{operator_name}_example.cpp`
-2. Include both traditional and fluent usage patterns
-3. Demonstrate practical use cases
-4. Add error handling examples where relevant
-5. Update this README with the new example
-6. Ensure ESP32 compatibility
-
-Each example should be self-contained and educational, showing not just how to use the operator but why and when you might want to use it.
+Use the `{operator}_example.cpp` naming convention where applicable, include
+an Arduino entry point so the sketch can be built independently, and update
+this index when adding an example. Include both traditional and fluent usage
+when both APIs are relevant and supported.

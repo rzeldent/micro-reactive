@@ -1,143 +1,74 @@
 # Fluent Interface for Micro-Reactive
 
-## Overview
+`Observable<T>` wraps a `std::shared_ptr<IObservable<T>>` and supplies the
+chainable API implemented in `include/operators/fluent.h`. Use `From()` to
+wrap an observable, subject, or behavior subject. `Get()` returns the wrapped
+observable; implicit conversion to `std::shared_ptr<IObservable<T>>` is also
+available.
 
-A fluent interface has been added to the micro-reactive library to enable method chaining for improved readability and expressiveness. This allows writing reactive code in a more natural, flowing style.
+## Example
 
-## Concept
-
-### Traditional Style (Current)
-```cpp
-auto range = Range(1, 10);
-auto mapped = Map<int, int>(range, [](const int& x) { return x * 2; });
-auto filtered = Filter<int>(mapped, [](const int& x) { return x > 5; });
-auto taken = Take<int>(filtered, 3);
-auto subscription = taken->Subscribe(observer);
-```
-
-### Fluent Style (Added)
 ```cpp
 auto subscription = From(Range(1, 10))
-    .Map([](int x) { return x * 2; })
-    .Filter([](int x) { return x > 5; })
+    .Map<int>([](const int &value) { return value * 2; })
+    .Filter([](const int &value) { return value > 5; })
     .Take(3)
-    .Subscribe(observer);
+    .Subscribe(
+        [](const int &value) { Serial.println(value); },
+        []() { Serial.println("Completed"); });
 ```
 
-## Implementation
-
-### Core Components
-
-1. **Observable<T> Wrapper Class**: A fluent wrapper around `IObservable<T>` that provides method chaining.
-
-2. **From() Helper Function**: Converts any `IObservable<T>` into a fluent `Observable<T>`.
-
-3. **Method Chaining**: Each operator method returns a new `Observable<T>` allowing for continuous chaining.
-
-### Basic Structure
+The traditional factory API remains available and can be mixed with fluent chains:
 
 ```cpp
-template <typename T>
-class Observable {
-private:
-    std::shared_ptr<IObservable<T>> impl_;
-    
-public:
-    Observable(std::shared_ptr<IObservable<T>> impl);
-    
-    // Fluent operators
-    template<typename U>
-    Observable<U> Map(std::function<U(const T&)> transform) const;
-    
-    Observable<T> Filter(std::function<bool(const T&)> predicate) const;
-    Observable<T> Take(size_t count) const;
-    Observable<T> Skip(size_t count) const;
-    Observable<T> Do(std::function<void(const T&)> action) const;
-    
-    // Subscription
-    std::shared_ptr<Subscription> Subscribe(std::shared_ptr<IObserver<T>> observer);
-};
+auto fluent = From(Range(1, 10))
+    .Map<int>([](const int &value) { return value * 2; });
+auto result = Take<int>(fluent.Get(), 3);
 ```
 
-## Benefits
+## Fluent operators
 
-1. **Improved Readability**: Code reads more naturally from left to right, top to bottom.
+The current wrapper provides the following methods:
 
-2. **Reduced Intermediate Variables**: No need to create temporary variables for each step.
+- Transformation: `Map`, `Scan`, `PID`, `Kalman`
+- Filtering: `Filter`, `Take`, `Skip`, `TakeWhile`, `SkipWhile`, `First`,
+  `Last`, `Distinct`
+- Aggregation: `Reduce`, `Count`, `Sum`, `Average`, `Min`, `Max`, `All`,
+  `Any`
+- Utility: `Throttle`, `Debounce`, `Delay`, `Sample`, `Catch`,
+  `DefaultIfEmpty`, `StartWith`, `Do`, `TakeUntil`, `SkipUntil`, `Contains`,
+  `DistinctUntilChanged`, `Pairwise`, `Debug`
+- Combination: `Race`, `Merge`, `Concat`, `Zip`, `FlatMap`,
+  `WithLatestFrom`, `Switch`
 
-3. **Better IDE Support**: Method chaining provides better autocomplete and intellisense.
+`Subscribe` accepts either an `IObserver<T>` or callbacks for next, completion,
+and error. The callback overload returns a `Subscription`, just like the
+traditional API.
 
-4. **Familiar Pattern**: Similar to other reactive libraries (RxJS, RxJava, etc.).
+## PID and Kalman
 
-## Usage Examples
+Both transforming filters have fluent methods and produce
+`Observable<double>`:
 
-### Basic Transformation Chain
 ```cpp
-auto result = From(Range(1, 5))
-    .Map([](int x) { return x * x; })  // Square each number
-    .Filter([](int x) { return x > 4; }) // Keep only > 4
-    .Take(3);                           // Take first 3
+auto control = From(sensor_values)
+    .PID(setpoint, kp, ki, kd, sample_interval, min_output, max_output);
+
+auto smoothed = From(sensor_values)
+    .Kalman(process_noise, measurement_noise, initial_estimate,
+            initial_covariance);
 ```
 
-### Side Effects and Actions
-```cpp
-auto result = From(subject)
-    .Do([](int x) { Serial.print("Processing: "); Serial.println(x); })
-    .Map([](int x) { return x + 1; })
-    .Do([](int x) { Serial.print("Result: "); Serial.println(x); });
-```
+The PID sample interval must be positive and its output is clamped to the
+configured limits. Kalman process noise and initial covariance must be
+non-negative; measurement noise must be positive. The traditional factory
+forms are `PID(source, ...)` and `Kalman(source, ...)`.
 
-### Combining with Traditional Style
-```cpp
-// Can still mix with traditional operators when needed
-auto source = Range(1, 10);
-auto processed = From(source)
-    .Map([](int x) { return x * 2; })
-    .Filter([](int x) { return x > 8; });
-    
-// Convert back to IObservable<T> for use with traditional operators
-auto final = Take<int>(processed.Get(), 5);
-```
+## Fluent sources
 
-## Implementation Status
+In addition to `From()`, the header provides `FluentEmpty`,
+`FluentNever`, `FluentRange`, `FluentFromVector`, `FluentTimer`, and
+`FluentInterval`. These helpers return the same `Observable<T>` wrapper.
 
-### Current State (Core)
-- ✅ Basic `Observable<T>` wrapper class defined
-- ✅ `From()` helper function
-- ✅ Subscription delegation
-- ✅ Implicit conversion to `IObservable<T>`
-
-### To Be Implemented (Methods)
-- ⏳ Map operator chaining
-- ⏳ Filter operator chaining  
-- ⏳ Take operator chaining
-- ⏳ Skip operator chaining
-- ⏳ Do operator chaining
-- ⏳ Additional operators...
-
-### Example Implementation for Map
-```cpp
-template<typename T>
-template<typename U>
-Observable<U> Observable<T>::Map(std::function<U(const T&)> transform) const {
-    return Observable<U>(rx::Map<T, U>(impl_, transform));
-}
-```
-
-## Backward Compatibility
-
-The fluent interface is completely additive and maintains full backward compatibility:
-
-- All existing code continues to work unchanged
-- Traditional functional style is still fully supported
-- Can mix fluent and traditional styles in the same codebase
-- No performance overhead when not using fluent interface
-
-## Future Enhancements
-
-1. **Complete Operator Coverage**: Implement fluent versions of all operators
-2. **Custom Operators**: Support for user-defined fluent operators
-3. **Template Optimization**: Reduce template instantiation overhead
-4. **Advanced Combinators**: Complex operator combinations
-
-This fluent interface provides a foundation for more expressive and readable reactive programming while maintaining the library's embedded-friendly characteristics.
+See `examples/operators/transformation/` for standalone PID and Kalman
+examples using both traditional and fluent forms.

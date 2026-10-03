@@ -24,8 +24,8 @@ method.
 | --- | --- | --- |
 | `Map` | Transforms each value using a mapping function. | `include/operators/transformation.h` |
 | `Scan` | Emits each intermediate accumulator result. | `include/operators/transformation.h` |
-| `PID` | Transforms numeric samples into bounded PID controller outputs. | `include/operators/transformation.h` |
-| `Kalman` | Smooths numeric samples with a scalar Kalman filter. | `include/operators/transformation.h` |
+| `PID` | Computes bounded PID output from each arithmetic sample using a setpoint, gains, fixed sample interval, and output limits. Emits `double`; state is retained by the operator instance. | `include/operators/transformation.h` |
+| `Kalman` | Updates a scalar estimate from each arithmetic measurement using process and measurement noise variances. Emits `double`; initial estimate and covariance default to `0.0` and `1.0`. | `include/operators/transformation.h` |
 
 ## Aggregation
 
@@ -77,6 +77,9 @@ method.
 
 Time-based operators accept an `IScheduler`; by default they use the
 background scheduler. Pass a `TestScheduler` to test timing deterministically.
+
+PID requires finite parameters, a positive sample interval, and ordered output limits.
+Kalman requires finite parameters, non-negative process noise and initial covariance, and positive measurement noise. Both have matching fluent methods; see [FLUENT_INTERFACE.md](FLUENT_INTERFACE.md) for the currentfluent API surface.
 
 ## Error handling
 

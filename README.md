@@ -39,15 +39,20 @@ A comprehensive, lightweight reactive programming library for embedded systems, 
 
 ### Transform Operators
 
-- **Map**: Transforms each item using a function
-- **Filter**: Filters items based on a predicate
-- **Take**: Takes only the first n items
-- **Skip**: Skips the first n items
-- **Scan**: Applies an accumulator function and emits intermediate results
-- **PID**: Applies a discrete PID controller to numeric samples
-- **Kalman**: Smooths numeric samples with a scalar Kalman filter
-- **Reduce**: Applies an accumulator function and emits final result
-- **TakeWhile / SkipWhile**: Take or skip values while a predicate is true
+- **Map / Scan**: Transform values or emit intermediate accumulated results
+- **PID**: Transform arithmetic samples to bounded discrete PID outputs
+- **Kalman**: Smooth arithmetic samples with a scalar Kalman estimator
+
+PID takes a fixed sample interval `dt`, setpoint, gains, and output limits.
+Kalman takes process and measurement noise variances plus optional initial estimate and covariance.
+Both operators emit `double`; their fluent forms are `.PID(...)` and `.Kalman(...)`.
+See the transformation examples and [`OPERATORS.md`](OPERATORS.md) for the operator catalog.
+
+### Filtering Operators
+
+- **Filter / Take / Skip**: Predicate-based selection and count limiting
+- **TakeWhile / SkipWhile**: Select values based on a predicate over the stream
+- **First / Last / Distinct**: Select endpoint values or remove duplicates
 
 ### Aggregation Operators
 
@@ -60,15 +65,15 @@ A comprehensive, lightweight reactive programming library for embedded systems, 
 
 ### Utility Operators
 
-- **First / Last**: Emit the first or last value
 - **Throttle**: Emits every Nth item
-- **Distinct / DistinctUntilChanged**: Filter duplicate values
+- **DistinctUntilChanged**: Filters consecutive duplicate values
 - **Do**: Run a side effect while passing values through
 - **Contains**: Emits whether a value occurs in the source
 - **DefaultIfEmpty**: Provides default value if source is empty
 - **StartWith**: Prepends values to the beginning
 - **TakeUntil / SkipUntil**: Gate a source using a trigger stream
 - **Pairwise**: Emits adjacent values as pairs
+- **Debug**: Passes values through while recording observable metrics
 
 ### Advanced Operators
 
@@ -82,6 +87,8 @@ A comprehensive, lightweight reactive programming library for embedded systems, 
 - **Switch**: Forwards values only from the latest inner source
 - **WithLatestFrom**: Pairs source values with the latest secondary value
 - **Race**: Forwards values from the first source to emit
+
+The fluent wrapper is implemented for the operators listed in [`FLUENT_INTERFACE.md`](FLUENT_INTERFACE.md); it does not currently provide a fluent method for every factory in the library.
 
 Time-based operators accept an `IScheduler`; they use the background scheduler
 by default and can use `TestScheduler` for deterministic tests.
@@ -253,34 +260,27 @@ This library uses smart pointers (std::shared_ptr) for memory management. On res
 - Monitor heap usage with the built-in memory monitoring tools
 - Use object pooling for frequently created/destroyed objects
 
-## Building
-
-Use PlatformIO with the provided `platformio.ini` configuration:
-
-```bash
-pio build
-pio upload
-```
-
 ## Testing
 
-The library includes comprehensive unit tests using Unity framework:
-
-```bash
-pio test
-```
-
-Run the tests on the host with the Native environment:
+Run the Unity unit tests on the host with the Native environment:
 
 ```bash
 pio test -e native
 ```
 
+The GitHub Actions workflow also builds each example for the configured ESP32
+boards.
+
+## Firmware builds
+
+Select a configured ESP32 environment in PlatformIO to build or upload
+firmware. The Native environment is intended for host-side tests.
+
 ## Examples
 
-See the [`examples/`](examples/README.md) directory for standalone examples
-of operators, sources, schedulers, and subjects. Operator examples include
-traditional factory usage and the fluent interface.
+See the [`examples/`](examples/README.md) directory for the current index of
+standalone operator, source, scheduler, and subject examples. Some operator
+examples show both traditional factory and fluent usage.
 
 See [`OPERATORS.md`](OPERATORS.md) for the operator catalog and implementation
 locations.
