@@ -27,7 +27,7 @@
  * - Real-world ESP32 use cases
  */
 
- #include <Arduino.h>
+#include <Arduino.h>
 #include <micro-reactive.h>
 #include <iostream>
 #include <vector>

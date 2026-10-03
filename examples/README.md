@@ -121,6 +121,10 @@ and builds each file separately for both configured ESP32 environments:
 PlatformIO project entry point, so its source and relative includes remain
 unchanged. Newly added `.cpp` examples are included automatically.
 
+Pushing a tag also creates a GitHub release after the Native unit tests and
+all example builds pass. The release includes GitHub-generated change notes
+and an `examples.zip` archive.
+
 ## Example Features Demonstrated
 
 ### Basic Concepts
