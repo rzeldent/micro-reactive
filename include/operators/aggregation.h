@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_OPERATORS_AGGREGATION_H
-#define MICRO_REACTIVE_OPERATORS_AGGREGATION_H
+#pragma once
 
 #include "../core.h"
 #include "../scheduler.h"
@@ -70,9 +69,7 @@ namespace rx
             {
                 std::lock_guard<std::mutex> lock(subscription_mutex_);
                 if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
                     source_subscription_ = observable_->Subscribe(observer_);
-                }
             }
 
             auto weak_self = std::weak_ptr<ReduceOperator<T, TAcc>>(
@@ -178,9 +175,7 @@ namespace rx
             {
                 std::lock_guard<std::mutex> lock(subscription_mutex_);
                 if (this->child_observers_.size() == 1 && !source_subscription_)
-                {
                     source_subscription_ = observable_->Subscribe(observer_);
-                }
             }
 
             auto weak_self = std::weak_ptr<AllOperator<T>>(
@@ -777,5 +772,3 @@ namespace rx
     }
 
 } // namespace rx
-
-#endif // MICRO_REACTIVE_OPERATORS_AGGREGATION_H

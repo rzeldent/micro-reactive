@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_SOURCES_H
-#define MICRO_REACTIVE_SOURCES_H
+#pragma once
 
 #include "core.h"
 #include <functional>
@@ -453,5 +452,3 @@ namespace rx
     }
 
 } // namespace rx
-
-#endif // MICRO_REACTIVE_SOURCES_H

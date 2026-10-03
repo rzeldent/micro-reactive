@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_ERROR_HANDLING_H
-#define MICRO_REACTIVE_ERROR_HANDLING_H
+#pragma once
 
 #include "core.h"
 #include <stdexcept>
@@ -734,5 +733,3 @@ namespace rx
     }
 
 } // namespace rx
-
-#endif // MICRO_REACTIVE_ERROR_HANDLING_H

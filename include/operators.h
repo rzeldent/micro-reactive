@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_OPERATORS_H
-#define MICRO_REACTIVE_OPERATORS_H
+#pragma once
 
 // Include all operator groups as per copilot instructions
 // This keeps all the operator factories together while maintaining modularity
@@ -27,5 +26,3 @@
 
 // Fluent interface for method chaining
 #include "operators/fluent.h"
-
-#endif // MICRO_REACTIVE_OPERATORS_H

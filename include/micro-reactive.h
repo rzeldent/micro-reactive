@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_H
-#define MICRO_REACTIVE_H
+#pragma once
 
 /**
  * Micro-Reactive Library
@@ -34,5 +33,3 @@
 
 // Scheduler interfaces for execution control
 #include "scheduler.h"
-
-#endif // MICRO_REACTIVE_H

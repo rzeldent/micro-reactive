@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_SCHEDULER_H
-#define MICRO_REACTIVE_SCHEDULER_H
+#pragma once
 
 #include <functional>
 #include <memory>
@@ -406,5 +405,3 @@ namespace rx
     }
 
 } // namespace rx
-
-#endif // MICRO_REACTIVE_SCHEDULER_H

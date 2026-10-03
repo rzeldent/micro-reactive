@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_CORE_H
-#define MICRO_REACTIVE_CORE_H
+#pragma once
 
 #include <memory>
 #include <list>
@@ -214,5 +213,3 @@ namespace rx
     };
 
 } // namespace rx
-
-#endif // MICRO_REACTIVE_CORE_H

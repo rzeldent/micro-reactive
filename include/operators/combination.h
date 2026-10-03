@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_OPERATORS_COMBINATION_H
-#define MICRO_REACTIVE_OPERATORS_COMBINATION_H
+#pragma once
 
 #include "../core.h"
 #include "../scheduler.h"
@@ -1226,5 +1225,3 @@ namespace rx
     }
 
 } // namespace rx
-
-#endif // MICRO_REACTIVE_OPERATORS_COMBINATION_H

@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_SUBJECTS_H
-#define MICRO_REACTIVE_SUBJECTS_H
+#pragma once
 
 #include "core.h"
 #include <memory>
@@ -360,5 +359,3 @@ namespace rx
     }
 
 } // namespace rx
-
-#endif // MICRO_REACTIVE_SUBJECTS_H

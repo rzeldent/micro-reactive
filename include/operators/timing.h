@@ -1,5 +1,4 @@
-#ifndef MICRO_REACTIVE_OPERATORS_TIMING_H
-#define MICRO_REACTIVE_OPERATORS_TIMING_H
+#pragma once
 
 #include "../core.h"
 #include "../scheduler.h"
@@ -574,5 +573,3 @@ namespace rx
             period, scheduler);
     }
 }
-
-#endif
