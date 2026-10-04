@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Timer Source Example
  * 
@@ -5,17 +15,10 @@
  * after a specified delay.
  */
 
-#include "../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <chrono>
-
-using namespace rx;
-
 void traditional_timer_example() {
-    std::cout << "=== Traditional Timer Example ===" << std::endl;
+    Serial.println("=== Traditional Timer Example ===");
     
-    auto start_time = std::chrono::steady_clock::now();
+    unsigned long start_time = millis();
     
     // Create a timer that fires after 1 second
     auto timer_observable = Timer<int>(std::chrono::milliseconds(1000));
@@ -23,15 +26,18 @@ void traditional_timer_example() {
     // Create an observer
     auto observer = CreateObserver<int>(
         [start_time](int value) { 
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - start_time).count();
-            std::cout << "Timer fired after " << elapsed << "ms with value: " << value << std::endl; 
+            unsigned long elapsed = millis() - start_time;
+            Serial.print("Timer fired after "); 
+            Serial.print(elapsed); 
+            Serial.print("ms with value: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Timer completed" << std::endl; 
+            Serial.println("Timer completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Timer error: " << e.what() << std::endl; 
+            Serial.print("Timer error: "); 
+            Serial.println(e.what()); 
         }
     );
     
@@ -39,40 +45,42 @@ void traditional_timer_example() {
     auto subscription = timer_observable->Subscribe(observer);
     
     // Wait for timer to complete
-    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    delay(1200);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_timer_example() {
-    std::cout << "=== Fluent Timer Example ===" << std::endl;
+    Serial.println("=== Fluent Timer Example ===");
     
-    auto start_time = std::chrono::steady_clock::now();
+    unsigned long start_time = millis();
     
     // Use fluent interface with timer
     From(Timer<int>(std::chrono::milliseconds(500)))
         .Subscribe(
             [start_time](int value) { 
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - start_time).count();
-                std::cout << "Fluent timer fired after " << elapsed << "ms" << std::endl; 
+                unsigned long elapsed = millis() - start_time;
+                Serial.print("Fluent timer fired after "); 
+                Serial.print(elapsed); 
+                Serial.println("ms"); 
             },
             []() { 
-                std::cout << "Fluent timer completed" << std::endl; 
+                Serial.println("Fluent timer completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Wait for timer
-    std::this_thread::sleep_for(std::chrono::milliseconds(700));
+    delay(700);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void timer_with_operators_example() {
-    std::cout << "=== Timer with Operators Example ===" << std::endl;
+    Serial.println("=== Timer with Operators Example ===");
     
     // Traditional approach - timer with transformation
     auto timer_obs = Timer<int>(std::chrono::milliseconds(300));
@@ -82,18 +90,20 @@ void timer_with_operators_example() {
     
     mapped_obs->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional - " << value << std::endl; 
+            Serial.print("Traditional - "); 
+            Serial.println(value.c_str()); 
         },
         []() { 
-            std::cout << "Traditional timer chain completed" << std::endl; 
+            Serial.println("Traditional timer chain completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional timer chain error: " << e.what() << std::endl; 
+            Serial.print("Traditional timer chain error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     // Wait for first timer
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    delay(400);
     
     // Fluent approach
     From(Timer<int>(std::chrono::milliseconds(300)))
@@ -102,26 +112,28 @@ void timer_with_operators_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent - " << value << std::endl; 
+                Serial.print("Fluent - "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent timer chain completed" << std::endl; 
+                Serial.println("Fluent timer chain completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent timer chain error: " << e.what() << std::endl; 
+                Serial.print("Fluent timer chain error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Wait for second timer
-    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+    delay(400);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void multiple_timers_example() {
-    std::cout << "=== Multiple Timers Example ===" << std::endl;
+    Serial.println("=== Multiple Timers Example ===");
     
-    auto start_time = std::chrono::steady_clock::now();
+    unsigned long start_time = millis();
     
     // Create multiple timers with different delays
     auto timer1 = Timer<int>(std::chrono::milliseconds(200));
@@ -130,87 +142,94 @@ void multiple_timers_example() {
     
     timer1->Subscribe(CreateObserver<int>(
         [start_time](int value) {
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - start_time).count();
-            std::cout << "Timer 1 fired at " << elapsed << "ms" << std::endl;
+            unsigned long elapsed = millis() - start_time;
+            Serial.print("Timer 1 fired at "); 
+            Serial.print(elapsed); 
+            Serial.println("ms");
         },
         []() {
-            std::cout << "Timer 1 completed" << std::endl;
+            Serial.println("Timer 1 completed");
         },
         [](const std::exception& e) {
-            std::cout << "Timer 1 error: " << e.what() << std::endl;
+            Serial.print("Timer 1 error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     timer2->Subscribe(CreateObserver<int>(
         [start_time](int value) {
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - start_time).count();
-            std::cout << "Timer 2 fired at " << elapsed << "ms" << std::endl;
+            unsigned long elapsed = millis() - start_time;
+            Serial.print("Timer 2 fired at "); 
+            Serial.print(elapsed); 
+            Serial.println("ms");
         },
         []() {
-            std::cout << "Timer 2 completed" << std::endl;
+            Serial.println("Timer 2 completed");
         },
         [](const std::exception& e) {
-            std::cout << "Timer 2 error: " << e.what() << std::endl;
+            Serial.print("Timer 2 error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     timer3->Subscribe(CreateObserver<int>(
         [start_time](int value) {
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - start_time).count();
-            std::cout << "Timer 3 fired at " << elapsed << "ms" << std::endl;
+            unsigned long elapsed = millis() - start_time;
+            Serial.print("Timer 3 fired at "); 
+            Serial.print(elapsed); 
+            Serial.println("ms");
         },
         []() {
-            std::cout << "Timer 3 completed" << std::endl;
+            Serial.println("Timer 3 completed");
         },
         [](const std::exception& e) {
-            std::cout << "Timer 3 error: " << e.what() << std::endl;
+            Serial.print("Timer 3 error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     // Wait for all timers
-    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+    delay(800);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void timer_cancellation_example() {
-    std::cout << "=== Timer Cancellation Example ===" << std::endl;
+    Serial.println("=== Timer Cancellation Example ===");
     
     auto timer_obs = Timer<int>(std::chrono::milliseconds(1000));
     
     auto subscription = timer_obs->Subscribe(CreateObserver<int>(
         [](int value) {
-            std::cout << "This should not print - timer was cancelled" << std::endl;
+            Serial.println("This should not print - timer was cancelled");
         },
         []() {
-            std::cout << "Timer completed (unexpected)" << std::endl;
+            Serial.println("Timer completed (unexpected)");
         },
         [](const std::exception& e) {
-            std::cout << "Timer cancellation error: " << e.what() << std::endl;
+            Serial.print("Timer cancellation error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     // Cancel timer after 200ms
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    delay(200);
     subscription->Dispose();
-    std::cout << "Timer subscription cancelled" << std::endl;
+    Serial.println("Timer subscription cancelled"); 
     
     // Wait to see if timer still fires (it shouldn't)
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    std::cout << "Timer cancellation test completed" << std::endl;
+    delay(1000);
+    Serial.println("Timer cancellation test completed"); 
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Timer Source Examples" << std::endl;
-    std::cout << "====================" << std::endl;
+    Serial.println("Timer Source Examples");
+    Serial.println("====================");
     
     traditional_timer_example();
     fluent_timer_example();
@@ -222,15 +241,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

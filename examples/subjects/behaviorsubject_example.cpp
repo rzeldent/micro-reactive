@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * BehaviorSubject Example
  * 
@@ -5,266 +15,150 @@
  * and immediately emits it to new subscribers.
  */
 
-#include "../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <string>
-
-using namespace rx;
-
 void traditional_behaviorsubject_example() {
-    std::cout << "=== Traditional BehaviorSubject Example ===" << std::endl;
+    Serial.println("=== Traditional BehaviorSubject Example ===");
     
     // Create a behavior subject with initial value
     auto behavior_subject = CreateBehaviorSubject<int>(42);
     
-    // First observer - should immediately receive the initial value
-    std::cout << "Subscribing Observer 1..." << std::endl;
+    // Create observers
     auto observer1 = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Observer 1 received: " << value << std::endl; 
+            Serial.print("Observer 1 received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Observer 1 completed" << std::endl; 
+            Serial.println("Observer 1 completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Observer 1 error: " << e.what() << std::endl; 
+            Serial.print("Observer 1 error: "); 
+            Serial.println(e.what()); 
         }
     );
     
+    // Subscribe observer1 - should immediately receive 42
     auto sub1 = behavior_subject->Subscribe(observer1);
     
-    // Push new values
-    std::cout << "Emitting new values..." << std::endl;
+    // Emit new values
     behavior_subject->OnNext(100);
     behavior_subject->OnNext(200);
     
-    // Second observer - should immediately receive the latest value (200)
-    std::cout << "Subscribing Observer 2..." << std::endl;
+    // Subscribe observer2 - should immediately receive 200 (latest value)
     auto observer2 = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Observer 2 received: " << value << std::endl; 
+            Serial.print("Observer 2 received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Observer 2 completed" << std::endl; 
+            Serial.println("Observer 2 completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Observer 2 error: " << e.what() << std::endl; 
+            Serial.print("Observer 2 error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     auto sub2 = behavior_subject->Subscribe(observer2);
     
-    // Push more values (both observers should receive these)
+    // Emit more values
     behavior_subject->OnNext(300);
-    behavior_subject->OnNext(400);
-    
-    // Complete the subject
-    behavior_subject->OnCompleted();
-    
-    std::cout << std::endl;
-}
-
-void fluent_behaviorsubject_example() {
-    std::cout << "=== Fluent BehaviorSubject Example ===" << std::endl;
-    
-    // Create behavior subject with string initial value
-    auto behavior_subject = CreateBehaviorSubject<std::string>("Initial");
-    
-    // Subscribe using fluent interface
-    From(behavior_subject)
-        .Map<std::string>([](const std::string& s) { 
-            return "Processed: " + s; 
-        })
-        .Subscribe(
-            [](const std::string& value) { 
-                std::cout << "Fluent observer received: " << value << std::endl; 
-            },
-            []() { 
-                std::cout << "Fluent observer completed" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Fluent observer error: " << e.what() << std::endl; 
-            }
-        );
-    
-    // Push new values
-    behavior_subject->OnNext("Hello");
-    behavior_subject->OnNext("World");
     
     // Complete
     behavior_subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
-void behaviorsubject_late_subscription_example() {
-    std::cout << "=== BehaviorSubject Late Subscription Example ===" << std::endl;
+void fluent_behaviorsubject_example() {
+    Serial.println("=== Fluent BehaviorSubject Example ===");
+    
+    // Create a behavior subject with initial value
+    auto behavior_subject = CreateBehaviorSubject<std::string>("initial");
+    
+    // Subscribe using fluent interface
+    From(behavior_subject)
+        .Map<std::string>([](const std::string& s) { 
+            return "Fluent: " + s; 
+        })
+        .Subscribe(
+            [](const std::string& value) { 
+                Serial.print("Fluent observer received: "); 
+                Serial.println(value.c_str()); 
+            },
+            []() { 
+                Serial.println("Fluent observer completed"); 
+            },
+            [](const std::exception& e) { 
+                Serial.print("Fluent observer error: "); 
+                Serial.println(e.what()); 
+            }
+        );
+    
+    // Emit new values
+    behavior_subject->OnNext("first");
+    behavior_subject->OnNext("second");
+    
+    // Complete
+    behavior_subject->OnCompleted();
+    
+    Serial.println();
+}
+
+void behaviorsubject_latest_value_example() {
+    Serial.println("=== BehaviorSubject Latest Value Example ===");
     
     auto behavior_subject = CreateBehaviorSubject<int>(0);
     
-    // Emit values before any subscription
-    std::cout << "Emitting values before subscription..." << std::endl;
+    // Subscribe multiple observers at different times
+    Serial.println("Subscribing Observer A...");
+    auto subA = behavior_subject->Subscribe(CreateObserver<int>(
+        [](int value) { 
+            Serial.print("Observer A: "); 
+            Serial.println(value); 
+        }
+    ));
+    
     behavior_subject->OnNext(10);
     behavior_subject->OnNext(20);
+    
+    Serial.println("Subscribing Observer B (should get 20)...");
+    auto subB = behavior_subject->Subscribe(CreateObserver<int>(
+        [](int value) { 
+            Serial.print("Observer B: "); 
+            Serial.println(value); 
+        }
+    ));
+    
     behavior_subject->OnNext(30);
     
-    // Late subscriber should immediately get the latest value (30)
-    std::cout << "Late subscriber joining..." << std::endl;
-    behavior_subject->Subscribe(CreateObserver<int>(
+    Serial.println("Subscribing Observer C (should get 30)...");
+    auto subC = behavior_subject->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Late subscriber received: " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Late subscriber completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "Late subscriber error: " << e.what() << std::endl; 
+            Serial.print("Observer C: "); 
+            Serial.println(value); 
         }
     ));
     
-    // Emit more values
-    behavior_subject->OnNext(40);
-    behavior_subject->OnNext(50);
-    
-    // Another late subscriber
-    std::cout << "Another late subscriber joining..." << std::endl;
-    behavior_subject->Subscribe(CreateObserver<int>(
-        [](int value) { 
-            std::cout << "Second late subscriber received: " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Second late subscriber completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "Second late subscriber error: " << e.what() << std::endl; 
-        }
-    ));
-    
-    behavior_subject->OnNext(60);
     behavior_subject->OnCompleted();
     
-    std::cout << std::endl;
-}
-
-void behaviorsubject_vs_subject_example() {
-    std::cout << "=== BehaviorSubject vs Subject Example ===" << std::endl;
-    
-    // Regular subject
-    auto regular_subject = CreateSubject<int>();
-    
-    // Behavior subject with initial value
-    auto behavior_subject = CreateBehaviorSubject<int>(999);
-    
-    // Emit values before subscription
-    std::cout << "Emitting values before subscription..." << std::endl;
-    regular_subject->OnNext(10);
-    regular_subject->OnNext(20);
-    behavior_subject->OnNext(100);
-    behavior_subject->OnNext(200);
-    
-    // Subscribe to both
-    std::cout << "Subscribing to regular subject:" << std::endl;
-    regular_subject->Subscribe(CreateObserver<int>(
-        [](int value) { 
-            std::cout << "Regular subject: " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Regular subject completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "Regular subject error: " << e.what() << std::endl; 
-        }
-    ));
-    
-    std::cout << "Subscribing to behavior subject:" << std::endl;
-    behavior_subject->Subscribe(CreateObserver<int>(
-        [](int value) { 
-            std::cout << "Behavior subject: " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Behavior subject completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "Behavior subject error: " << e.what() << std::endl; 
-        }
-    ));
-    
-    // Emit new values to both
-    std::cout << "Emitting new values..." << std::endl;
-    regular_subject->OnNext(30);
-    behavior_subject->OnNext(300);
-    
-    regular_subject->OnCompleted();
-    behavior_subject->OnCompleted();
-    
-    std::cout << std::endl;
-}
-
-void behaviorsubject_state_tracking_example() {
-    std::cout << "=== BehaviorSubject State Tracking Example ===" << std::endl;
-    
-    // Use behavior subject to track application state
-    auto state_subject = CreateBehaviorSubject<std::string>("Idle");
-    
-    // Subscribe to state changes
-    state_subject->Subscribe(CreateObserver<std::string>(
-        [](const std::string& state) { 
-            std::cout << "Application state: " << state << std::endl; 
-        },
-        []() { 
-            std::cout << "State tracking completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "State tracking error: " << e.what() << std::endl; 
-        }
-    ));
-    
-    // Simulate state changes
-    state_subject->OnNext("Loading");
-    
-    // New component subscribes and immediately gets current state
-    std::cout << "New component subscribing..." << std::endl;
-    state_subject->Subscribe(CreateObserver<std::string>(
-        [](const std::string& state) { 
-            std::cout << "New component sees state: " << state << std::endl; 
-        },
-        []() { 
-            std::cout << "New component state tracking completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "New component state tracking error: " << e.what() << std::endl; 
-        }
-    ));
-    
-    state_subject->OnNext("Processing");
-    state_subject->OnNext("Complete");
-    
-    state_subject->OnCompleted();
-    
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void behaviorsubject_with_operators_example() {
-    std::cout << "=== BehaviorSubject with Operators Example ===" << std::endl;
+    Serial.println("=== BehaviorSubject with Operators Example ===");
     
     auto behavior_subject = CreateBehaviorSubject<int>(5);
     
     // Traditional approach
     auto filtered = Filter(behavior_subject->AsObservable(), [](int x) { return x > 10; });
     auto mapped = Map<int, std::string>(filtered, [](int x) { 
-        return "Large value: " + std::to_string(x); 
+        return "Large: " + std::to_string(x); 
     });
     
     mapped->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional - " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Traditional behavior subject operators completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "Traditional behavior subject operators error: " << e.what() << std::endl; 
+            Serial.print("Traditional - "); 
+            Serial.println(value.c_str()); 
         }
     ));
     
@@ -272,58 +166,105 @@ void behaviorsubject_with_operators_example() {
     From(behavior_subject)
         .Filter([](int x) { return x <= 10; })
         .Map<std::string>([](int x) { 
-            return "Small value: " + std::to_string(x); 
+            return "Small: " + std::to_string(x); 
         })
-        .Subscribe(
-            [](const std::string& value) { 
-                std::cout << "Fluent - " << value << std::endl; 
-            },
-            []() { 
-                std::cout << "Fluent behavior subject operators completed" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Fluent behavior subject operators error: " << e.what() << std::endl; 
-            }
-        );
+        .Subscribe([](const std::string& value) { 
+            Serial.print("Fluent - "); 
+            Serial.println(value.c_str()); 
+        });
     
     // Emit test values
-    behavior_subject->OnNext(3);   // Should trigger small value output
-    behavior_subject->OnNext(15);  // Should trigger large value output
-    behavior_subject->OnNext(8);   // Should trigger small value output
-    behavior_subject->OnNext(25);  // Should trigger large value output
+    behavior_subject->OnNext(3);
+    behavior_subject->OnNext(8);
+    behavior_subject->OnNext(15);
+    behavior_subject->OnNext(20);
+    behavior_subject->OnNext(5);
     
     behavior_subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
+}
+
+void behaviorsubject_error_handling_example() {
+    Serial.println("=== BehaviorSubject Error Handling Example ===");
+    
+    auto behavior_subject = CreateBehaviorSubject<int>(100);
+    
+    // Subscribe with error handling
+    behavior_subject->Subscribe(CreateObserver<int>(
+        [](int value) { 
+            Serial.print("Value before error: "); 
+            Serial.println(value); 
+        },
+        []() { 
+            Serial.println("This should not be called after error"); 
+        },
+        [](const std::exception& e) { 
+            Serial.print("Error handled: "); 
+            Serial.println(e.what()); 
+        }
+    ));
+    
+    // Emit some values
+    behavior_subject->OnNext(200);
+    behavior_subject->OnNext(300);
+    
+    // Emit an error
+    behavior_subject->OnError(std::runtime_error("BehaviorSubject error"));
+    
+    // These should not be received after error
+    behavior_subject->OnNext(400);
+    behavior_subject->OnCompleted();
+    
+    Serial.println();
+}
+
+void behaviorsubject_esp32_config_example() {
+    Serial.println("=== ESP32 Config BehaviorSubject Example ===");
+    
+    // Simulate ESP32 configuration that can be updated at runtime
+    auto config_subject = CreateBehaviorSubject<int>(115200); // default baud rate
+    
+    // Multiple components subscribe to config
+    config_subject->Subscribe(CreateObserver<int>(
+        [](int baud) { 
+            Serial.print("UART config updated to: "); 
+            Serial.println(baud); 
+        }
+    ));
+    
+    config_subject->Subscribe(CreateObserver<int>(
+        [](int baud) { 
+            Serial.print("Logger config updated to: "); 
+            Serial.println(baud); 
+        }
+    ));
+    
+    // Update config at runtime
+    config_subject->OnNext(9600);
+    config_subject->OnNext(57600);
+    config_subject->OnNext(115200);
+    
+    config_subject->OnCompleted();
+    
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "BehaviorSubject Examples" << std::endl;
-    std::cout << "=======================" << std::endl;
+    Serial.println("BehaviorSubject Examples");
+    Serial.println("========================");
     
     traditional_behaviorsubject_example();
     fluent_behaviorsubject_example();
-    behaviorsubject_late_subscription_example();
-    behaviorsubject_vs_subject_example();
-    behaviorsubject_state_tracking_example();
+    behaviorsubject_latest_value_example();
     behaviorsubject_with_operators_example();
+    behaviorsubject_error_handling_example();
+    behaviorsubject_esp32_config_example();
 }
 
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

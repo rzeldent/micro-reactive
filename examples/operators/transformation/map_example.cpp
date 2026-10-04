@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Map Operator Example
  * 
@@ -5,16 +15,8 @@
  * using a provided function.
  */
 
-#include "../../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <string>
-#include <vector>
-
-using namespace rx;
-
 void traditional_map_example() {
-    std::cout << "=== Traditional Map Example ===" << std::endl;
+    Serial.println("=== Traditional Map Example ===");
     
     // Create a range of numbers
     auto range_observable = Range(1, 5);
@@ -27,23 +29,25 @@ void traditional_map_example() {
     // Subscribe to see the results
     auto observer = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Squared value: " << value << std::endl; 
+            Serial.print("Squared value: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Map operation completed" << std::endl; 
+            Serial.println("Map operation completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error: " << e.what() << std::endl; 
+            Serial.print("Error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     auto subscription = mapped_observable->Subscribe(observer);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_map_example() {
-    std::cout << "=== Fluent Map Example ===" << std::endl;
+    Serial.println("=== Fluent Map Example ===");
     
     // Use fluent interface to map numbers to strings
     From(Range(1, 5))
@@ -52,21 +56,23 @@ void fluent_map_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Mapped string: " << value << std::endl; 
+                Serial.print("Mapped string: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent map completed" << std::endl; 
+                Serial.println("Fluent map completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void map_type_conversion_example() {
-    std::cout << "=== Map Type Conversion Example ===" << std::endl;
+    Serial.println("=== Map Type Conversion Example ===");
     
     std::vector<int> numbers = {10, 20, 30, 40, 50};
     
@@ -78,17 +84,19 @@ void map_type_conversion_example() {
     
     scaled_obs->Subscribe(CreateObserver<double>(
         [](double value) { 
-            std::cout << "Traditional - Scaled: " << value << std::endl; 
+            Serial.print("Traditional - Scaled: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional scaling completed" << std::endl; 
+            Serial.println("Traditional scaling completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional scaling error: " << e.what() << std::endl; 
+            Serial.print("Traditional scaling error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
     // Fluent approach - convert to percentage strings
     From(FromVector(numbers))
@@ -97,21 +105,23 @@ void map_type_conversion_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent - Percentage: " << value << std::endl; 
+                Serial.print("Fluent - Percentage: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent percentage conversion completed" << std::endl; 
+                Serial.println("Fluent percentage conversion completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent percentage conversion error: " << e.what() << std::endl; 
+                Serial.print("Fluent percentage conversion error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void map_chaining_example() {
-    std::cout << "=== Map Chaining Example ===" << std::endl;
+    Serial.println("=== Map Chaining Example ===");
     
     // Traditional approach - chain multiple maps
     auto range_obs = Range(1, 5);
@@ -127,17 +137,19 @@ void map_chaining_example() {
     
     upper_obs->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional chain: " << value << std::endl; 
+            Serial.print("Traditional chain: "); 
+            Serial.println(value.c_str()); 
         },
         []() { 
-            std::cout << "Traditional chain completed" << std::endl; 
+            Serial.println("Traditional chain completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional chain error: " << e.what() << std::endl; 
+            Serial.print("Traditional chain error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
     // Fluent approach - much cleaner chaining
     From(Range(1, 5))
@@ -150,21 +162,23 @@ void map_chaining_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent chain: " << value << std::endl; 
+                Serial.print("Fluent chain: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent chain completed" << std::endl; 
+                Serial.println("Fluent chain completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent chain error: " << e.what() << std::endl; 
+                Serial.print("Fluent chain error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void map_with_subject_example() {
-    std::cout << "=== Map with Subject Example ===" << std::endl;
+    Serial.println("=== Map with Subject Example ===");
     
     auto subject = CreateSubject<int>();
     
@@ -177,13 +191,15 @@ void map_with_subject_example() {
     
     mapped_subject->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional subject map: " << value << std::endl; 
+            Serial.print("Traditional subject map: "); 
+            Serial.println(value.c_str()); 
         },
         []() { 
-            std::cout << "Traditional subject map completed" << std::endl; 
+            Serial.println("Traditional subject map completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional subject map error: " << e.what() << std::endl; 
+            Serial.print("Traditional subject map error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
@@ -194,13 +210,15 @@ void map_with_subject_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent subject map: " << value << std::endl; 
+                Serial.print("Fluent subject map: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent subject map completed" << std::endl; 
+                Serial.println("Fluent subject map completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent subject map error: " << e.what() << std::endl; 
+                Serial.print("Fluent subject map error: "); 
+                Serial.println(e.what()); 
             }
         );
     
@@ -212,11 +230,11 @@ void map_with_subject_example() {
     
     subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void map_complex_transformation_example() {
-    std::cout << "=== Map Complex Transformation Example ===" << std::endl;
+    Serial.println("=== Map Complex Transformation Example ===");
     
     // Create some sample data
     std::vector<int> scores = {85, 92, 78, 95, 88, 73, 91};
@@ -235,21 +253,22 @@ void map_complex_transformation_example() {
         })
         .Subscribe(
             [](const std::string& result) {
-                std::cout << result << std::endl;
+                Serial.println(result.c_str());
             },
             []() { 
-                std::cout << "Complex transformation completed" << std::endl; 
+                Serial.println("Complex transformation completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Complex transformation error: " << e.what() << std::endl; 
+                Serial.print("Complex transformation error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void map_error_handling_example() {
-    std::cout << "=== Map Error Handling Example ===" << std::endl;
+    Serial.println("=== Map Error Handling Example ===");
     
     std::vector<int> numbers = {1, 2, 0, 4, 5};
     
@@ -263,25 +282,27 @@ void map_error_handling_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Result: " << value << std::endl; 
+                Serial.print("Result: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Map with error handling completed" << std::endl; 
+                Serial.println("Map with error handling completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Caught error in map: " << e.what() << std::endl; 
+                Serial.print("Caught error in map: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Map Operator Examples" << std::endl;
-    std::cout << "====================" << std::endl;
+    Serial.println("Map Operator Examples");
+    Serial.println("====================");
     
     traditional_map_example();
     fluent_map_example();
@@ -295,15 +316,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

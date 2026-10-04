@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Range Source Example
  * 
@@ -5,14 +15,8 @@
  * within a specified range with an optional step value.
  */
 
-#include "../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-
-using namespace rx;
-
 void traditional_range_example() {
-    std::cout << "=== Traditional Range Example ===" << std::endl;
+    Serial.println("=== Traditional Range Example ===");
     
     // Create a range from 1 to 5
     auto range_observable = Range(1, 5);
@@ -20,44 +24,48 @@ void traditional_range_example() {
     // Create an observer
     auto observer = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Received: " << value << std::endl; 
+            Serial.print("Received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Range completed" << std::endl; 
+            Serial.println("Range completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error: " << e.what() << std::endl; 
+            Serial.print("Error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     // Subscribe to the observable
     auto subscription = range_observable->Subscribe(observer);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_range_example() {
-    std::cout << "=== Fluent Range Example ===" << std::endl;
+    Serial.println("=== Fluent Range Example ===");
     
     // Create a range with step value using fluent interface
     From(Range(2, 10, 2))
         .Subscribe(
             [](int value) { 
-                std::cout << "Even number: " << value << std::endl; 
+                Serial.print("Even number: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Even range completed" << std::endl; 
+                Serial.println("Even range completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void range_with_operators_example() {
-    std::cout << "=== Range with Operators Example ===" << std::endl;
+    Serial.println("=== Range with Operators Example ===");
     
     // Traditional approach
     auto range_obs = Range(1, 10);
@@ -66,17 +74,19 @@ void range_with_operators_example() {
     
     mapped_obs->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Traditional - Square of even: " << value << std::endl; 
+            Serial.print("Traditional - Square of even: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional chain completed" << std::endl; 
+            Serial.println("Traditional chain completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional chain error: " << e.what() << std::endl; 
+            Serial.print("Traditional chain error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
     // Fluent approach
     From(Range(1, 10))
@@ -84,25 +94,27 @@ void range_with_operators_example() {
         .Map<int>([](int x) { return x * x; })
         .Subscribe(
             [](int value) { 
-                std::cout << "Fluent - Square of even: " << value << std::endl; 
+                Serial.print("Fluent - Square of even: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent chain completed" << std::endl; 
+                Serial.println("Fluent chain completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent chain error: " << e.what() << std::endl; 
+                Serial.print("Fluent chain error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Range Source Examples" << std::endl;
-    std::cout << "===================" << std::endl;
+    Serial.println("Range Source Examples");
+    Serial.println("===================");
     
     traditional_range_example();
     fluent_range_example();
@@ -112,15 +124,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

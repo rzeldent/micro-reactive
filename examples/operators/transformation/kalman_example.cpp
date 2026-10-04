@@ -1,6 +1,10 @@
-#include "../../arduino_mock.h"
 #include <micro-reactive.h>
-#include <vector>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
 
 using namespace rx;
 
@@ -8,28 +12,23 @@ std::vector<std::shared_ptr<Subscription>> kalman_subscriptions;
 
 void traditional_kalman_example()
 {
-    const std::vector<double> measurements = {10.2, 9.8, 10.1, 10.0};
-    auto source = FromVector(measurements);
-    auto filtered = Kalman(source, 0.05, 1.0, 10.0, 1.0);
-
-    kalman_subscriptions.push_back(
-        filtered->Subscribe(CreateObserver<double>(
-            [](const double &value)
-            {
-                Serial.print("Kalman estimate: ");
-                Serial.println(value);
-            },
-            []()
-            { Serial.println("Traditional Kalman complete"); })));
+    auto readings = Range(8, 3);
+    auto estimate = Kalman(readings, 1.0, 0.1, 0.01);
+    kalman_subscriptions.push_back(estimate->Subscribe(CreateObserver<double>(
+        [](const double &value)
+        {
+            Serial.print("Kalman estimate: ");
+            Serial.println(value);
+        },
+        []()
+        { Serial.println("Traditional Kalman complete"); })));
 }
 
 void fluent_kalman_example()
 {
-    const std::vector<double> measurements = {10.2, 9.8, 10.1, 10.0};
-
     kalman_subscriptions.push_back(
-        From(FromVector(measurements))
-            .Kalman(0.05, 1.0, 10.0, 1.0)
+        From(Range(8, 3))
+            .Kalman(1.0, 0.1, 0.01)
             .Subscribe(
                 [](const double &value)
                 {
@@ -43,6 +42,7 @@ void fluent_kalman_example()
 void setup()
 {
     Serial.begin(115200);
+    while (!Serial) delay(10);
     traditional_kalman_example();
     fluent_kalman_example();
 }
@@ -50,15 +50,3 @@ void setup()
 void loop()
 {
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

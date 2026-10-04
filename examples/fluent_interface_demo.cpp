@@ -1,10 +1,15 @@
-#include "arduino_mock.h"
 #include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
 
 using namespace rx;
 
 // Example demonstrating fluent interface usage
-void setup() {
+void run_fluent_interface_demo() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
@@ -58,6 +63,10 @@ void setup() {
     auto subscription2 = fluent.Subscribe(observer);
     delay(100);
     subscription2->Dispose();
+}
+
+void setup() {
+    run_fluent_interface_demo();
 }
 
 void loop() {

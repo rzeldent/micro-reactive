@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * FromVector Source Example
  * 
@@ -5,16 +15,8 @@
  * from a vector in sequence.
  */
 
-#include "../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <vector>
-#include <string>
-
-using namespace rx;
-
 void traditional_fromvector_example() {
-    std::cout << "=== Traditional FromVector Example ===" << std::endl;
+    Serial.println("=== Traditional FromVector Example ===");
     
     // Create a vector of strings
     std::vector<std::string> fruits = {"apple", "banana", "orange", "grape"};
@@ -25,24 +27,26 @@ void traditional_fromvector_example() {
     // Create an observer
     auto observer = CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Fruit: " << value << std::endl; 
+            Serial.print("Fruit: "); 
+            Serial.println(value.c_str()); 
         },
         []() { 
-            std::cout << "All fruits processed" << std::endl; 
+            Serial.println("All fruits processed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error: " << e.what() << std::endl; 
+            Serial.print("Error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     // Subscribe to the observable
     auto subscription = vector_observable->Subscribe(observer);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_fromvector_example() {
-    std::cout << "=== Fluent FromVector Example ===" << std::endl;
+    Serial.println("=== Fluent FromVector Example ===");
     
     // Create a vector of integers
     std::vector<int> numbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -51,21 +55,23 @@ void fluent_fromvector_example() {
     From(FromVector(numbers))
         .Subscribe(
             [](int value) { 
-                std::cout << "Number: " << value << std::endl; 
+                Serial.print("Number: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "All numbers processed" << std::endl; 
+                Serial.println("All numbers processed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fromvector_with_operators_example() {
-    std::cout << "=== FromVector with Operators Example ===" << std::endl;
+    Serial.println("=== FromVector with Operators Example ===");
     
     std::vector<int> data = {10, 20, 30, 40, 50};
     
@@ -76,17 +82,19 @@ void fromvector_with_operators_example() {
     
     mapped_obs->Subscribe(CreateObserver<double>(
         [](double value) { 
-            std::cout << "Traditional - Scaled value: " << value << std::endl; 
+            Serial.print("Traditional - Scaled value: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional processing completed" << std::endl; 
+            Serial.println("Traditional processing completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional processing error: " << e.what() << std::endl; 
+            Serial.print("Traditional processing error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
     // Fluent approach
     From(FromVector(data))
@@ -94,21 +102,23 @@ void fromvector_with_operators_example() {
         .Map<double>([](int x) { return x / 10.0; })
         .Subscribe(
             [](double value) { 
-                std::cout << "Fluent - Scaled value: " << value << std::endl; 
+                Serial.print("Fluent - Scaled value: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent processing completed" << std::endl; 
+                Serial.println("Fluent processing completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent processing error: " << e.what() << std::endl; 
+                Serial.print("Fluent processing error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fromvector_aggregation_example() {
-    std::cout << "=== FromVector Aggregation Example ===" << std::endl;
+    Serial.println("=== FromVector Aggregation Example ===");
     
     std::vector<int> values = {1, 2, 3, 4, 5};
     
@@ -116,13 +126,15 @@ void fromvector_aggregation_example() {
     auto sum_obs = Sum(FromVector(values));
     sum_obs->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Traditional - Sum: " << value << std::endl; 
+            Serial.print("Traditional - Sum: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional sum completed" << std::endl; 
+            Serial.println("Traditional sum completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional sum error: " << e.what() << std::endl; 
+            Serial.print("Traditional sum error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
@@ -131,25 +143,27 @@ void fromvector_aggregation_example() {
         .Sum()
         .Subscribe(
             [](int value) { 
-                std::cout << "Fluent - Sum: " << value << std::endl; 
+                Serial.print("Fluent - Sum: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent sum completed" << std::endl; 
+                Serial.println("Fluent sum completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent sum error: " << e.what() << std::endl; 
+                Serial.print("Fluent sum error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "FromVector Source Examples" << std::endl;
-    std::cout << "=========================" << std::endl;
+    Serial.println("FromVector Source Examples");
+    Serial.println("=========================");
     
     traditional_fromvector_example();
     fluent_fromvector_example();
@@ -160,15 +174,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

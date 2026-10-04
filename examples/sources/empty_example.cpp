@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Empty Source Example
  * 
@@ -5,14 +15,8 @@
  * without emitting any values.
  */
 
-#include "../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-
-using namespace rx;
-
 void traditional_empty_example() {
-    std::cout << "=== Traditional Empty Example ===" << std::endl;
+    Serial.println("=== Traditional Empty Example ===");
     
     // Create an empty observable
     auto empty_observable = Empty<int>();
@@ -20,44 +24,48 @@ void traditional_empty_example() {
     // Create an observer
     auto observer = CreateObserver<int>(
         [](int value) { 
-            std::cout << "This should never be called! Received: " << value << std::endl; 
+            Serial.print("This should never be called! Received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Empty observable completed (as expected)" << std::endl; 
+            Serial.println("Empty observable completed (as expected)"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error: " << e.what() << std::endl; 
+            Serial.print("Error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     // Subscribe to the observable
     auto subscription = empty_observable->Subscribe(observer);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_empty_example() {
-    std::cout << "=== Fluent Empty Example ===" << std::endl;
+    Serial.println("=== Fluent Empty Example ===");
     
     // Use fluent interface with empty observable
     From(Empty<std::string>())
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "This should never be called! Received: " << value << std::endl; 
+                Serial.print("This should never be called! Received: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent empty observable completed" << std::endl; 
+                Serial.println("Fluent empty observable completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void empty_with_default_example() {
-    std::cout << "=== Empty with DefaultIfEmpty Example ===" << std::endl;
+    Serial.println("=== Empty with DefaultIfEmpty Example ===");
     
     // Traditional approach - empty with default value
     auto empty_obs = Empty<int>();
@@ -65,101 +73,111 @@ void empty_with_default_example() {
     
     default_obs->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Traditional - Default value: " << value << std::endl; 
+            Serial.print("Traditional - Default value: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional - DefaultIfEmpty completed" << std::endl; 
+            Serial.println("Traditional - DefaultIfEmpty completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional - DefaultIfEmpty error: " << e.what() << std::endl; 
+            Serial.print("Traditional - DefaultIfEmpty error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
     // Fluent approach
     From(Empty<int>())
         .DefaultIfEmpty(99)
         .Subscribe(
             [](int value) { 
-                std::cout << "Fluent - Default value: " << value << std::endl; 
+                Serial.print("Fluent - Default value: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent - DefaultIfEmpty completed" << std::endl; 
+                Serial.println("Fluent - DefaultIfEmpty completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent - DefaultIfEmpty error: " << e.what() << std::endl; 
+                Serial.print("Fluent - DefaultIfEmpty error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void empty_vs_never_example() {
-    std::cout << "=== Empty vs Never Example ===" << std::endl;
+    Serial.println("=== Empty vs Never Example ===");
     
-    std::cout << "Empty observable:" << std::endl;
+    Serial.println("Empty observable:");
     From(Empty<int>())
         .Subscribe(
             [](int value) { 
-                std::cout << "Empty - Value: " << value << std::endl; 
+                Serial.print("Empty - Value: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Empty - Completed immediately" << std::endl; 
+                Serial.println("Empty - Completed immediately"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Empty - Error: " << e.what() << std::endl; 
+                Serial.print("Empty - Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << "Never observable (will not complete in this example):" << std::endl;
+    Serial.println("Never observable (will not complete in this example):");
     From(Never<int>())
         .Subscribe(
             [](int value) { 
-                std::cout << "Never - Value: " << value << std::endl; 
+                Serial.print("Never - Value: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Never - This will never be called" << std::endl; 
+                Serial.println("Never - This will never be called"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Never - Error: " << e.what() << std::endl; 
+                Serial.print("Never - Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << "Never observable does not complete or emit values" << std::endl;
-    std::cout << std::endl;
+    Serial.println("Never observable does not complete or emit values");
+    Serial.println();
 }
 
 void empty_error_handling_example() {
-    std::cout << "=== Empty Error Handling Example ===" << std::endl;
+    Serial.println("=== Empty Error Handling Example ===");
     
     // Empty observables don't emit errors, they just complete
     From(Empty<int>())
         .Catch([](const std::exception& e) -> std::shared_ptr<IObservable<int>> {
-            std::cout << "This catch block should not be called" << std::endl;
+            Serial.println("This catch block should not be called");
             return Range(1, 3);
         })
         .Subscribe(
             [](int value) { 
-                std::cout << "Value after catch: " << value << std::endl; 
+                Serial.print("Value after catch: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Empty with error handling completed" << std::endl; 
+                Serial.println("Empty with error handling completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Empty with error handling error: " << e.what() << std::endl; 
+                Serial.print("Empty with error handling error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Empty Source Examples" << std::endl;
-    std::cout << "====================" << std::endl;
+    Serial.println("Empty Source Examples");
+    Serial.println("====================");
     
     traditional_empty_example();
     fluent_empty_example();
@@ -171,15 +189,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

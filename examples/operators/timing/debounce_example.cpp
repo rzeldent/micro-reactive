@@ -1,7 +1,10 @@
-#include "../../arduino_mock.h"
 #include <micro-reactive.h>
-#include <chrono>
-#include <vector>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
 
 using namespace rx;
 
@@ -34,23 +37,11 @@ void fluent_debounce_example()
 void setup()
 {
     Serial.begin(115200);
+    while (!Serial) delay(10);
     traditional_debounce_example();
     fluent_debounce_example();
 }
 
 void loop()
 {
-    delay(1000);
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

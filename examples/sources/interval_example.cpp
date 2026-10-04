@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Interval Source Example
  * 
@@ -5,17 +15,10 @@
  * regular intervals for a specified count.
  */
 
-#include "../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <chrono>
-
-using namespace rx;
-
 void traditional_interval_example() {
-    std::cout << "=== Traditional Interval Example ===" << std::endl;
+    Serial.println("=== Traditional Interval Example ===");
     
-    auto start_time = std::chrono::steady_clock::now();
+    unsigned long start_time = millis();
     
     // Create an interval that emits every 200ms for 5 values
     auto interval_observable = Interval<int>(std::chrono::milliseconds(200), 5);
@@ -23,15 +26,19 @@ void traditional_interval_example() {
     // Create an observer
     auto observer = CreateObserver<int>(
         [start_time](int value) { 
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::steady_clock::now() - start_time).count();
-            std::cout << "Interval value " << value << " at " << elapsed << "ms" << std::endl; 
+            unsigned long elapsed = millis() - start_time;
+            Serial.print("Interval value "); 
+            Serial.print(value); 
+            Serial.print(" at "); 
+            Serial.print(elapsed); 
+            Serial.println("ms"); 
         },
         []() { 
-            std::cout << "Interval completed" << std::endl; 
+            Serial.println("Interval completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Interval error: " << e.what() << std::endl; 
+            Serial.print("Interval error: "); 
+            Serial.println(e.what()); 
         }
     );
     
@@ -39,40 +46,44 @@ void traditional_interval_example() {
     auto subscription = interval_observable->Subscribe(observer);
     
     // Wait for interval to complete
-    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    delay(1200);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_interval_example() {
-    std::cout << "=== Fluent Interval Example ===" << std::endl;
+    Serial.println("=== Fluent Interval Example ===");
     
-    auto start_time = std::chrono::steady_clock::now();
+    unsigned long start_time = millis();
     
     // Use fluent interface with interval
     From(Interval<int>(std::chrono::milliseconds(150), 3))
         .Subscribe(
             [start_time](int value) { 
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                    std::chrono::steady_clock::now() - start_time).count();
-                std::cout << "Fluent interval " << value << " at " << elapsed << "ms" << std::endl; 
+                unsigned long elapsed = millis() - start_time;
+                Serial.print("Fluent interval "); 
+                Serial.print(value); 
+                Serial.print(" at "); 
+                Serial.print(elapsed); 
+                Serial.println("ms"); 
             },
             []() { 
-                std::cout << "Fluent interval completed" << std::endl; 
+                Serial.println("Fluent interval completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Wait for interval
-    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+    delay(600);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void interval_with_operators_example() {
-    std::cout << "=== Interval with Operators Example ===" << std::endl;
+    Serial.println("=== Interval with Operators Example ===");
     
     // Traditional approach - interval with filtering and transformation
     auto interval_obs = Interval<int>(std::chrono::milliseconds(100), 10);
@@ -83,18 +94,20 @@ void interval_with_operators_example() {
     
     mapped_obs->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional - " << value << std::endl; 
+            Serial.print("Traditional - "); 
+            Serial.println(value.c_str()); 
         },
         []() { 
-            std::cout << "Traditional interval chain completed" << std::endl; 
+            Serial.println("Traditional interval chain completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional interval chain error: " << e.what() << std::endl; 
+            Serial.print("Traditional interval chain error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     // Wait for first interval
-    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    delay(1200);
     
     // Fluent approach
     From(Interval<int>(std::chrono::milliseconds(100), 6))
@@ -104,107 +117,115 @@ void interval_with_operators_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent - " << value << std::endl; 
+                Serial.print("Fluent - "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent interval chain completed" << std::endl; 
+                Serial.println("Fluent interval chain completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent interval chain error: " << e.what() << std::endl; 
+                Serial.print("Fluent interval chain error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Wait for second interval
-    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+    delay(800);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void interval_throttle_example() {
-    std::cout << "=== Interval with Throttle Example ===" << std::endl;
+    Serial.println("=== Interval with Throttle Example ===");
     
     // Fast interval with throttling
     From(Interval<int>(std::chrono::milliseconds(50), 20))
         .Throttle(3)  // Only emit every 3rd value
         .Subscribe(
             [](int value) { 
-                std::cout << "Throttled interval value: " << value << std::endl; 
+                Serial.print("Throttled interval value: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Throttled interval completed" << std::endl; 
+                Serial.println("Throttled interval completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Throttled interval error: " << e.what() << std::endl; 
+                Serial.print("Throttled interval error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Wait for completion
-    std::this_thread::sleep_for(std::chrono::milliseconds(1200));
+    delay(1200);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void interval_take_example() {
-    std::cout << "=== Interval with Take Example ===" << std::endl;
+    Serial.println("=== Interval with Take Example ===");
     
     // Long interval but take only first 3 values
     From(Interval<int>(std::chrono::milliseconds(200), 10))
         .Take(3)
         .Subscribe(
             [](int value) { 
-                std::cout << "Taking only first 3: " << value << std::endl; 
+                Serial.print("Taking only first 3: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Take completed early" << std::endl; 
+                Serial.println("Take completed early"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Take interval error: " << e.what() << std::endl; 
+                Serial.print("Take interval error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Wait for completion
-    std::this_thread::sleep_for(std::chrono::milliseconds(800));
+    delay(800);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void interval_cancellation_example() {
-    std::cout << "=== Interval Cancellation Example ===" << std::endl;
+    Serial.println("=== Interval Cancellation Example ===");
     
     auto interval_obs = Interval<int>(std::chrono::milliseconds(100), 20);
     
     auto subscription = interval_obs->Subscribe(CreateObserver<int>(
         [](int value) {
-            std::cout << "Interval value before cancellation: " << value << std::endl;
+            Serial.print("Interval value before cancellation: "); 
+            Serial.println(value);
         },
         []() {
-            std::cout << "Interval completed (unexpected)" << std::endl;
+            Serial.println("Interval completed (unexpected)"); 
         },
         [](const std::exception& e) {
-            std::cout << "Interval cancellation error: " << e.what() << std::endl;
+            Serial.print("Interval cancellation error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     // Let it run for a few emissions
-    std::this_thread::sleep_for(std::chrono::milliseconds(350));
+    delay(350);
     
     // Cancel subscription
     subscription->Dispose();
-    std::cout << "Interval subscription cancelled" << std::endl;
+    Serial.println("Interval subscription cancelled"); 
     
     // Wait to see if interval still fires (it shouldn't)
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    std::cout << "Interval cancellation test completed" << std::endl;
+    delay(500);
+    Serial.println("Interval cancellation test completed"); 
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Interval Source Examples" << std::endl;
-    std::cout << "=======================" << std::endl;
+    Serial.println("Interval Source Examples");
+    Serial.println("=======================");
     
     traditional_interval_example();
     fluent_interval_example();
@@ -217,15 +238,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

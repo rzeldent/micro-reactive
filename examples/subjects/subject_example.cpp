@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Subject Example
  * 
@@ -5,15 +15,8 @@
  * It can multicast values to multiple subscribers.
  */
 
-#include "../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <string>
-
-using namespace rx;
-
 void traditional_subject_example() {
-    std::cout << "=== Traditional Subject Example ===" << std::endl;
+    Serial.println("=== Traditional Subject Example ===");
     
     // Create a subject
     auto subject = CreateSubject<int>();
@@ -21,25 +24,29 @@ void traditional_subject_example() {
     // Create observers
     auto observer1 = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Observer 1 received: " << value << std::endl; 
+            Serial.print("Observer 1 received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Observer 1 completed" << std::endl; 
+            Serial.println("Observer 1 completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Observer 1 error: " << e.what() << std::endl; 
+            Serial.print("Observer 1 error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     auto observer2 = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Observer 2 received: " << value << std::endl; 
+            Serial.print("Observer 2 received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Observer 2 completed" << std::endl; 
+            Serial.println("Observer 2 completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Observer 2 error: " << e.what() << std::endl; 
+            Serial.print("Observer 2 error: "); 
+            Serial.println(e.what()); 
         }
     );
     
@@ -55,11 +62,11 @@ void traditional_subject_example() {
     // Complete the subject
     subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_subject_example() {
-    std::cout << "=== Fluent Subject Example ===" << std::endl;
+    Serial.println("=== Fluent Subject Example ===");
     
     // Create a subject
     auto subject = CreateSubject<std::string>();
@@ -71,13 +78,15 @@ void fluent_subject_example() {
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent observer received: " << value << std::endl; 
+                Serial.print("Fluent observer received: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent observer completed" << std::endl; 
+                Serial.println("Fluent observer completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent observer error: " << e.what() << std::endl; 
+                Serial.print("Fluent observer error: "); 
+                Serial.println(e.what()); 
             }
         );
     
@@ -89,25 +98,27 @@ void fluent_subject_example() {
     // Complete
     subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void subject_multicast_example() {
-    std::cout << "=== Subject Multicast Example ===" << std::endl;
+    Serial.println("=== Subject Multicast Example ===");
     
     auto subject = CreateSubject<int>();
     
     // Subscribe multiple observers at different times
-    std::cout << "Subscribing Observer A..." << std::endl;
+    Serial.println("Subscribing Observer A...");
     auto subA = subject->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Observer A: " << value << std::endl; 
+            Serial.print("Observer A: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Observer A completed" << std::endl; 
+            Serial.println("Observer A completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Observer A error: " << e.what() << std::endl; 
+            Serial.print("Observer A error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
@@ -116,16 +127,18 @@ void subject_multicast_example() {
     subject->OnNext(2);
     
     // Subscribe another observer
-    std::cout << "Subscribing Observer B..." << std::endl;
+    Serial.println("Subscribing Observer B...");
     auto subB = subject->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Observer B: " << value << std::endl; 
+            Serial.print("Observer B: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Observer B completed" << std::endl; 
+            Serial.println("Observer B completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Observer B error: " << e.what() << std::endl; 
+            Serial.print("Observer B error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
@@ -134,7 +147,7 @@ void subject_multicast_example() {
     subject->OnNext(4);
     
     // Unsubscribe Observer A
-    std::cout << "Unsubscribing Observer A..." << std::endl;
+    Serial.println("Unsubscribing Observer A...");
     subA->Dispose();
     
     // Emit final values (only Observer B should receive these)
@@ -144,11 +157,11 @@ void subject_multicast_example() {
     // Complete
     subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void subject_as_bridge_example() {
-    std::cout << "=== Subject as Bridge Example ===" << std::endl;
+    Serial.println("=== Subject as Bridge Example ===");
     
     // Create a subject to bridge between different observables
     auto bridge_subject = CreateSubject<int>();
@@ -156,10 +169,11 @@ void subject_as_bridge_example() {
     // Subscribe to the bridge
     bridge_subject->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Bridge received: " << value << std::endl; 
+            Serial.print("Bridge received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Bridge completed" << std::endl; 
+            Serial.println("Bridge completed"); 
         }
     ));
     
@@ -177,24 +191,26 @@ void subject_as_bridge_example() {
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void subject_error_handling_example() {
-    std::cout << "=== Subject Error Handling Example ===" << std::endl;
+    Serial.println("=== Subject Error Handling Example ===");
     
     auto subject = CreateSubject<int>();
     
     // Subscribe with error handling
     subject->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Value before error: " << value << std::endl; 
+            Serial.print("Value before error: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "This should not be called after error" << std::endl; 
+            Serial.println("This should not be called after error"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error handled: " << e.what() << std::endl; 
+            Serial.print("Error handled: "); 
+            Serial.println(e.what()); 
         }
     ));
     
@@ -209,11 +225,11 @@ void subject_error_handling_example() {
     subject->OnNext(300);
     subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void subject_with_operators_example() {
-    std::cout << "=== Subject with Operators Example ===" << std::endl;
+    Serial.println("=== Subject with Operators Example ===");
     
     auto subject = CreateSubject<int>();
     
@@ -225,7 +241,8 @@ void subject_with_operators_example() {
     
     mapped->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional - " << value << std::endl; 
+            Serial.print("Traditional - "); 
+            Serial.println(value.c_str()); 
         }
     ));
     
@@ -236,7 +253,8 @@ void subject_with_operators_example() {
             return "Small value: " + std::to_string(x); 
         })
         .Subscribe([](const std::string& value) { 
-            std::cout << "Fluent - " << value << std::endl; 
+            Serial.print("Fluent - "); 
+            Serial.println(value.c_str()); 
         });
     
     // Emit test values
@@ -248,15 +266,15 @@ void subject_with_operators_example() {
     
     subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Subject Examples" << std::endl;
-    std::cout << "===============" << std::endl;
+    Serial.println("Subject Examples");
+    Serial.println("===============");
     
     traditional_subject_example();
     fluent_subject_example();
@@ -269,15 +287,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

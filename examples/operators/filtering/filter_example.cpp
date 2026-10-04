@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Filter Operator Example
  * 
@@ -5,16 +15,8 @@
  * that satisfy a predicate function.
  */
 
-#include "../../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <string>
-#include <vector>
-
-using namespace rx;
-
 void traditional_filter_example() {
-    std::cout << "=== Traditional Filter Example ===" << std::endl;
+    Serial.println("=== Traditional Filter Example ===");
     
     // Create a range of numbers
     auto range_observable = Range(1, 10);
@@ -27,23 +29,25 @@ void traditional_filter_example() {
     // Subscribe to see the results
     auto observer = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Even number: " << value << std::endl; 
+            Serial.print("Even number: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Filter operation completed" << std::endl; 
+            Serial.println("Filter operation completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error: " << e.what() << std::endl; 
+            Serial.print("Error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     auto subscription = filtered_observable->Subscribe(observer);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_filter_example() {
-    std::cout << "=== Fluent Filter Example ===" << std::endl;
+    Serial.println("=== Fluent Filter Example ===");
     
     // Use fluent interface to filter numbers greater than 5
     From(Range(1, 10))
@@ -52,261 +56,286 @@ void fluent_filter_example() {
         })
         .Subscribe(
             [](int value) { 
-                std::cout << "Number > 5: " << value << std::endl; 
+                Serial.print("Filtered value: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent filter completed" << std::endl; 
+                Serial.println("Fluent filter completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void filter_with_strings_example() {
-    std::cout << "=== Filter with Strings Example ===" << std::endl;
+    Serial.println("=== Filter with Strings Example ===");
     
-    std::vector<std::string> words = {"hello", "world", "reactive", "programming", "filter", "example"};
+    std::vector<std::string> words = {"apple", "banana", "cherry", "date", "elderberry"};
     
-    // Traditional approach - filter words with length > 5
+    // Traditional approach - filter strings longer than 5 characters
     auto vector_obs = FromVector(words);
-    auto long_words_obs = Filter(vector_obs, [](const std::string& word) {
-        return word.length() > 5;
+    auto filtered_obs = Filter(vector_obs, [](const std::string& s) {
+        return s.length() > 5;
     });
     
-    long_words_obs->Subscribe(CreateObserver<std::string>(
+    filtered_obs->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional - Long word: " << value << std::endl; 
+            Serial.print("Traditional - Long word: "); 
+            Serial.println(value.c_str()); 
         },
         []() { 
-            std::cout << "Traditional long words filter completed" << std::endl; 
+            Serial.println("Traditional string filter completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional long words filter error: " << e.what() << std::endl; 
+            Serial.print("Traditional string filter error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
-    // Fluent approach - filter words starting with 'r'
+    // Fluent approach - filter strings starting with 'b' or 'c'
     From(FromVector(words))
-        .Filter([](const std::string& word) {
-            return !word.empty() && word[0] == 'r';
+        .Filter([](const std::string& s) {
+            return s[0] == 'b' || s[0] == 'c';
         })
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent - Word starting with 'r': " << value << std::endl; 
+                Serial.print("Fluent - b/c word: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent 'r' words filter completed" << std::endl; 
+                Serial.println("Fluent string filter completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent 'r' words filter error: " << e.what() << std::endl; 
+                Serial.print("Fluent string filter error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void filter_with_map_example() {
-    std::cout << "=== Filter with Map Example ===" << std::endl;
+    Serial.println("=== Filter with Map Example ===");
     
-    // Traditional approach - filter then map
-    auto range_obs = Range(1, 20);
-    auto filtered_obs = Filter(range_obs, [](int x) { return x % 3 == 0; });
-    auto mapped_obs = Map<int, std::string>(filtered_obs, [](int x) { 
-        return "Multiple of 3: " + std::to_string(x); 
+    // Traditional approach - map then filter
+    auto range_obs = Range(1, 10);
+    auto squared_obs = Map<int, int>(range_obs, [](int x) { return x * x; });
+    auto filtered_obs = Filter(squared_obs, [](int x) {
+        return x > 25;
     });
     
-    mapped_obs->Subscribe(CreateObserver<std::string>(
-        [](const std::string& value) { 
-            std::cout << "Traditional - " << value << std::endl; 
+    filtered_obs->Subscribe(CreateObserver<int>(
+        [](int value) { 
+            Serial.print("Traditional - Squared > 25: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional filter+map completed" << std::endl; 
+            Serial.println("Traditional map+filter completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional filter+map error: " << e.what() << std::endl; 
+            Serial.print("Traditional map+filter error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
-    // Fluent approach - much cleaner
-    From(Range(1, 20))
-        .Filter([](int x) { return x % 5 == 0; })
-        .Map<std::string>([](int x) { 
-            return "Multiple of 5: " + std::to_string(x); 
+    // Fluent approach - chain map and filter
+    From(Range(1, 10))
+        .Map<int>([](int x) { return x * x; })
+        .Filter([](int x) {
+            return x > 25;
         })
         .Subscribe(
-            [](const std::string& value) { 
-                std::cout << "Fluent - " << value << std::endl; 
+            [](int value) { 
+                Serial.print("Fluent - Squared > 25: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent filter+map completed" << std::endl; 
+                Serial.println("Fluent map+filter completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent filter+map error: " << e.what() << std::endl; 
+                Serial.print("Fluent map+filter error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void filter_complex_predicate_example() {
-    std::cout << "=== Filter Complex Predicate Example ===" << std::endl;
+    Serial.println("=== Filter Complex Predicate Example ===");
     
-    std::vector<int> numbers = {1, 4, 9, 16, 25, 36, 49, 64, 81, 100};
+    std::vector<int> numbers = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
     
-    // Filter perfect squares that are also divisible by 4
+    // Complex predicate: prime numbers
+    auto is_prime = [](int n) {
+        if (n < 2) return false;
+        for (int i = 2; i * i <= n; ++i) {
+            if (n % i == 0) return false;
+        }
+        return true;
+    };
+    
     From(FromVector(numbers))
-        .Filter([](int x) {
-            // Check if it's a perfect square divisible by 4
-            int root = static_cast<int>(std::sqrt(x));
-            return (root * root == x) && (x % 4 == 0);
-        })
+        .Filter(is_prime)
         .Subscribe(
-            [](int value) {
-                std::cout << "Perfect square divisible by 4: " << value << std::endl;
+            [](int value) { 
+                Serial.print("Prime: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Complex predicate filter completed" << std::endl; 
+                Serial.println("Prime filter completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Complex predicate filter error: " << e.what() << std::endl; 
+                Serial.print("Prime filter error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void filter_with_subject_example() {
-    std::cout << "=== Filter with Subject Example ===" << std::endl;
+    Serial.println("=== Filter with Subject Example ===");
     
     auto subject = CreateSubject<int>();
     
     // Traditional approach
-    auto positive_filter = Filter(subject->AsObservable(), [](int x) {
-        return x > 0;
+    auto filtered_subject = Filter(subject->AsObservable(), [](int x) {
+        return x % 3 == 0; // multiples of 3
     });
     
-    positive_filter->Subscribe(CreateObserver<int>(
+    filtered_subject->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Traditional - Positive: " << value << std::endl; 
+            Serial.print("Traditional subject filter (x3): "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional positive filter completed" << std::endl; 
+            Serial.println("Traditional subject filter completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional positive filter error: " << e.what() << std::endl; 
+            Serial.print("Traditional subject filter error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     // Fluent approach
     From(subject)
-        .Filter([](int x) { return x < 0; })
+        .Filter([](int x) {
+            return x % 5 == 0; // multiples of 5
+        })
         .Subscribe(
             [](int value) { 
-                std::cout << "Fluent - Negative: " << value << std::endl; 
+                Serial.print("Fluent subject filter (x5): "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent negative filter completed" << std::endl; 
+                Serial.println("Fluent subject filter completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent negative filter error: " << e.what() << std::endl; 
+                Serial.print("Fluent subject filter error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    // Push various values through subject
-    subject->OnNext(5);
-    subject->OnNext(-3);
-    subject->OnNext(0);
-    subject->OnNext(10);
-    subject->OnNext(-7);
-    subject->OnNext(2);
+    // Push values through subject
+    for (int i = 1; i <= 20; ++i) {
+        subject->OnNext(i);
+    }
     
     subject->OnCompleted();
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void filter_no_matches_example() {
-    std::cout << "=== Filter No Matches Example ===" << std::endl;
+    Serial.println("=== Filter No Matches Example ===");
     
     // Filter that matches nothing
     From(Range(1, 5))
         .Filter([](int x) {
-            return x > 100; // No numbers 1-5 are > 100
+            return x > 100; // nothing matches
         })
         .Subscribe(
             [](int value) { 
-                std::cout << "This should not print: " << value << std::endl; 
+                Serial.print("Should not see this: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Filter with no matches completed" << std::endl; 
+                Serial.println("No matches filter completed (no values emitted)"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Filter with no matches error: " << e.what() << std::endl; 
+                Serial.print("No matches filter error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void filter_all_matches_example() {
-    std::cout << "=== Filter All Matches Example ===" << std::endl;
+    Serial.println("=== Filter All Matches Example ===");
     
     // Filter that matches everything
     From(Range(1, 5))
         .Filter([](int x) {
-            return true; // All numbers match
+            return x > 0; // everything matches
         })
         .Subscribe(
             [](int value) { 
-                std::cout << "All numbers pass: " << value << std::endl; 
+                Serial.print("All matches: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Filter allowing all completed" << std::endl; 
+                Serial.println("All matches filter completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Filter allowing all error: " << e.what() << std::endl; 
+                Serial.print("All matches filter error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void filter_chaining_example() {
-    std::cout << "=== Filter Chaining Example ===" << std::endl;
+    Serial.println("=== Filter Chaining Example ===");
     
     // Chain multiple filters
-    From(Range(1, 50))
-        .Filter([](int x) { return x % 2 == 0; })     // Even numbers
-        .Filter([](int x) { return x % 3 == 0; })     // Divisible by 3
-        .Filter([](int x) { return x > 10; })         // Greater than 10
+    From(Range(1, 20))
+        .Filter([](int x) { return x % 2 == 0; })  // even
+        .Filter([](int x) { return x > 5; })       // > 5
+        .Filter([](int x) { return x < 15; })      // < 15
         .Subscribe(
-            [](int value) {
-                std::cout << "Even, divisible by 3, and > 10: " << value << std::endl;
+            [](int value) { 
+                Serial.print("Chained filter (even, >5, <15): "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Filter chaining completed" << std::endl; 
+                Serial.println("Chained filter completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Filter chaining error: " << e.what() << std::endl; 
+                Serial.print("Chained filter error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Filter Operator Examples" << std::endl;
-    std::cout << "=======================" << std::endl;
+    Serial.println("Filter Operator Examples");
+    Serial.println("=======================");
     
     traditional_filter_example();
     fluent_filter_example();
@@ -322,15 +351,3 @@ void setup() {
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

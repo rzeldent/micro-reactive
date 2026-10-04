@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Take Operator Example
  * 
@@ -5,204 +15,213 @@
  * from the source observable and then completes.
  */
 
-#include "../../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <vector>
-
-using namespace rx;
-
 void traditional_take_example() {
-    std::cout << "=== Traditional Take Example ===" << std::endl;
+    Serial.println("=== Traditional Take Example ===");
     
     // Create a range of numbers 1-10
     auto range_observable = Range(1, 10);
     
     // Take only the first 3 values
-    auto take_observable = Take(range_observable, 3);
+    auto taken_observable = Take(range_observable, 3);
     
     // Subscribe to see the results
     auto observer = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Taken value: " << value << std::endl; 
+            Serial.print("Taken value: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Take operation completed" << std::endl; 
+            Serial.println("Take operation completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error: " << e.what() << std::endl; 
+            Serial.print("Error: "); 
+            Serial.println(e.what()); 
         }
     );
     
-    auto subscription = take_observable->Subscribe(observer);
+    auto subscription = taken_observable->Subscribe(observer);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_take_example() {
-    std::cout << "=== Fluent Take Example ===" << std::endl;
+    Serial.println("=== Fluent Take Example ===");
     
     // Use fluent interface to take first 5 values
-    From(Range(1, 20))
+    From(Range(1, 10))
         .Take(5)
         .Subscribe(
             [](int value) { 
-                std::cout << "Fluent take: " << value << std::endl; 
+                Serial.print("Fluent taken: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent take completed" << std::endl; 
+                Serial.println("Fluent take completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
+                Serial.print("Error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
-void take_with_vector_example() {
-    std::cout << "=== Take with Vector Example ===" << std::endl;
+void take_with_strings_example() {
+    Serial.println("=== Take with Strings Example ===");
     
-    std::vector<std::string> fruits = {"apple", "banana", "orange", "grape", "kiwi", "mango", "peach"};
+    std::vector<std::string> words = {"first", "second", "third", "fourth", "fifth", "sixth"};
     
-    // Traditional approach - take first 3 fruits
-    auto vector_obs = FromVector(fruits);
-    auto take_obs = Take(vector_obs, 3);
+    // Traditional approach
+    auto vector_obs = FromVector(words);
+    auto taken_obs = Take(vector_obs, 3);
     
-    take_obs->Subscribe(CreateObserver<std::string>(
+    taken_obs->Subscribe(CreateObserver<std::string>(
         [](const std::string& value) { 
-            std::cout << "Traditional - First fruit: " << value << std::endl; 
+            Serial.print("Traditional - Taken: "); 
+            Serial.println(value.c_str()); 
         },
         []() { 
-            std::cout << "Traditional take fruits completed" << std::endl; 
+            Serial.println("Traditional take completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional take fruits error: " << e.what() << std::endl; 
+            Serial.print("Traditional take error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
-    // Fluent approach - take first 4 fruits
-    From(FromVector(fruits))
+    // Fluent approach
+    From(FromVector(words))
         .Take(4)
         .Subscribe(
             [](const std::string& value) { 
-                std::cout << "Fluent - Selected fruit: " << value << std::endl; 
+                Serial.print("Fluent - Taken: "); 
+                Serial.println(value.c_str()); 
             },
             []() { 
-                std::cout << "Fluent take fruits completed" << std::endl; 
+                Serial.println("Fluent take completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent take fruits error: " << e.what() << std::endl; 
+                Serial.print("Fluent take error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
-void take_with_transformation_example() {
-    std::cout << "=== Take with Transformation Example ===" << std::endl;
+void take_with_map_example() {
+    Serial.println("=== Take with Map Example ===");
     
-    // Traditional approach - take then map
-    auto range_obs = Range(1, 15);
-    auto take_obs = Take(range_obs, 5);
-    auto mapped_obs = Map<int, std::string>(take_obs, [](int x) { 
-        return "First " + std::to_string(x) + " squared = " + std::to_string(x * x); 
-    });
+    // Traditional approach - map then take
+    auto range_obs = Range(1, 10);
+    auto squared_obs = Map<int, int>(range_obs, [](int x) { return x * x; });
+    auto taken_obs = Take(squared_obs, 4);
     
-    mapped_obs->Subscribe(CreateObserver<std::string>(
-        [](const std::string& value) { 
-            std::cout << "Traditional - " << value << std::endl; 
+    taken_obs->Subscribe(CreateObserver<int>(
+        [](int value) { 
+            Serial.print("Traditional - Squared taken: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional take+map completed" << std::endl; 
+            Serial.println("Traditional map+take completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional take+map error: " << e.what() << std::endl; 
+            Serial.print("Traditional map+take error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
-    std::cout << std::endl;
+    Serial.println();
     
-    // Fluent approach - much cleaner
-    From(Range(1, 15))
-        .Take(6)
-        .Map<std::string>([](int x) { 
-            return "Selected " + std::to_string(x) + " cubed = " + std::to_string(x * x * x); 
-        })
+    // Fluent approach - chain map and take
+    From(Range(1, 10))
+        .Map<int>([](int x) { return x * x; })
+        .Take(4)
         .Subscribe(
-            [](const std::string& value) { 
-                std::cout << "Fluent - " << value << std::endl; 
+            [](int value) { 
+                Serial.print("Fluent - Squared taken: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent take+map completed" << std::endl; 
+                Serial.println("Fluent map+take completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent take+map error: " << e.what() << std::endl; 
+                Serial.print("Fluent map+take error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
-void take_with_filter_example() {
-    std::cout << "=== Take with Filter Example ===" << std::endl;
+void take_more_than_available_example() {
+    Serial.println("=== Take More Than Available Example ===");
     
-    // Take first 3 even numbers from range 1-20
-    From(Range(1, 20))
-        .Filter([](int x) { return x % 2 == 0; })
-        .Take(3)
+    // Take more values than available
+    From(Range(1, 3))
+        .Take(10)
         .Subscribe(
-            [](int value) {
-                std::cout << "First 3 even numbers: " << value << std::endl;
+            [](int value) { 
+                Serial.print("Taken (more than available): "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Filter then take completed" << std::endl; 
+                Serial.println("Take more than available completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Filter then take error: " << e.what() << std::endl; 
+                Serial.print("Take more than available error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
+}
+
+void take_zero_example() {
+    Serial.println("=== Take Zero Example ===");
     
-    // Compare with: filter after take (different result)
-    From(Range(1, 20))
-        .Take(6)  // Take first 6 numbers (1,2,3,4,5,6)
-        .Filter([](int x) { return x % 2 == 0; })  // Then filter even (2,4,6)
+    // Take zero values
+    From(Range(1, 5))
+        .Take(0)
         .Subscribe(
-            [](int value) {
-                std::cout << "Even numbers from first 6: " << value << std::endl;
+            [](int value) { 
+                Serial.print("Should not see this: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Take then filter completed" << std::endl; 
+                Serial.println("Take zero completed (no values emitted)"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Take then filter error: " << e.what() << std::endl; 
+                Serial.print("Take zero error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void take_with_subject_example() {
-    std::cout << "=== Take with Subject Example ===" << std::endl;
+    Serial.println("=== Take with Subject Example ===");
     
     auto subject = CreateSubject<int>();
     
     // Traditional approach
-    auto take_obs = Take(subject->AsObservable(), 3);
+    auto taken_subject = Take(subject->AsObservable(), 3);
     
-    take_obs->Subscribe(CreateObserver<int>(
+    taken_subject->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Traditional - Taken from subject: " << value << std::endl; 
+            Serial.print("Traditional subject take (3): "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional take from subject completed" << std::endl; 
+            Serial.println("Traditional subject take completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional take from subject error: " << e.what() << std::endl; 
+            Serial.print("Traditional subject take error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
@@ -211,124 +230,69 @@ void take_with_subject_example() {
         .Take(2)
         .Subscribe(
             [](int value) { 
-                std::cout << "Fluent - Taken from subject: " << value << std::endl; 
+                Serial.print("Fluent subject take (2): "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent take from subject completed" << std::endl; 
+                Serial.println("Fluent subject take completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent take from subject error: " << e.what() << std::endl; 
+                Serial.print("Fluent subject take error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Push values through subject
-    std::cout << "Pushing values to subject..." << std::endl;
-    subject->OnNext(10);  // Both should receive this
-    subject->OnNext(20);  // Both should receive this
-    subject->OnNext(30);  // Only traditional should receive this (fluent completes after 2)
-    subject->OnNext(40);  // Traditional completes after 3, so this won't be received
+    for (int i = 1; i <= 10; ++i) {
+        subject->OnNext(i);
+    }
     
     subject->OnCompleted();
     
-    std::cout << std::endl;
-}
-
-void take_zero_example() {
-    std::cout << "=== Take Zero Example ===" << std::endl;
-    
-    // Taking 0 elements should complete immediately
-    From(Range(1, 10))
-        .Take(0)
-        .Subscribe(
-            [](int value) { 
-                std::cout << "This should not print: " << value << std::endl; 
-            },
-            []() { 
-                std::cout << "Take 0 completed immediately" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Take 0 error: " << e.what() << std::endl; 
-            }
-        );
-    
-    std::cout << std::endl;
-}
-
-void take_more_than_available_example() {
-    std::cout << "=== Take More Than Available Example ===" << std::endl;
-    
-    std::vector<int> small_vector = {1, 2, 3};
-    
-    // Try to take 10 elements from a 3-element vector
-    From(FromVector(small_vector))
-        .Take(10)
-        .Subscribe(
-            [](int value) { 
-                std::cout << "Available value: " << value << std::endl; 
-            },
-            []() { 
-                std::cout << "Take completed (only 3 values available)" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Take more than available error: " << e.what() << std::endl; 
-            }
-        );
-    
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void take_chaining_example() {
-    std::cout << "=== Take Chaining Example ===" << std::endl;
+    Serial.println("=== Take Chaining Example ===");
     
-    // Multiple take operations (should take the minimum)
-    From(Range(1, 100))
-        .Take(10)   // First, take 10
-        .Take(5)    // Then, take 5 from those 10
+    // Chain take with other operators
+    From(Range(1, 20))
+        .Filter([](int x) { return x % 2 == 0; })  // even numbers
+        .Take(3)                                    // take first 3
         .Subscribe(
-            [](int value) {
-                std::cout << "Chained take result: " << value << std::endl;
+            [](int value) { 
+                Serial.print("Chained (even, take 3): "); 
+                Serial.println(value); 
             },
-            []() {
-                std::cout << "Chained take completed (should have 5 values)" << std::endl;
+            []() { 
+                Serial.println("Chained take completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Chained take error: " << e.what() << std::endl; 
+                Serial.print("Chained take error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Take Operator Examples" << std::endl;
-    std::cout << "=====================" << std::endl;
+    Serial.println("Take Operator Examples");
+    Serial.println("=====================");
     
     traditional_take_example();
     fluent_take_example();
-    take_with_vector_example();
-    take_with_transformation_example();
-    take_with_filter_example();
-    take_with_subject_example();
-    take_zero_example();
+    take_with_strings_example();
+    take_with_map_example();
     take_more_than_available_example();
+    take_zero_example();
+    take_with_subject_example();
     take_chaining_example();
 }
 
 void loop() {
     // Nothing to do in loop
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-

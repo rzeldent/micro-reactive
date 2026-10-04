@@ -1,3 +1,15 @@
+#include <micro-reactive.h>
+#include <random>
+#include <functional>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Real-life Example: Temperature PID Heating Control
  * 
@@ -8,16 +20,6 @@
  * Hardware: ESP32/Arduino compatible
  * Library: Micro-Reactive
  */
-
-#include <micro-reactive.h>
-#include <iostream>
-#include <chrono>
-#include <thread>
-#include <random>
-#include <cmath>
-#include <memory>
-
-using namespace rx;
 
 // Simple logger observer for demo purposes
 template<typename T>
@@ -97,20 +99,22 @@ public:
         if (heating_state != heating_on_) {
             heating_on_ = heating_state;
             if (on_change_) on_change_(heating_on_);
-            std::cout << "[HEATING] " << (heating_on_ ? "ON" : "OFF") << std::endl;
+            Serial.print("[HEATING] "); 
+            Serial.println(heating_on_ ? "ON" : "OFF");
         }
     }
 
     void OnCompleted() override {
-        std::cout << "[HEATING] Controller completed" << std::endl;
+        Serial.println("[HEATING] Controller completed");
     }
 
     void OnError(const std::exception& e) override {
-        std::cerr << "[HEATING] Error: " << e.what() << std::endl;
+        Serial.print("[HEATING] Error: "); 
+        Serial.println(e.what());
     }
 
     bool isHeating() const { return heating_on_; }
-};  // <-- missing semicolon;
+};
 
 // Global objects for Arduino setup/loop
 std::shared_ptr<Subject<double>> temp_subject;
@@ -131,10 +135,13 @@ const double dt = 1.0;
 int step_count = 0;
 
 void setup() {
-    std::cout << "=== Temperature PID Heating Control Demo ===" << std::endl;
-    std::cout << "Target: 21.0°C | PID: Kp=2.0, Ki=0.1, Kd=0.5 | dt=1.0s" << std::endl;
-    std::cout << "Hysteresis: threshold=0.5, band=0.15 (ON at 0.65, OFF at 0.35)" << std::endl;
-    std::cout << "----------------------------------------" << std::endl;
+    Serial.begin(115200);
+    while (!Serial) delay(10);
+    
+    Serial.println("=== Temperature PID Heating Control Demo ===");
+    Serial.println("Target: 21.0°C | PID: Kp=2.0, Ki=0.1, Kd=0.5 | dt=1.0s");
+    Serial.println("Hysteresis: threshold=0.5, band=0.15 (ON at 0.65, OFF at 0.35)");
+    Serial.println("----------------------------------------");
 
     sensor.setTarget(21.0);
 
@@ -180,12 +187,14 @@ void setup() {
 void loop() {
     if (step_count >= 60) {
         temp_subject->OnCompleted();
-        std::cout << "----------------------------------------" << std::endl;
-        std::cout << "Simulation complete." << std::endl;
-        std::cout << "Final temperature: " << sensor.getCurrentTemp() << "°C" << std::endl;
+        Serial.println("----------------------------------------");
+        Serial.println("Simulation complete.");
+        Serial.print("Final temperature: "); 
+        Serial.print(sensor.getCurrentTemp()); 
+        Serial.println("°C");
         // In real Arduino, you'd stop here or enter deep sleep
         while (true) {
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            delay(1000);
         }
     }
 
@@ -194,23 +203,18 @@ void loop() {
 
     // Print status every 5 seconds
     if (step_count % 5 == 0) {
-        std::cout << "t=" << step_count << "s | Temp: " << reading
-                  << "°C | PID: " << pid_logger->GetLastValue()
-                  << " | Hysteresis: " << (hysteresis_logger->GetLastValue() ? "ON" : "OFF")
-                  << " | Heat: " << (heating_ctrl.isHeating() ? "ON" : "OFF") << std::endl;
+        Serial.print("t="); 
+        Serial.print(step_count); 
+        Serial.print("s | Temp: "); 
+        Serial.print(reading);
+        Serial.print("°C | PID: "); 
+        Serial.print(pid_logger->GetLastValue());
+        Serial.print(" | Hysteresis: "); 
+        Serial.print(hysteresis_logger->GetLastValue() ? "ON" : "OFF");
+        Serial.print(" | Heat: "); 
+        Serial.println(heating_ctrl.isHeating() ? "ON" : "OFF");
     }
 
     step_count++;
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));  // Speed up demo
+    delay(100);  // Speed up demo
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif

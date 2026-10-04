@@ -1,3 +1,13 @@
+#include <micro-reactive.h>
+
+#if defined(ARDUINO)
+#include <Arduino.h>
+#else
+#error "This example only works on Arduino platform"
+#endif
+
+using namespace rx;
+
 /**
  * Do Operator Example
  * 
@@ -5,360 +15,356 @@
  * without modifying the emitted values (like tap in RxJS).
  */
 
-#include "../../arduino_mock.h"
-#include <micro-reactive.h>
-#include <iostream>
-#include <vector>
-#include <string>
-
-using namespace rx;
-
 void traditional_do_example() {
-    std::cout << "=== Traditional Do Example ===" << std::endl;
+    Serial.println("=== Traditional Do Example ===");
     
     // Create a range of numbers
     auto range_observable = Range(1, 5);
     
     // Add side effect to log each value
-    auto do_observable = Do(range_observable, [](int value) {
-        std::cout << "  Side effect: Processing " << value << std::endl;
-    });
+    auto do_observable = Do(range_observable, 
+        [](int value) { 
+            Serial.print("Side effect - value: "); 
+            Serial.println(value); 
+        },
+        []() { 
+            Serial.println("Side effect - completed"); 
+        },
+        [](const std::exception& e) { 
+            Serial.print("Side effect - error: "); 
+            Serial.println(e.what()); 
+        }
+    );
     
     // Subscribe to see the results
     auto observer = CreateObserver<int>(
         [](int value) { 
-            std::cout << "Final value: " << value << std::endl; 
+            Serial.print("Observer received: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Do operation completed" << std::endl; 
+            Serial.println("Observer completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Error: " << e.what() << std::endl; 
+            Serial.print("Observer error: "); 
+            Serial.println(e.what()); 
         }
     );
     
     auto subscription = do_observable->Subscribe(observer);
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void fluent_do_example() {
-    std::cout << "=== Fluent Do Example ===" << std::endl;
+    Serial.println("=== Fluent Do Example ===");
     
-    // Use fluent interface with Do operator
-    From(Range(10, 13))
-        .Do([](int value) {
-            std::cout << "  Fluent side effect: Saw " << value << std::endl;
-        })
-        .Subscribe(
-            [](int value) { 
-                std::cout << "Fluent final: " << value << std::endl; 
-            },
-            []() { 
-                std::cout << "Fluent do completed" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Error: " << e.what() << std::endl; 
-            }
-        );
-    
-    std::cout << std::endl;
-}
-
-void do_for_logging_example() {
-    std::cout << "=== Do for Logging Example ===" << std::endl;
-    
-    std::vector<std::string> words = {"hello", "reactive", "world", "programming"};
-    
-    // Traditional approach - add logging
-    auto vector_obs = FromVector(words);
-    auto logged_obs = Do(vector_obs, [](const std::string& word) {
-        std::cout << "  LOG: Processing word '" << word << "' (length: " << word.length() << ")" << std::endl;
-    });
-    auto filtered_obs = Filter(logged_obs, [](const std::string& word) {
-        return word.length() > 5;
-    });
-    
-    filtered_obs->Subscribe(CreateObserver<std::string>(
-        [](const std::string& value) { 
-            std::cout << "Traditional - Long word: " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Traditional logging completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "Traditional logging error: " << e.what() << std::endl; 
-        }
-    ));
-    
-    std::cout << std::endl;
-    
-    // Fluent approach - much cleaner
-    From(FromVector(words))
-        .Do([](const std::string& word) {
-            std::cout << "  FLUENT LOG: Checking '" << word << "'" << std::endl;
-        })
-        .Filter([](const std::string& word) { return word.length() <= 5; })
-        .Do([](const std::string& word) {
-            std::cout << "  FLUENT LOG: '" << word << "' passed filter" << std::endl;
-        })
-        .Subscribe(
-            [](const std::string& value) { 
-                std::cout << "Fluent - Short word: " << value << std::endl; 
-            },
-            []() { 
-                std::cout << "Fluent logging completed" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Fluent logging error: " << e.what() << std::endl; 
-            }
-        );
-    
-    std::cout << std::endl;
-}
-
-void do_with_transformation_example() {
-    std::cout << "=== Do with Transformation Example ===" << std::endl;
-    
-    // Traditional approach - debug transformation pipeline
-    auto range_obs = Range(1, 5);
-    auto debug1_obs = Do(range_obs, [](int x) {
-        std::cout << "  Before transformation: " << x << std::endl;
-    });
-    auto mapped_obs = Map<int, int>(debug1_obs, [](int x) { 
-        return x * x; 
-    });
-    auto debug2_obs = Do(mapped_obs, [](int x) {
-        std::cout << "  After transformation: " << x << std::endl;
-    });
-    
-    debug2_obs->Subscribe(CreateObserver<int>(
-        [](int value) { 
-            std::cout << "Traditional - Final squared: " << value << std::endl; 
-        },
-        []() { 
-            std::cout << "Traditional transformation debugging completed" << std::endl; 
-        },
-        [](const std::exception& e) { 
-            std::cout << "Traditional transformation debugging error: " << e.what() << std::endl; 
-        }
-    ));
-    
-    std::cout << std::endl;
-    
-    // Fluent approach - easier to read pipeline
+    // Use fluent interface with side effects
     From(Range(1, 5))
-        .Do([](int x) {
-            std::cout << "  Fluent before: " << x << std::endl;
-        })
-        .Map<int>([](int x) { return x * x * x; })  // Cube instead of square
-        .Do([](int x) {
-            std::cout << "  Fluent after: " << x << std::endl;
-        })
-        .Subscribe(
+        .Do(
             [](int value) { 
-                std::cout << "Fluent - Final cubed: " << value << std::endl; 
+                Serial.print("Fluent side effect - value: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent transformation debugging completed" << std::endl; 
+                Serial.println("Fluent side effect - completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent transformation debugging error: " << e.what() << std::endl; 
+                Serial.print("Fluent side effect - error: "); 
+                Serial.println(e.what()); 
             }
-        );
-    
-    std::cout << std::endl;
-}
-
-void do_for_metrics_example() {
-    std::cout << "=== Do for Metrics Example ===" << std::endl;
-    
-    int total_processed = 0;
-    int even_count = 0;
-    int odd_count = 0;
-    
-    From(Range(1, 10))
-        .Do([&total_processed](int x) {
-            total_processed++;
-            std::cout << "  Metrics: Processed item #" << total_processed << " (value: " << x << ")" << std::endl;
-        })
-        .Do([&even_count, &odd_count](int x) {
-            if (x % 2 == 0) {
-                even_count++;
-                std::cout << "  Metrics: Even count now " << even_count << std::endl;
-            } else {
-                odd_count++;
-                std::cout << "  Metrics: Odd count now " << odd_count << std::endl;
-            }
-        })
+        )
         .Subscribe(
             [](int value) { 
-                // Main processing logic
-                std::cout << "Processing: " << value << std::endl; 
+                Serial.print("Fluent observer received: "); 
+                Serial.println(value); 
             },
-            [&total_processed, &even_count, &odd_count]() { 
-                std::cout << "=== Final Metrics ===" << std::endl;
-                std::cout << "Total processed: " << total_processed << std::endl;
-                std::cout << "Even numbers: " << even_count << std::endl;
-                std::cout << "Odd numbers: " << odd_count << std::endl;
+            []() { 
+                Serial.println("Fluent observer completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Metrics collection error: " << e.what() << std::endl; 
+                Serial.print("Fluent observer error: "); 
+                Serial.println(e.what()); 
             }
         );
     
-    std::cout << std::endl;
+    Serial.println();
 }
 
-void do_with_subject_example() {
-    std::cout << "=== Do with Subject Example ===" << std::endl;
+void do_with_map_example() {
+    Serial.println("=== Do with Map Example ===");
     
-    auto subject = CreateSubject<int>();
-    std::vector<int> side_effect_log;
+    // Traditional approach - do then map
+    auto range_obs = Range(1, 5);
+    auto do_obs = Do(range_obs, 
+        [](int value) { 
+            Serial.print("Before map: "); 
+            Serial.println(value); 
+        });
+    auto mapped_obs = Map<int, int>(do_obs, [](int x) { return x * 2; });
     
-    // Traditional approach
-    auto do_obs = Do(subject->AsObservable(), [&side_effect_log](int value) {
-        side_effect_log.push_back(value);
-        std::cout << "  Traditional side effect: Logged " << value << std::endl;
-    });
+    mapped_obs->Subscribe(CreateObserver<int>(
+        [](int value) { 
+            Serial.print("Traditional - After map: "); 
+            Serial.println(value); 
+        },
+        []() { 
+            Serial.println("Traditional do+map completed"); 
+        },
+        [](const std::exception& e) { 
+            Serial.print("Traditional do+map error: "); 
+            Serial.println(e.what()); 
+        }
+    ));
+    
+    Serial.println();
+    
+    // Fluent approach - chain do and map
+    From(Range(1, 5))
+        .Do(
+            [](int value) { 
+                Serial.print("Fluent before map: "); 
+                Serial.println(value); 
+            })
+        .Map<int>([](int x) { return x * 2; })
+        .Subscribe(
+            [](int value) { 
+                Serial.print("Fluent after map: "); 
+                Serial.println(value); 
+            },
+            []() { 
+                Serial.println("Fluent do+map completed"); 
+            },
+            [](const std::exception& e) { 
+                Serial.print("Fluent do+map error: "); 
+                Serial.println(e.what()); 
+            }
+        );
+    
+    Serial.println();
+}
+
+void do_with_filter_example() {
+    Serial.println("=== Do with Filter Example ===");
+    
+    // Traditional approach - filter then do
+    auto range_obs = Range(1, 10);
+    auto filtered_obs = Filter(range_obs, [](int x) { return x % 2 == 0; });
+    auto do_obs = Do(filtered_obs, 
+        [](int value) { 
+            Serial.print("Filtered even: "); 
+            Serial.println(value); 
+        });
     
     do_obs->Subscribe(CreateObserver<int>(
         [](int value) { 
-            std::cout << "Traditional - Subject value: " << value << std::endl; 
+            Serial.print("Traditional - Observer: "); 
+            Serial.println(value); 
         },
         []() { 
-            std::cout << "Traditional subject do completed" << std::endl; 
+            Serial.println("Traditional filter+do completed"); 
         },
         [](const std::exception& e) { 
-            std::cout << "Traditional subject do error: " << e.what() << std::endl; 
+            Serial.print("Traditional filter+do error: "); 
+            Serial.println(e.what()); 
+        }
+    ));
+    
+    Serial.println();
+    
+    // Fluent approach - chain filter and do
+    From(Range(1, 10))
+        .Filter([](int x) { return x % 2 == 0; })
+        .Do(
+            [](int value) { 
+                Serial.print("Fluent filtered even: "); 
+                Serial.println(value); 
+            })
+        .Subscribe(
+            [](int value) { 
+                Serial.print("Fluent observer: "); 
+                Serial.println(value); 
+            },
+            []() { 
+                Serial.println("Fluent filter+do completed"); 
+            },
+            [](const std::exception& e) { 
+                Serial.print("Fluent filter+do error: "); 
+                Serial.println(e.what()); 
+            }
+        );
+    
+    Serial.println();
+}
+
+void do_with_strings_example() {
+    Serial.println("=== Do with Strings Example ===");
+    
+    std::vector<std::string> words = {"hello", "world", "from", "do", "operator"};
+    
+    // Traditional approach
+    auto vector_obs = FromVector(words);
+    auto do_obs = Do(vector_obs, 
+        [](const std::string& value) { 
+            Serial.print("Processing: "); 
+            Serial.println(value.c_str()); 
+        });
+    
+    do_obs->Subscribe(CreateObserver<std::string>(
+        [](const std::string& value) { 
+            Serial.print("Traditional - Received: "); 
+            Serial.println(value.c_str()); 
+        },
+        []() { 
+            Serial.println("Traditional string do completed"); 
+        },
+        [](const std::exception& e) { 
+            Serial.print("Traditional string do error: "); 
+            Serial.println(e.what()); 
+        }
+    ));
+    
+    Serial.println();
+    
+    // Fluent approach
+    From(FromVector(words))
+        .Do(
+            [](const std::string& value) { 
+                Serial.print("Fluent processing: "); 
+                Serial.println(value.c_str()); 
+            })
+        .Subscribe(
+            [](const std::string& value) { 
+                Serial.print("Fluent received: "); 
+                Serial.println(value.c_str()); 
+            },
+            []() { 
+                Serial.println("Fluent string do completed"); 
+            },
+            [](const std::exception& e) { 
+                Serial.print("Fluent string do error: "); 
+                Serial.println(e.what()); 
+            }
+        );
+    
+    Serial.println()
+}
+
+void do_error_handling_example() {
+    Serial.println("=== Do Error Handling Example ===");
+    
+    std::vector<int> numbers = {1, 2, 0, 4, 5};
+    
+    // Do with error handling
+    From(FromVector(numbers))
+        .Do(
+            [](int value) { 
+                Serial.print("Before division: "); 
+                Serial.println(value); 
+            },
+            []() { 
+                Serial.println("Do completed"); 
+            },
+            [](const std::exception& e) { 
+                Serial.print("Do caught error: "); 
+                Serial.println(e.what()); 
+            }
+        )
+        .Map<std::string>([](int x) -> std::string {
+            if (x == 0) {
+                throw std::runtime_error("Division by zero!");
+            }
+            return "1/" + std::to_string(x) + " = " + std::to_string(1.0/x);
+        })
+        .Subscribe(
+            [](const std::string& value) { 
+                Serial.print("Result: "); 
+                Serial.println(value.c_str()); 
+            },
+            []() { 
+                Serial.println("Do+map completed"); 
+            },
+            [](const std::exception& e) { 
+                Serial.print("Observer caught error: "); 
+                Serial.println(e.what()); 
+            }
+        );
+    
+    Serial.println();
+}
+
+void do_with_subject_example() {
+    Serial.println("=== Do with Subject Example ===");
+    
+    auto subject = CreateSubject<int>();
+    
+    // Traditional approach
+    auto do_subject = Do(subject->AsObservable(), 
+        [](int value) { 
+            Serial.print("Subject side effect: "); 
+            Serial.println(value); 
+        });
+    
+    do_subject->Subscribe(CreateObserver<int>(
+        [](int value) { 
+            Serial.print("Traditional subject observer: "); 
+            Serial.println(value); 
+        },
+        []() { 
+            Serial.println("Traditional subject do completed"); 
+        },
+        [](const std::exception& e) { 
+            Serial.print("Traditional subject do error: "); 
+            Serial.println(e.what()); 
         }
     ));
     
     // Fluent approach
     From(subject)
-        .Do([](int value) {
-            std::cout << "  Fluent side effect: Observed " << value << std::endl;
-        })
+        .Do(
+            [](int value) { 
+                Serial.print("Fluent subject side effect: "); 
+                Serial.println(value); 
+            })
         .Subscribe(
             [](int value) { 
-                std::cout << "Fluent - Subject value: " << value << std::endl; 
+                Serial.print("Fluent subject observer: "); 
+                Serial.println(value); 
             },
             []() { 
-                std::cout << "Fluent subject do completed" << std::endl; 
+                Serial.println("Fluent subject do completed"); 
             },
             [](const std::exception& e) { 
-                std::cout << "Fluent subject do error: " << e.what() << std::endl; 
+                Serial.print("Fluent subject do error: "); 
+                Serial.println(e.what()); 
             }
         );
     
     // Push values through subject
-    std::cout << "Pushing values: 100, 200, 300..." << std::endl;
-    subject->OnNext(100);
-    subject->OnNext(200);
-    subject->OnNext(300);
-    
+    subject->OnNext(10);
+    subject->OnNext(20);
+    subject->OnNext(30);
     subject->OnCompleted();
     
-    std::cout << "Side effect log contents: ";
-    for (int val : side_effect_log) {
-        std::cout << val << " ";
-    }
-    std::cout << std::endl;
-    
-    std::cout << std::endl;
-}
-
-void do_multiple_side_effects_example() {
-    std::cout << "=== Multiple Do Side Effects Example ===" << std::endl;
-    
-    From(Range(1, 4))
-        .Do([](int x) {
-            std::cout << "  Side effect 1: Value is " << x << std::endl;
-        })
-        .Do([](int x) {
-            std::cout << "  Side effect 2: Square would be " << (x * x) << std::endl;
-        })
-        .Do([](int x) {
-            std::cout << "  Side effect 3: Is " << (x % 2 == 0 ? "even" : "odd") << std::endl;
-        })
-        .Subscribe(
-            [](int value) {
-                std::cout << "Final processing: " << value << std::endl;
-                std::cout << "  ---" << std::endl;
-            },
-            []() { 
-                std::cout << "Multiple side effects completed" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Multiple side effects error: " << e.what() << std::endl; 
-            }
-        );
-    
-    std::cout << std::endl;
-}
-
-void do_with_error_handling_example() {
-    std::cout << "=== Do with Error Handling Example ===" << std::endl;
-    
-    std::vector<int> values = {1, 2, 0, 4, 5};  // 0 will cause division by zero
-    
-    From(FromVector(values))
-        .Do([](int x) {
-            std::cout << "  Processing value: " << x << std::endl;
-        })
-        .Map<double>([](int x) -> double {
-            if (x == 0) {
-                throw std::runtime_error("Division by zero!");
-            }
-            return 10.0 / x;
-        })
-        .Do([](double x) {
-            std::cout << "  Successfully calculated: " << x << std::endl;
-        })
-        .Subscribe(
-            [](double value) { 
-                std::cout << "Result: " << value << std::endl; 
-            },
-            []() { 
-                std::cout << "Do with error handling completed" << std::endl; 
-            },
-            [](const std::exception& e) { 
-                std::cout << "Caught error: " << e.what() << std::endl; 
-            }
-        );
-    
-    std::cout << std::endl;
+    Serial.println();
 }
 
 void setup() {
     Serial.begin(115200);
     while (!Serial) delay(10);
     
-    std::cout << "Do Operator Examples" << std::endl;
-    std::cout << "===================" << std::endl;
+    Serial.println("Do Operator Examples");
+    Serial.println("====================");
     
     traditional_do_example();
     fluent_do_example();
-    do_for_logging_example();
-    do_with_transformation_example();
-    do_for_metrics_example();
+    do_with_map_example();
+    do_with_filter_example();
+    do_with_strings_example();
+    do_error_handling_example();
     do_with_subject_example();
-    do_multiple_side_effects_example();
-    do_with_error_handling_example();
 }
 
-void loop() {
-    // Nothing to do in loop
+void loop()
+{
 }
-
-// For native testing, provide a main that calls setup/loop
-#ifndef ARDUINO
-int main() {
-    setup();
-    while (true) {
-        loop();
-    }
-    return 0;
-}
-#endif
-
