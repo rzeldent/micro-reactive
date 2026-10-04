@@ -1,0 +1,31 @@
+{
+    "$schema": "https://raw.githubusercontent.com/platformio/platformio-core/develop/platformio/assets/schema/library.json",
+    "name": "micro-reactive",
+    "description": "Reactive programming for micro controllers",
+    "keywords": [
+        "Reactive",
+        "RxCpp",
+        "Observer",
+        "Observable"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/rzeldent/micro-reactive.git"
+    },
+    "frameworks": [
+        "*"
+    ],
+    "platforms": "*",
+    "build": {
+        "srcDir": "src/",
+        "includeDir": "include/"
+    },
+    "version": "1.0.0",
+    "authors": [
+        {
+            "name": "Rene Zeldenthuis",
+            "maintainer": true
+        }
+    ],
+    "category": "Other"
+}
