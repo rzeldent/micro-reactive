@@ -42,11 +42,11 @@ void basic_test_scheduler_example() {
 void test_scheduler_with_observable_example() {
     Serial.println("=== TestScheduler with Observable Example ===");
     
-    TestScheduler scheduler;
+    auto scheduler = std::make_shared<TestScheduler>();
     std::vector<int> received_values;
     
     // Create a range and delay it using test scheduler
-    auto delayed = Delay<int>(Range(1, 3), std::chrono::milliseconds(100), std::make_shared<TestScheduler>(scheduler));
+    auto delayed = Delay<int>(Range(1, 3), std::chrono::milliseconds(100), scheduler);
     
     // Subscribe and collect values
     delayed->Subscribe(CreateObserver<int>(
@@ -61,9 +61,9 @@ void test_scheduler_with_observable_example() {
     ));
     
     // Advance time to trigger emissions
-    scheduler.AdvanceBy(100);  // First emission
-    scheduler.AdvanceBy(100);  // Second emission
-    scheduler.AdvanceBy(100);  // Third emission
+    scheduler->AdvanceBy(100);  // First emission
+    scheduler->AdvanceBy(100);  // Second emission
+    scheduler->AdvanceBy(100);  // Third emission
     
     Serial.print("Total values received: ");
     Serial.println(received_values.size());
@@ -74,11 +74,11 @@ void test_scheduler_with_observable_example() {
 void test_scheduler_delay_example() {
     Serial.println("=== TestScheduler Delay Example ===");
     
-    TestScheduler scheduler;
+    auto scheduler = std::make_shared<TestScheduler>();
     std::vector<int> received_values;
     
     // Create a range and delay it
-    auto delayed = Delay<int>(Range(1, 3), std::chrono::milliseconds(50), std::make_shared<TestScheduler>(scheduler));
+    auto delayed = Delay<int>(Range(1, 3), std::chrono::milliseconds(50), scheduler);
     
     delayed->Subscribe(CreateObserver<int>(
         [&received_values](int value) { 
@@ -92,9 +92,9 @@ void test_scheduler_delay_example() {
     ));
     
     // Advance time
-    scheduler.AdvanceBy(50);  // First value
-    scheduler.AdvanceBy(50);  // Second value
-    scheduler.AdvanceBy(50);  // Third value
+    scheduler->AdvanceBy(50);  // First value
+    scheduler->AdvanceBy(50);  // Second value
+    scheduler->AdvanceBy(50);  // Third value
     
     Serial.print("Total delayed values: ");
     Serial.println(received_values.size());
@@ -105,11 +105,11 @@ void test_scheduler_delay_example() {
 void test_scheduler_debounce_example() {
     Serial.println("=== TestScheduler Debounce Example ===");
     
-    TestScheduler scheduler;
+    auto scheduler = std::make_shared<TestScheduler>();
     std::vector<int> received_values;
     
     auto subject = std::make_shared<Subject<int>>();
-    auto debounced = Debounce<int>(subject, std::chrono::milliseconds(100), std::make_shared<TestScheduler>(scheduler));
+    auto debounced = Debounce<int>(subject, std::chrono::milliseconds(100), scheduler);
     
     debounced->Subscribe(CreateObserver<int>(
         [&received_values](int value) { 
@@ -124,13 +124,13 @@ void test_scheduler_debounce_example() {
     
     // Emit values rapidly
     subject->OnNext(1);
-    scheduler.AdvanceBy(50);
+    scheduler->AdvanceBy(50);
     subject->OnNext(2);
-    scheduler.AdvanceBy(50);
+    scheduler->AdvanceBy(50);
     subject->OnNext(3);
     
     // Wait for debounce window
-    scheduler.AdvanceBy(100);
+    scheduler->AdvanceBy(100);
     
     Serial.print("Total debounced values: ");
     Serial.println(received_values.size());
@@ -141,20 +141,20 @@ void test_scheduler_debounce_example() {
 void test_scheduler_multiple_actions_example() {
     Serial.println("=== TestScheduler Multiple Actions Example ===");
     
-    TestScheduler scheduler;
+    auto scheduler = std::make_shared<TestScheduler>();
     std::vector<std::string> execution_order;
     
     // Schedule multiple actions at same time
-    scheduler.Schedule([&execution_order]() { execution_order.push_back("A1"); }, 100);
-    scheduler.Schedule([&execution_order]() { execution_order.push_back("A2"); }, 100);
-    scheduler.Schedule([&execution_order]() { execution_order.push_back("A3"); }, 100);
+    scheduler->Schedule([&execution_order]() { execution_order.push_back("A1"); }, 100);
+    scheduler->Schedule([&execution_order]() { execution_order.push_back("A2"); }, 100);
+    scheduler->Schedule([&execution_order]() { execution_order.push_back("A3"); }, 100);
     
     // Schedule at different times
-    scheduler.Schedule([&execution_order]() { execution_order.push_back("B1"); }, 200);
-    scheduler.Schedule([&execution_order]() { execution_order.push_back("B2"); }, 200);
+    scheduler->Schedule([&execution_order]() { execution_order.push_back("B1"); }, 200);
+    scheduler->Schedule([&execution_order]() { execution_order.push_back("B2"); }, 200);
     
     // Execute all
-    scheduler.AdvanceTo(300);
+    scheduler->AdvanceTo(300);
     
     for (const auto& entry : execution_order) {
         Serial.println(entry.c_str());
@@ -166,11 +166,11 @@ void test_scheduler_multiple_actions_example() {
 void test_scheduler_advance_to_example() {
     Serial.println("=== TestScheduler AdvanceTo Example ===");
     
-    TestScheduler scheduler;
+    auto scheduler = std::make_shared<TestScheduler>();
     std::vector<int> received_values;
     
     // Use Delay with Range instead of Interval
-    auto delayed = Delay<int>(Range(1, 5), std::chrono::milliseconds(100), std::make_shared<TestScheduler>(scheduler));
+    auto delayed = Delay<int>(Range(1, 5), std::chrono::milliseconds(100), scheduler);
     
     delayed->Subscribe(CreateObserver<int>(
         [&received_values](int value) { 
@@ -181,7 +181,7 @@ void test_scheduler_advance_to_example() {
     ));
     
     // Jump directly to 500ms
-    scheduler.AdvanceTo(500);
+    scheduler->AdvanceTo(500);
     
     Serial.print("Values after AdvanceTo(500): ");
     Serial.println(received_values.size());

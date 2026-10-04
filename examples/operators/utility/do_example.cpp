@@ -21,18 +21,11 @@ void traditional_do_example() {
     // Create a range of numbers
     auto range_observable = Range(1, 5);
     
-    // Add side effect to log each value
+    // Add side effect to log each value (only onNext callback supported)
     auto do_observable = Do(range_observable, 
         [](int value) { 
             Serial.print("Side effect - value: "); 
             Serial.println(value); 
-        },
-        []() { 
-            Serial.println("Side effect - completed"); 
-        },
-        [](const std::exception& e) { 
-            Serial.print("Side effect - error: "); 
-            Serial.println(e.what()); 
         }
     );
     
@@ -47,7 +40,7 @@ void traditional_do_example() {
         },
         [](const std::exception& e) { 
             Serial.print("Observer error: "); 
-            Serial.println(e.what()); 
+            Serial.println(e.what());
         }
     );
     
