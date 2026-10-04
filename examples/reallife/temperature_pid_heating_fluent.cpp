@@ -117,7 +117,6 @@ public:
 
 // Global objects for Arduino setup/loop
 std::shared_ptr<Subject<double>> temp_subject;
-std::shared_ptr<IObservable<double>> temp_observable;
 std::shared_ptr<IObservable<double>> pid_output;
 std::shared_ptr<IObservable<bool>> hysteresis_output;
 std::shared_ptr<SimpleLogger<double>> temp_logger;
@@ -147,7 +146,6 @@ void setup() {
 
     // Create a subject to feed temperature readings
     temp_subject = std::make_shared<Subject<double>>();
-    temp_observable = std::make_shared<IObservable<double>>(temp_subject);
 
     // PID parameters - tuned for the simulation
     const double setpoint = 21.0;
@@ -161,18 +159,18 @@ void setup() {
     const double hysteresis_threshold = 0.5;
     const double hysteresis_band = 0.15;  // Switch ON at 0.65, OFF at 0.35
 
-    // Create PID controller (FLUENT STYLE)
-    pid_output = std::make_shared<IObservable<double>>(temp_observable->PID(setpoint, kp, ki, kd, dt, min_output, max_output));
+    // Create PID controller (traditional style - fluent API not fully implemented for PID)
+    pid_output = PID<double>(temp_subject, setpoint, kp, ki, kd, dt, min_output, max_output);
 
-    // Apply hysteresis to prevent rapid ON/OFF switching (fluent)
-    hysteresis_output = std::make_shared<IObservable<bool>>(pid_output->Hysteresis(hysteresis_threshold, hysteresis_band));
+    // Apply hysteresis to prevent rapid ON/OFF switching
+    hysteresis_output = Hysteresis<double>(pid_output, hysteresis_threshold, hysteresis_band);
 
     // Create heating controller (binary output) - observes hysteresis output (bool)
     heating_ctrl = HysteresisHeatingController([&](bool on) {
         sensor.setHeating(on);
     });
 
-    // Subscribe heating controller to hysteresis output (fluent, store subscription)
+    // Subscribe heating controller to hysteresis output (store subscription)
     heating_sub = hysteresis_output->Subscribe(std::make_shared<HysteresisHeatingController>(heating_ctrl));
 
     // Also log temperature and PID output for monitoring (store subscriptions)

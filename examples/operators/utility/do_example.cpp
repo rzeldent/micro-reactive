@@ -59,19 +59,12 @@ void traditional_do_example() {
 void fluent_do_example() {
     Serial.println("=== Fluent Do Example ===");
     
-    // Use fluent interface with side effects
+    // Use fluent interface with side effects (only onNext callback)
     From(Range(1, 5))
         .Do(
             [](int value) { 
                 Serial.print("Fluent side effect - value: "); 
                 Serial.println(value); 
-            },
-            []() { 
-                Serial.println("Fluent side effect - completed"); 
-            },
-            [](const std::exception& e) { 
-                Serial.print("Fluent side effect - error: "); 
-                Serial.println(e.what()); 
             }
         )
         .Subscribe(
@@ -247,7 +240,7 @@ void do_with_strings_example() {
             }
         );
     
-    Serial.println()
+    Serial.println();
 }
 
 void do_error_handling_example() {
@@ -261,13 +254,6 @@ void do_error_handling_example() {
             [](int value) { 
                 Serial.print("Before division: "); 
                 Serial.println(value); 
-            },
-            []() { 
-                Serial.println("Do completed"); 
-            },
-            [](const std::exception& e) { 
-                Serial.print("Do caught error: "); 
-                Serial.println(e.what()); 
             }
         )
         .Map<std::string>([](int x) -> std::string {
@@ -365,6 +351,6 @@ void setup() {
     do_with_subject_example();
 }
 
-void loop()
-{
+void loop() {
+    // Nothing to do in loop
 }

@@ -45,18 +45,18 @@ void test_scheduler_with_observable_example() {
     TestScheduler scheduler;
     std::vector<int> received_values;
     
-    // Create an interval observable using test scheduler
-    auto interval_obs = Interval(std::chrono::milliseconds(100), scheduler);
+    // Create a range and delay it using test scheduler
+    auto delayed = Delay<int>(Range(1, 3), std::chrono::milliseconds(100), std::make_shared<TestScheduler>(scheduler));
     
     // Subscribe and collect values
-    interval_obs->Subscribe(CreateObserver<int>(
+    delayed->Subscribe(CreateObserver<int>(
         [&received_values](int value) { 
             received_values.push_back(value); 
             Serial.print("Received: "); 
             Serial.println(value); 
         },
         []() { 
-            Serial.println("Interval completed"); 
+            Serial.println("Delayed completed"); 
         }
     ));
     
@@ -78,7 +78,7 @@ void test_scheduler_delay_example() {
     std::vector<int> received_values;
     
     // Create a range and delay it
-    auto delayed = Delay<int>(Range(1, 3), std::chrono::milliseconds(50), scheduler);
+    auto delayed = Delay<int>(Range(1, 3), std::chrono::milliseconds(50), std::make_shared<TestScheduler>(scheduler));
     
     delayed->Subscribe(CreateObserver<int>(
         [&received_values](int value) { 
@@ -99,7 +99,7 @@ void test_scheduler_delay_example() {
     Serial.print("Total delayed values: ");
     Serial.println(received_values.size());
     
-    Serial.println()
+    Serial.println();
 }
 
 void test_scheduler_debounce_example() {
@@ -109,7 +109,7 @@ void test_scheduler_debounce_example() {
     std::vector<int> received_values;
     
     auto subject = std::make_shared<Subject<int>>();
-    auto debounced = Debounce<int>(subject, std::chrono::milliseconds(100), scheduler);
+    auto debounced = Debounce<int>(subject, std::chrono::milliseconds(100), std::make_shared<TestScheduler>(scheduler));
     
     debounced->Subscribe(CreateObserver<int>(
         [&received_values](int value) { 
@@ -169,9 +169,10 @@ void test_scheduler_advance_to_example() {
     TestScheduler scheduler;
     std::vector<int> received_values;
     
-    auto interval_obs = Interval(std::chrono::milliseconds(100), scheduler);
+    // Use Delay with Range instead of Interval
+    auto delayed = Delay<int>(Range(1, 5), std::chrono::milliseconds(100), std::make_shared<TestScheduler>(scheduler));
     
-    interval_obs->Subscribe(CreateObserver<int>(
+    delayed->Subscribe(CreateObserver<int>(
         [&received_values](int value) { 
             received_values.push_back(value); 
             Serial.print("AdvanceTo received: "); 
